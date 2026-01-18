@@ -46,7 +46,7 @@ export const MODELS: Record<string, ModelConfig> = {
     pricing: "$0.15-$0.30/image",
     supportsAspect: true,
     supportsResolution: true,
-    supportsEdit: false,
+    supportsEdit: true,
     supportsNumImages: true,
   },
   gemini: {
@@ -56,7 +56,7 @@ export const MODELS: Record<string, ModelConfig> = {
     pricing: "$0.039/image",
     supportsAspect: true,
     supportsResolution: false,
-    supportsEdit: false,
+    supportsEdit: true,
     supportsNumImages: true,
   },
   gemini3: {
@@ -66,7 +66,7 @@ export const MODELS: Record<string, ModelConfig> = {
     pricing: "$0.15-$0.30/image",
     supportsAspect: true,
     supportsResolution: true,
-    supportsEdit: false,
+    supportsEdit: true,
     supportsNumImages: true,
   },
 

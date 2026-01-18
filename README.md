@@ -54,8 +54,8 @@ Get your API key at [fal.ai/dashboard/keys](https://fal.ai/dashboard/keys).
 | Option | Default | Description |
 |--------|---------|-------------|
 | `apiKey` | - | Your fal.ai API key |
-| `defaultModel` | `gpt` | Default generation model |
-| `defaultAspect` | `9:16` | Default aspect ratio |
+| `defaultModel` | `banana` | Default generation model |
+| `defaultAspect` | `1:1` | Default aspect ratio |
 | `defaultResolution` | `2K` | Default resolution |
 | `openAfterGenerate` | `true` | Auto-open images after generation |
 | `upscaler` | `clarity` | Upscaler model (`clarity` or `crystal`) |
@@ -124,10 +124,12 @@ falky
 
 ### Generation Models
 
+All models support image editing with the `-e` flag.
+
 | Model | Name | Pricing | Features |
 |-------|------|---------|----------|
-| `gpt` | GPT Image 1.5 | $0.01-$0.20/image | Supports editing |
-| `banana` | Nano Banana Pro | $0.15-$0.30/image | Aspect, resolution |
+| `banana` | Nano Banana Pro | $0.15-$0.30/image | Aspect, resolution (default) |
+| `gpt` | GPT Image 1.5 | $0.01-$0.20/image | Variable quality settings |
 | `gemini` | Gemini 2.5 Flash | $0.039/image | Fast, affordable |
 | `gemini3` | Gemini 3 Pro | $0.15-$0.30/image | Highest quality |
 

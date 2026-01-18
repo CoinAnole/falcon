@@ -41,8 +41,8 @@ export interface History {
 }
 
 const DEFAULT_CONFIG: FalkyConfig = {
-  defaultModel: "gpt",
-  defaultAspect: "9:16",
+  defaultModel: "banana",
+  defaultAspect: "1:1",
   defaultResolution: "2K",
   openAfterGenerate: true,
   upscaler: "clarity",
