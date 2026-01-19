@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.png" width="128" height="128" alt="Falcon">
+  <img src="https://raw.githubusercontent.com/howells/falcon/main/logo.png" width="128" height="128" alt="Falcon">
 </p>
 
 <h1 align="center">Falcon</h1>
