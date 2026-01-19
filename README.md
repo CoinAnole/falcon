@@ -1,7 +1,6 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/howells/falcon/main/logo.png" width="80" alt="Falcon">
+  <img src="https://raw.githubusercontent.com/howells/falcon/main/logo.png" width="128" alt="Falcon">
 </p>
-
 <h1 align="center">Falcon</h1>
 
 <p align="center">
