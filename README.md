@@ -1,10 +1,13 @@
-# <img src="https://raw.githubusercontent.com/howells/falcon/main/logo.png" width="32" height="32" alt="" style="vertical-align: middle;"> Falcon
+<p align="center">
+  <img src="https://raw.githubusercontent.com/howells/falcon/main/logo.png" width="80" alt="Falcon">
+</p>
 
-> CLI for generating images with [fal.ai](https://fal.ai)
+<h1 align="center">Falcon</h1>
 
-```bash
-brew install howells/tap/falcon
-```
+<p align="center">
+  CLI for generating images with <a href="https://fal.ai">fal.ai</a><br>
+  <code>brew install howells/tap/falcon</code>
+</p>
 
 ## Quick Start
 
