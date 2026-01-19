@@ -14,10 +14,11 @@ Supports multiple models, batch generation, upscaling, and background removal.
 
 ## Installation
 
-### Quick Install (Recommended)
+### Homebrew (Recommended)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/howells/falcon/main/install.sh | bash
+brew tap howells/tap
+brew install falcon
 ```
 
 ### Manual Install

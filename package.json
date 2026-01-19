@@ -1,11 +1,33 @@
 {
-  "name": "falcon",
+  "name": "@howells/falcon",
   "version": "1.0.0",
   "description": "fal.ai image generation CLI with interactive studio mode",
   "type": "module",
   "bin": {
     "falcon": "./bin/falcon"
   },
+  "files": [
+    "bin",
+    "src",
+    "package.json",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/howells/falcon.git"
+  },
+  "homepage": "https://github.com/howells/falcon",
+  "keywords": [
+    "fal",
+    "fal.ai",
+    "image-generation",
+    "ai",
+    "cli",
+    "gpt",
+    "gemini"
+  ],
+  "author": "Daniel Howells",
+  "license": "MIT",
   "scripts": {
     "dev": "bun run src/index.ts",
     "build": "bun build src/index.ts --outdir dist --target node",
