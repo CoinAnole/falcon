@@ -28,12 +28,52 @@ import { Spinner } from "../components/Spinner";
 
 type Step =
 	| "prompt"
+	| "preset"
 	| "model"
 	| "aspect"
 	| "resolution"
 	| "confirm"
 	| "generating"
 	| "done";
+
+interface Preset {
+	key: string;
+	label: string;
+	description: string;
+	aspect: AspectRatio;
+	resolution?: Resolution;
+}
+
+const PRESETS: Preset[] = [
+	{ key: "square", label: "Square", description: "1:1", aspect: "1:1" },
+	{ key: "landscape", label: "Landscape", description: "16:9", aspect: "16:9" },
+	{ key: "portrait", label: "Portrait", description: "2:3", aspect: "2:3" },
+	{
+		key: "story",
+		label: "Story/Reel",
+		description: "9:16 vertical",
+		aspect: "9:16",
+	},
+	{
+		key: "wide",
+		label: "Cinematic",
+		description: "21:9 ultra-wide",
+		aspect: "21:9",
+	},
+	{
+		key: "cover",
+		label: "Book Cover",
+		description: "2:3 @ 2K",
+		aspect: "2:3",
+		resolution: "2K",
+	},
+	{
+		key: "og",
+		label: "Social Share",
+		description: "16:9 OG image",
+		aspect: "16:9",
+	},
+];
 
 type PostAction =
 	| "edit"
@@ -101,10 +141,16 @@ export function GenerateScreen({
 				onBack();
 			} else if (step === "done") {
 				onComplete();
+			} else if (step === "preset") {
+				setStep("prompt");
+			} else if (step === "model") {
+				setStep("preset");
+				setSelectedIndex(0);
 			} else {
 				// Go back a step
 				const steps: Step[] = [
 					"prompt",
+					"preset",
 					"model",
 					"aspect",
 					"resolution",
@@ -119,7 +165,26 @@ export function GenerateScreen({
 			return;
 		}
 
-		if (step === "model") {
+		if (step === "preset") {
+			if (key.upArrow && selectedIndex > 0) {
+				setSelectedIndex(selectedIndex - 1);
+			} else if (key.downArrow && selectedIndex < PRESETS.length - 1) {
+				setSelectedIndex(selectedIndex + 1);
+			} else if (key.return) {
+				// Apply preset and go to confirm
+				const preset = PRESETS[selectedIndex];
+				setAspect(preset.aspect);
+				if (preset.resolution) {
+					setResolution(preset.resolution);
+				}
+				setSelectedIndex(0);
+				setStep("confirm");
+			} else if (key.tab) {
+				// Skip to manual model selection
+				setSelectedIndex(0);
+				setStep("model");
+			}
+		} else if (step === "model") {
 			handleListNavigation(
 				GENERATION_MODELS,
 				(m) => {
@@ -272,7 +337,8 @@ export function GenerateScreen({
 	const handlePromptSubmit = (value: string) => {
 		if (value.trim()) {
 			setPrompt(value.trim());
-			setStep("model");
+			setSelectedIndex(0);
+			setStep("preset");
 		}
 	};
 
@@ -290,6 +356,28 @@ export function GenerateScreen({
 							onSubmit={handlePromptSubmit}
 							placeholder="A cat sitting on a windowsill..."
 						/>
+					</Box>
+				</Box>
+			)}
+
+			{/* Preset selection */}
+			{step === "preset" && (
+				<Box flexDirection="column">
+					<Text bold>Quick presets</Text>
+					<Text dimColor>↑↓ select, enter apply, tab for manual</Text>
+					<Box marginTop={1} flexDirection="column">
+						{PRESETS.map((preset, i) => (
+							<Box key={preset.key} marginLeft={1}>
+								<Text
+									color={i === selectedIndex ? "magenta" : undefined}
+									bold={i === selectedIndex}
+								>
+									{i === selectedIndex ? "◆ " : "  "}
+									{preset.label.padEnd(14)}
+								</Text>
+								<Text dimColor={i !== selectedIndex}>{preset.description}</Text>
+							</Box>
+						))}
 					</Box>
 				</Box>
 			)}
