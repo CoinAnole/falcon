@@ -57,6 +57,7 @@ interface EditScreenProps {
 	onBack: () => void;
 	onComplete: () => void;
 	onError: (err: Error) => void;
+	skipToOperation?: boolean;
 }
 
 export function EditScreen({
@@ -64,6 +65,7 @@ export function EditScreen({
 	onBack,
 	onComplete,
 	onError,
+	skipToOperation = false,
 }: EditScreenProps) {
 	const [step, setStep] = useState<Step>("select");
 	const [mode, setMode] = useState<Mode | null>(null);
@@ -108,12 +110,16 @@ export function EditScreen({
 			if (history.generations.length === 0) {
 				setUseCustomPath(true);
 			} else {
+				const latest = history.generations[history.generations.length - 1];
 				setGenerations([...history.generations].reverse());
-				setSelectedGen(history.generations[history.generations.length - 1]);
+				setSelectedGen(latest);
+				if (skipToOperation) {
+					setStep("operation");
+				}
 			}
 		};
 		loadGenerations();
-	}, []);
+	}, [skipToOperation]);
 
 	const proceedFromSelect = () => {
 		if (useCustomPath) {
