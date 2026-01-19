@@ -248,7 +248,7 @@ export function EditScreen({
 					editImage: imageData,
 				});
 
-				outputPath = generateFilename("edit");
+				outputPath = generateFilename("falcon-edit");
 				await downloadImage(result.images[0].url, outputPath);
 				cost = estimateCost("gpt");
 				promptLabel = prompt;
@@ -262,7 +262,7 @@ export function EditScreen({
 					numImages: 1,
 				});
 
-				outputPath = generateFilename("var");
+				outputPath = generateFilename("falcon-edit");
 				await downloadImage(result.images[0].url, outputPath);
 				cost = estimateCost(source.model, source.resolution);
 				promptLabel = source.prompt;
