@@ -676,13 +676,15 @@ export function GenerateScreen({
 						<Text bold>Continue</Text>
 						{POST_ACTIONS.map((action, i) => (
 							<Box key={action.key} marginLeft={1}>
-								<Text
-									color={i === selectedIndex ? "magenta" : undefined}
-									bold={i === selectedIndex}
-								>
-									{i === selectedIndex ? "◆ " : "  "}
-									{action.label.padEnd(14)}
-								</Text>
+								<Box width={20}>
+									<Text
+										color={i === selectedIndex ? "magenta" : undefined}
+										bold={i === selectedIndex}
+									>
+										{i === selectedIndex ? "◆ " : "  "}
+										{action.label}
+									</Text>
+								</Box>
 								<Text dimColor={i !== selectedIndex}>{action.description}</Text>
 							</Box>
 						))}
