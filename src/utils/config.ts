@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { AspectRatio, Resolution } from "../api/models";
+import type { CostMetadata } from "../types/pricing";
 
 const FALCON_DIR = join(homedir(), ".falcon");
 const CONFIG_PATH = join(FALCON_DIR, "config.json");
@@ -27,17 +28,17 @@ export interface Generation {
 	resolution: Resolution;
 	output: string;
 	cost: number;
+	costDetails?: CostMetadata;
 	timestamp: string;
 	editedFrom?: string;
 }
 
 export interface History {
 	generations: Generation[];
-	totalCost: {
-		session: number;
-		today: number;
-		allTime: number;
-	};
+	totalCost: Record<
+		string,
+		{ session: number; today: number; allTime: number }
+	>;
 	lastSessionDate: string;
 }
 
@@ -53,9 +54,11 @@ const DEFAULT_CONFIG: FalconConfig = {
 const DEFAULT_HISTORY: History = {
 	generations: [],
 	totalCost: {
-		session: 0,
-		today: 0,
-		allTime: 0,
+		USD: {
+			session: 0,
+			today: 0,
+			allTime: 0,
+		},
 	},
 	lastSessionDate: new Date().toISOString().split("T")[0],
 };
@@ -152,13 +155,35 @@ export async function loadHistory(): Promise<History> {
 
 	try {
 		const file = Bun.file(HISTORY_PATH);
-		const history: History = await file.json();
+		const history = (await file.json()) as History;
+
+		if (
+			history.totalCost &&
+			"session" in history.totalCost &&
+			"today" in history.totalCost &&
+			"allTime" in history.totalCost
+		) {
+			const legacy = history.totalCost as unknown as {
+				session: number;
+				today: number;
+				allTime: number;
+			};
+			history.totalCost = {
+				USD: {
+					session: legacy.session || 0,
+					today: legacy.today || 0,
+					allTime: legacy.allTime || 0,
+				},
+			};
+		}
 
 		// Reset session/daily costs if it's a new day
 		const today = new Date().toISOString().split("T")[0];
 		if (history.lastSessionDate !== today) {
-			history.totalCost.session = 0;
-			history.totalCost.today = 0;
+			for (const currency of Object.keys(history.totalCost)) {
+				history.totalCost[currency].session = 0;
+				history.totalCost[currency].today = 0;
+			}
 			history.lastSessionDate = today;
 		}
 
@@ -179,13 +204,18 @@ export async function saveHistory(history: History): Promise<void> {
 
 export async function addGeneration(generation: Generation): Promise<void> {
 	const history = await loadHistory();
+	const currency = generation.costDetails?.currency || "USD";
+
+	if (!history.totalCost[currency]) {
+		history.totalCost[currency] = { session: 0, today: 0, allTime: 0 };
+	}
 
 	// Use push (O(1)) instead of unshift (O(n))
 	// Generations are stored newest-last, reversed when reading
 	history.generations.push(generation);
-	history.totalCost.session += generation.cost;
-	history.totalCost.today += generation.cost;
-	history.totalCost.allTime += generation.cost;
+	history.totalCost[currency].session += generation.cost;
+	history.totalCost[currency].today += generation.cost;
+	history.totalCost[currency].allTime += generation.cost;
 	history.lastSessionDate = new Date().toISOString().split("T")[0];
 
 	// Keep only last 100 generations (remove oldest from front)

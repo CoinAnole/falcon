@@ -124,9 +124,15 @@ export function App({
 				<Text color="magenta">◆</Text>
 				<Text dimColor>
 					{" "}
-					${history.totalCost.session.toFixed(2)} session │ $
-					{history.totalCost.today.toFixed(2)} today │ $
-					{history.totalCost.allTime.toFixed(2)} total
+					{Object.keys(history.totalCost).length > 0
+						? (() => {
+								const [currency] = Object.keys(history.totalCost);
+								const totals = history.totalCost[currency];
+								const extra = Object.keys(history.totalCost).length - 1;
+								const suffix = extra > 0 ? ` (+${extra})` : "";
+								return `${currency}${suffix} $${totals.session.toFixed(2)} session │ ${currency}${suffix} $${totals.today.toFixed(2)} today │ ${currency}${suffix} $${totals.allTime.toFixed(2)} total`;
+							})()
+						: "$0.00 session │ $0.00 today │ $0.00 total"}
 				</Text>
 			</Box>
 		</Box>
