@@ -247,6 +247,15 @@ bun run dev --help             # View all options
 5. Tag release: `git tag v1.x.x && git push --tags`
 6. Update Homebrew tap if applicable
 
+## Model Documentation
+
+The following files contain detailed fal.ai API documentation for supported models:
+
+- [`flux2_tti_llms.txt`](flux2_tti_llms.txt) - Flux 2 text-to-image generation
+- [`flux2_iti_llms.txt`](flux2_iti_llms.txt) - Flux 2 image-to-image editing
+- [`imagine_tti_llms.txt`](imagine_tti_llms.txt) - Grok Imagine text-to-image generation
+- [`imagine_iti_llms.txt`](imagine_iti_llms.txt) - Grok Imagine image-to-image editing
+
 ## Resources
 
 - [fal.ai Documentation](https://fal.ai/docs)
