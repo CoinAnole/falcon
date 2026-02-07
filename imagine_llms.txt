@@ -1,0 +1,187 @@
+# Grok Imagine Image
+
+> Edit images precisely with xAI's Grok Imagine model
+
+
+## Overview
+
+- **Endpoint**: `https://fal.run/xai/grok-imagine-image/edit`
+- **Model ID**: `xai/grok-imagine-image/edit`
+- **Category**: image-to-image
+- **Kind**: inference
+**Tags**: grok, xai, image-editing
+
+
+
+## API Information
+
+This model can be used via our HTTP API or more conveniently via our client libraries.
+See the input and output schema below, as well as the usage examples.
+
+
+### Input Schema
+
+The API accepts the following input parameters:
+
+
+- **`prompt`** (`string`, _required_):
+  Text description of the desired image.
+  - Examples: "Make this scene more realistic but still keep the game vibes"
+
+- **`num_images`** (`integer`, _optional_):
+  Number of images to generate. Default value: `1`
+  - Default: `1`
+  - Range: `1` to `4`
+
+- **`output_format`** (`OutputFormatEnum`, _optional_):
+  The format of the generated image. Default value: `"jpeg"`
+  - Default: `"jpeg"`
+  - Options: `"jpeg"`, `"png"`, `"webp"`
+
+- **`sync_mode`** (`boolean`, _optional_):
+  If `True`, the media will be returned as a data URI and the output data won't be available in the request history.
+  - Default: `false`
+
+- **`image_url`** (`string`, _required_):
+  URL of the image to edit.
+  - Examples: "https://v3b.fal.media/files/b/0a8b911d/Abk8vStrvmSPlzUqI_NN3_image_043.png"
+
+
+
+**Required Parameters Example**:
+
+```json
+{
+  "prompt": "Make this scene more realistic but still keep the game vibes",
+  "image_url": "https://v3b.fal.media/files/b/0a8b911d/Abk8vStrvmSPlzUqI_NN3_image_043.png"
+}
+```
+
+**Full Example**:
+
+```json
+{
+  "prompt": "Make this scene more realistic but still keep the game vibes",
+  "num_images": 1,
+  "output_format": "jpeg",
+  "image_url": "https://v3b.fal.media/files/b/0a8b911d/Abk8vStrvmSPlzUqI_NN3_image_043.png"
+}
+```
+
+
+### Output Schema
+
+The API returns the following output format:
+
+- **`images`** (`list<ImageFile>`, _required_):
+  The URL of the edited image.
+  - Array of ImageFile
+  - Examples: [{"url":"https://v3b.fal.media/files/b/0a8b911d/XMqiVoO2ECXUZEUYmPl2l.jpg"}]
+
+- **`revised_prompt`** (`string`, _required_):
+  The enhanced prompt that was used to generate the image.
+
+
+
+**Example Response**:
+
+```json
+{
+  "images": [
+    {
+      "url": "https://v3b.fal.media/files/b/0a8b911d/XMqiVoO2ECXUZEUYmPl2l.jpg"
+    }
+  ],
+  "revised_prompt": ""
+}
+```
+
+
+## Usage Examples
+
+### cURL
+
+```bash
+curl --request POST \
+  --url https://fal.run/xai/grok-imagine-image/edit \
+  --header "Authorization: Key $FAL_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+     "prompt": "Make this scene more realistic but still keep the game vibes",
+     "image_url": "https://v3b.fal.media/files/b/0a8b911d/Abk8vStrvmSPlzUqI_NN3_image_043.png"
+   }'
+```
+
+### Python
+
+Ensure you have the Python client installed:
+
+```bash
+pip install fal-client
+```
+
+Then use the API client to make requests:
+
+```python
+import fal_client
+
+def on_queue_update(update):
+    if isinstance(update, fal_client.InProgress):
+        for log in update.logs:
+           print(log["message"])
+
+result = fal_client.subscribe(
+    "xai/grok-imagine-image/edit",
+    arguments={
+        "prompt": "Make this scene more realistic but still keep the game vibes",
+        "image_url": "https://v3b.fal.media/files/b/0a8b911d/Abk8vStrvmSPlzUqI_NN3_image_043.png"
+    },
+    with_logs=True,
+    on_queue_update=on_queue_update,
+)
+print(result)
+```
+
+### JavaScript
+
+Ensure you have the JavaScript client installed:
+
+```bash
+npm install --save @fal-ai/client
+```
+
+Then use the API client to make requests:
+
+```javascript
+import { fal } from "@fal-ai/client";
+
+const result = await fal.subscribe("xai/grok-imagine-image/edit", {
+  input: {
+    prompt: "Make this scene more realistic but still keep the game vibes",
+    image_url: "https://v3b.fal.media/files/b/0a8b911d/Abk8vStrvmSPlzUqI_NN3_image_043.png"
+  },
+  logs: true,
+  onQueueUpdate: (update) => {
+    if (update.status === "IN_PROGRESS") {
+      update.logs.map((log) => log.message).forEach(console.log);
+    }
+  },
+});
+console.log(result.data);
+console.log(result.requestId);
+```
+
+
+## Additional Resources
+
+### Documentation
+
+- [Model Playground](https://fal.ai/models/xai/grok-imagine-image/edit)
+- [API Documentation](https://fal.ai/models/xai/grok-imagine-image/edit/api)
+- [OpenAPI Schema](https://fal.ai/api/openapi/queue/openapi.json?endpoint_id=xai/grok-imagine-image/edit)
+
+### fal.ai Platform
+
+- [Platform Documentation](https://docs.fal.ai)
+- [Python Client](https://docs.fal.ai/clients/python)
+- [JavaScript Client](https://docs.fal.ai/clients/javascript)
