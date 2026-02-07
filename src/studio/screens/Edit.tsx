@@ -7,6 +7,7 @@ import { generate, removeBackground, upscale } from "../../api/fal";
 import {
 	type AspectRatio,
 	estimateCost,
+	GENERATION_MODELS,
 	MODELS,
 	type Resolution,
 } from "../../api/models";
@@ -31,6 +32,7 @@ type Mode = "edit" | "variations" | "upscale" | "rmbg";
 type Step =
 	| "select"
 	| "operation"
+	| "edit-model"
 	| "prompt"
 	| "scale"
 	| "confirm"
@@ -78,11 +80,16 @@ export function EditScreen({
 	const [prompt, setPrompt] = useState("");
 	const [scale, setScale] = useState(2);
 	const [status, setStatus] = useState("");
+	const [editModel, setEditModel] = useState<string>("gpt");
+	const [editModelIndex, setEditModelIndex] = useState(0);
 	const [result, setResult] = useState<{
 		path: string;
 		dims: string;
 		size: string;
 	} | null>(null);
+
+	// Get models that support editing
+	const EDIT_MODELS = GENERATION_MODELS.filter((m) => MODELS[m]?.supportsEdit);
 
 	// For custom path mode, create a pseudo-generation object
 	const getSourceImage = (): {
@@ -141,7 +148,15 @@ export function EditScreen({
 		setMode(selectedMode);
 
 		if (selectedMode === "edit") {
-			setStep("prompt");
+			// Initialize edit model selection - prefer source model if it supports edit
+			const source = getSourceImage();
+			const preferredModel =
+				source?.model && MODELS[source.model]?.supportsEdit
+					? source.model
+					: "gpt";
+			setEditModel(preferredModel);
+			setEditModelIndex(EDIT_MODELS.indexOf(preferredModel));
+			setStep("edit-model");
 		} else if (selectedMode === "variations") {
 			const source = getSourceImage();
 			setPrompt(source.prompt);
@@ -198,6 +213,15 @@ export function EditScreen({
 			} else if (key.return) {
 				proceedFromOperation();
 			}
+		} else if (step === "edit-model") {
+			if (key.upArrow && editModelIndex > 0) {
+				setEditModelIndex(editModelIndex - 1);
+			} else if (key.downArrow && editModelIndex < EDIT_MODELS.length - 1) {
+				setEditModelIndex(editModelIndex + 1);
+			} else if (key.return) {
+				setEditModel(EDIT_MODELS[editModelIndex]);
+				setStep("prompt");
+			}
 		} else if (step === "scale") {
 			if (key.upArrow && scale < 8) {
 				setScale(scale + 1);
@@ -244,13 +268,13 @@ export function EditScreen({
 				setStatus("Generating edit...");
 				const result = await generate({
 					prompt,
-					model: "gpt", // GPT supports editing
+					model: editModel,
 					editImage: imageData,
 				});
 
 				outputPath = generateFilename("falcon-edit");
 				await downloadImage(result.images[0].url, outputPath);
-				cost = estimateCost("gpt");
+				cost = estimateCost(editModel);
 				promptLabel = prompt;
 			} else if (mode === "variations") {
 				setStatus("Generating variations...");
@@ -437,6 +461,27 @@ export function EditScreen({
 			{step !== "select" && step !== "operation" && source && (
 				<Box marginTop={1} marginBottom={1}>
 					<Text dimColor>Source: {basename(source.output)}</Text>
+				</Box>
+			)}
+
+			{/* Edit model selection */}
+			{step === "edit-model" && (
+				<Box flexDirection="column">
+					<Text>Select model for editing:</Text>
+					<Box marginTop={1} flexDirection="column">
+						{EDIT_MODELS.map((m, i) => (
+							<Box key={m}>
+								<Text
+									color={i === editModelIndex ? "magenta" : undefined}
+									bold={i === editModelIndex}
+								>
+									{i === editModelIndex ? "◆ " : "  "}
+									{MODELS[m].name.padEnd(20)}
+								</Text>
+								<Text dimColor>{MODELS[m].pricing}</Text>
+							</Box>
+						))}
+					</Box>
 				</Box>
 			)}
 

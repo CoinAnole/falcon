@@ -1,5 +1,6 @@
 import {
 	type AspectRatio,
+	aspectToFlux2Size,
 	aspectToGptSize,
 	MODELS,
 	type Resolution,
@@ -15,6 +16,8 @@ export interface GenerateOptions {
 	numImages?: number;
 	editImage?: string; // base64 data URL for edit mode
 	transparent?: boolean; // Generate with transparent background (GPT model only)
+	guidanceScale?: number; // Flux 2 guidance scale (0-20, default 2.5)
+	enablePromptExpansion?: boolean; // Flux 2 prompt expansion
 }
 
 export interface UpscaleOptions {
@@ -74,6 +77,8 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 		numImages = 1,
 		editImage,
 		transparent,
+		guidanceScale,
+		enablePromptExpansion,
 	} = options;
 
 	const config = MODELS[model];
@@ -93,6 +98,17 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 		if (transparent) {
 			body.background = "transparent";
 			body.output_format = "png";
+		}
+	} else if (model === "flux2") {
+		// Flux 2 uses image_size enum instead of aspect_ratio
+		body.image_size = aspectToFlux2Size(aspect);
+		// Add optional guidance scale
+		if (guidanceScale !== undefined) {
+			body.guidance_scale = guidanceScale;
+		}
+		// Add optional prompt expansion
+		if (enablePromptExpansion !== undefined) {
+			body.enable_prompt_expansion = enablePromptExpansion;
 		}
 	} else {
 		if (config.supportsAspect) {

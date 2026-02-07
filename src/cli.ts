@@ -466,7 +466,11 @@ async function upscaleLast(
 
 	const scaleFactor = parseInt(options.scale || "2", 10);
 	const outputPath =
-		options.output || sourceImagePath.replace(/\.(png|jpg|jpeg|webp)$/i, `-up${scaleFactor}x.png`);
+		options.output ||
+		sourceImagePath.replace(
+			/\.(png|jpg|jpeg|webp)$/i,
+			`-up${scaleFactor}x.png`,
+		);
 
 	console.log(chalk.bold("\nUpscaling..."));
 	console.log(`Source: ${chalk.dim(sourceImagePath)}`);
@@ -594,7 +598,7 @@ ${chalk.bold("Usage:")}
   falcon --rmbg                    Remove background from last image
 
 ${chalk.bold("Options:")}
-  -m, --model <model>      Model: gpt, banana, gemini, gemini3
+  -m, --model <model>      Model: gpt, banana, gemini, gemini3, flux2
   -e, --edit <file>        Edit an existing image with prompt
   -a, --aspect <ratio>     Aspect ratio (see below)
   -r, --resolution <res>   Resolution: 1K, 2K, 4K

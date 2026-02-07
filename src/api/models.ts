@@ -69,6 +69,16 @@ export const MODELS: Record<string, ModelConfig> = {
 		supportsEdit: true,
 		supportsNumImages: true,
 	},
+	flux2: {
+		name: "Flux 2 Flash",
+		endpoint: "fal-ai/flux-2/flash",
+		type: "generation",
+		pricing: "$0.03-$0.05/image",
+		supportsAspect: false, // Uses image_size instead
+		supportsResolution: false,
+		supportsEdit: true,
+		supportsNumImages: true,
+	},
 
 	// Utility models
 	clarity: {
@@ -156,6 +166,34 @@ export function aspectToGptSize(aspect: AspectRatio): string {
 	}
 }
 
+// Map aspect ratio to Flux 2 image_size enum
+export function aspectToFlux2Size(aspect: AspectRatio): string {
+	switch (aspect) {
+		case "21:9":
+			return "21:9_2560x1088";
+		case "16:9":
+			return "landscape_16_9";
+		case "3:2":
+			return "3:2_1536x1024";
+		case "4:3":
+			return "landscape_4_3";
+		case "5:4":
+			return "5:4_1280x1024";
+		case "1:1":
+			return "square_hd";
+		case "4:5":
+			return "4:5_1024x1280";
+		case "3:4":
+			return "portrait_4_3";
+		case "2:3":
+			return "2:3_1024x1536";
+		case "9:16":
+			return "portrait_16_9";
+		default:
+			return "square_hd";
+	}
+}
+
 // Estimate cost based on model and settings
 export function estimateCost(
 	model: string,
@@ -176,6 +214,9 @@ export function estimateCost(
 			break;
 		case "gemini":
 			baseCost = 0.039;
+			break;
+		case "flux2":
+			baseCost = 0.04;
 			break;
 		case "clarity":
 		case "crystal":
