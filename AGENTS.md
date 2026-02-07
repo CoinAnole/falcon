@@ -7,7 +7,7 @@ This document provides essential information for AI agents working on the Falcon
 **Falcon** is a CLI tool for generating images using [fal.ai](https://fal.ai) AI models. It provides both a command-line interface for quick generation and an interactive terminal UI (Studio mode) for a guided experience.
 
 ### Key Features
-- Generate images from text prompts using multiple AI models (GPT Image 1.5, Gemini, Nano Banana)
+- Generate images from text prompts using multiple AI models (GPT Image 1.5, Gemini, Nano Banana, Flux 2)
 - Interactive terminal UI with keyboard navigation
 - Post-processing: upscaling, background removal, variations
 - Aspect ratio presets for common use cases (social media, wallpapers, book covers)
@@ -66,7 +66,7 @@ The main API client for fal.ai services:
 
 #### `models.ts`
 Central configuration for all supported models:
-- **Generation models**: `gpt`, `banana`, `gemini`, `gemini3`
+- **Generation models**: `gpt`, `banana`, `gemini`, `gemini3`, `flux2`
 - **Utility models**: `clarity`, `crystal` (upscalers), `rmbg`, `bria` (background removal)
 - Aspect ratios: `21:9`, `16:9`, `3:2`, `4:3`, `5:4`, `1:1`, `4:5`, `3:4`, `2:3`, `9:16`
 - Resolutions: `1K`, `2K`, `4K`
@@ -255,6 +255,19 @@ The following files contain detailed fal.ai API documentation for supported mode
 - [`flux2_iti_llms.txt`](flux2_iti_llms.txt) - Flux 2 image-to-image editing
 - [`imagine_tti_llms.txt`](imagine_tti_llms.txt) - Grok Imagine text-to-image generation
 - [`imagine_iti_llms.txt`](imagine_iti_llms.txt) - Grok Imagine image-to-image editing
+
+### Flux 2 Specifics
+
+Flux 2 uses different parameter conventions than other models:
+
+- **Image sizing**: Uses `image_size` enum (e.g., `landscape_4_3`, `square_hd`) instead of `aspect_ratio`
+- **Unique parameters**:
+  - `guidance_scale` (0-20, default 2.5) - Controls prompt adherence
+  - `enable_prompt_expansion` (boolean) - Auto-expands prompts for better results
+- **Endpoints**: 
+  - Generation: `fal-ai/flux-2/flash`
+  - Editing: `fal-ai/flux-2/flash/edit`
+- **Mapping**: See [`aspectToFlux2Size()`](src/api/models.ts:168) for aspect ratio conversions
 
 ## Resources
 

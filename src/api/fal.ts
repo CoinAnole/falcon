@@ -99,8 +99,8 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 			body.background = "transparent";
 			body.output_format = "png";
 		}
-	} else if (model === "flux2") {
-		// Flux 2 uses image_size enum instead of aspect_ratio
+	} else if (model.startsWith("flux2")) {
+		// Flux 2 models use image_size enum instead of aspect_ratio
 		body.image_size = aspectToFlux2Size(aspect);
 		// Add optional guidance scale
 		if (guidanceScale !== undefined) {

@@ -598,7 +598,7 @@ ${chalk.bold("Usage:")}
   falcon --rmbg                    Remove background from last image
 
 ${chalk.bold("Options:")}
-  -m, --model <model>      Model: gpt, banana, gemini, gemini3, flux2
+  -m, --model <model>      Model: gpt, banana, gemini, gemini3, flux2, flux2Flash, flux2Turbo
   -e, --edit <file>        Edit an existing image with prompt
   -a, --aspect <ratio>     Aspect ratio (see below)
   -r, --resolution <res>   Resolution: 1K, 2K, 4K
