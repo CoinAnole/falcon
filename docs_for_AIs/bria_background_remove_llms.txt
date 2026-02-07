@@ -1,0 +1,156 @@
+# Bria RMBG 2.0
+
+> Bria RMBG 2.0 enables seamless removal of backgrounds from images, ideal for professional editing tasks. Trained exclusively on licensed data for safe and risk-free commercial use. Model weights for commercial use are available here: https://share-eu1.hsforms.com/2GLpEVQqJTI2Lj7AMYwgfIwf4e04
+
+
+## Overview
+
+- **Endpoint**: `https://fal.run/fal-ai/bria/background/remove`
+- **Model ID**: `fal-ai/bria/background/remove`
+- **Category**: image-to-image
+- **Kind**: inference
+**Tags**: background removal, image segmentation, high resolution, utility, rembg
+
+
+
+## API Information
+
+This model can be used via our HTTP API or more conveniently via our client libraries.
+See the input and output schema below, as well as the usage examples.
+
+
+### Input Schema
+
+The API accepts the following input parameters:
+
+
+- **`image_url`** (`string`, _required_):
+  Input Image to erase from
+  - Examples: "https://fal.media/files/panda/K5Rndvzmn1j-OI1VZXDVd.jpeg"
+
+- **`sync_mode`** (`boolean`, _optional_):
+  If `True`, the media will be returned as a data URI and the output data won't be available in the request history.
+  - Default: `false`
+
+
+
+**Required Parameters Example**:
+
+```json
+{
+  "image_url": "https://fal.media/files/panda/K5Rndvzmn1j-OI1VZXDVd.jpeg"
+}
+```
+
+
+### Output Schema
+
+The API returns the following output format:
+
+- **`image`** (`Image`, _required_):
+  The generated image
+  - Examples: {"file_size":1076276,"height":1024,"file_name":"070c731993e949d993c10ef6283d335d.png","content_type":"image/png","url":"https://v3.fal.media/files/tiger/GQEMNjRyxSoza7N8LPPqb_070c731993e949d993c10ef6283d335d.png","width":1024}
+
+
+
+**Example Response**:
+
+```json
+{
+  "image": {
+    "file_size": 1076276,
+    "height": 1024,
+    "file_name": "070c731993e949d993c10ef6283d335d.png",
+    "content_type": "image/png",
+    "url": "https://v3.fal.media/files/tiger/GQEMNjRyxSoza7N8LPPqb_070c731993e949d993c10ef6283d335d.png",
+    "width": 1024
+  }
+}
+```
+
+
+## Usage Examples
+
+### cURL
+
+```bash
+curl --request POST \
+  --url https://fal.run/fal-ai/bria/background/remove \
+  --header "Authorization: Key $FAL_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+     "image_url": "https://fal.media/files/panda/K5Rndvzmn1j-OI1VZXDVd.jpeg"
+   }'
+```
+
+### Python
+
+Ensure you have the Python client installed:
+
+```bash
+pip install fal-client
+```
+
+Then use the API client to make requests:
+
+```python
+import fal_client
+
+def on_queue_update(update):
+    if isinstance(update, fal_client.InProgress):
+        for log in update.logs:
+           print(log["message"])
+
+result = fal_client.subscribe(
+    "fal-ai/bria/background/remove",
+    arguments={
+        "image_url": "https://fal.media/files/panda/K5Rndvzmn1j-OI1VZXDVd.jpeg"
+    },
+    with_logs=True,
+    on_queue_update=on_queue_update,
+)
+print(result)
+```
+
+### JavaScript
+
+Ensure you have the JavaScript client installed:
+
+```bash
+npm install --save @fal-ai/client
+```
+
+Then use the API client to make requests:
+
+```javascript
+import { fal } from "@fal-ai/client";
+
+const result = await fal.subscribe("fal-ai/bria/background/remove", {
+  input: {
+    image_url: "https://fal.media/files/panda/K5Rndvzmn1j-OI1VZXDVd.jpeg"
+  },
+  logs: true,
+  onQueueUpdate: (update) => {
+    if (update.status === "IN_PROGRESS") {
+      update.logs.map((log) => log.message).forEach(console.log);
+    }
+  },
+});
+console.log(result.data);
+console.log(result.requestId);
+```
+
+
+## Additional Resources
+
+### Documentation
+
+- [Model Playground](https://fal.ai/models/fal-ai/bria/background/remove)
+- [API Documentation](https://fal.ai/models/fal-ai/bria/background/remove/api)
+- [OpenAPI Schema](https://fal.ai/api/openapi/queue/openapi.json?endpoint_id=fal-ai/bria/background/remove)
+
+### fal.ai Platform
+
+- [Platform Documentation](https://docs.fal.ai)
+- [Python Client](https://docs.fal.ai/clients/python)
+- [JavaScript Client](https://docs.fal.ai/clients/javascript)

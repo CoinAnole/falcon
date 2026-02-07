@@ -1,0 +1,219 @@
+# Clarity Upscaler
+
+> Clarity upscaler for upscaling images with high very fidelity.
+
+
+## Overview
+
+- **Endpoint**: `https://fal.run/fal-ai/clarity-upscaler`
+- **Model ID**: `fal-ai/clarity-upscaler`
+- **Category**: image-to-image
+- **Kind**: inference
+**Tags**: upscaling
+
+
+
+## API Information
+
+This model can be used via our HTTP API or more conveniently via our client libraries.
+See the input and output schema below, as well as the usage examples.
+
+
+### Input Schema
+
+The API accepts the following input parameters:
+
+
+- **`image_url`** (`string`, _required_):
+  The URL of the image to upscale.
+  - Examples: "https://storage.googleapis.com/falserverless/gallery/NOCA_Mick-Thompson.resized.resized.jpg"
+
+- **`prompt`** (`string`, _optional_):
+  The prompt to use for generating the image. Be as descriptive as possible for best results. Default value: `"masterpiece, best quality, highres"`
+  - Default: `"masterpiece, best quality, highres"`
+  - Examples: "masterpiece, best quality, highres"
+
+- **`upscale_factor`** (`float`, _optional_):
+  The upscale factor Default value: `2`
+  - Default: `2`
+  - Range: `1` to `4`
+
+- **`negative_prompt`** (`string`, _optional_):
+  The negative prompt to use. Use it to address details that you don't want in the image. Default value: `"(worst quality, low quality, normal quality:2)"`
+  - Default: `"(worst quality, low quality, normal quality:2)"`
+  - Examples: "(worst quality, low quality, normal quality:2)"
+
+- **`creativity`** (`float`, _optional_):
+  The creativity of the model. The higher the creativity, the more the model will deviate from the prompt.
+  Refers to the denoise strength of the sampling. Default value: `0.35`
+  - Default: `0.35`
+  - Range: `0` to `1`
+
+- **`resemblance`** (`float`, _optional_):
+  The resemblance of the upscaled image to the original image. The higher the resemblance, the more the model will try to keep the original image.
+  Refers to the strength of the ControlNet. Default value: `0.6`
+  - Default: `0.6`
+  - Range: `0` to `1`
+
+- **`guidance_scale`** (`float`, _optional_):
+  The CFG (Classifier Free Guidance) scale is a measure of how close you want
+  the model to stick to your prompt when looking for a related image to show you. Default value: `4`
+  - Default: `4`
+  - Range: `0` to `20`
+
+- **`num_inference_steps`** (`integer`, _optional_):
+  The number of inference steps to perform. Default value: `18`
+  - Default: `18`
+  - Range: `4` to `50`
+
+- **`seed`** (`integer`, _optional_):
+  The same seed and the same prompt given to the same version of Stable Diffusion
+  will output the same image every time.
+
+- **`enable_safety_checker`** (`boolean`, _optional_):
+  If set to false, the safety checker will be disabled. Default value: `true`
+  - Default: `true`
+
+
+
+**Required Parameters Example**:
+
+```json
+{
+  "image_url": "https://storage.googleapis.com/falserverless/gallery/NOCA_Mick-Thompson.resized.resized.jpg"
+}
+```
+
+**Full Example**:
+
+```json
+{
+  "image_url": "https://storage.googleapis.com/falserverless/gallery/NOCA_Mick-Thompson.resized.resized.jpg",
+  "prompt": "masterpiece, best quality, highres",
+  "upscale_factor": 2,
+  "negative_prompt": "(worst quality, low quality, normal quality:2)",
+  "creativity": 0.35,
+  "resemblance": 0.6,
+  "guidance_scale": 4,
+  "num_inference_steps": 18,
+  "enable_safety_checker": true
+}
+```
+
+
+### Output Schema
+
+The API returns the following output format:
+
+- **`image`** (`Image`, _required_):
+  The URL of the generated image.
+
+- **`seed`** (`integer`, _required_):
+  The seed used to generate the image.
+
+- **`timings`** (`Timings`, _required_):
+  The timings of the different steps in the workflow.
+
+
+
+**Example Response**:
+
+```json
+{
+  "image": {
+    "url": "",
+    "content_type": "image/png",
+    "file_name": "z9RV14K95DvU.png",
+    "file_size": 4404019,
+    "width": 1024,
+    "height": 1024
+  }
+}
+```
+
+
+## Usage Examples
+
+### cURL
+
+```bash
+curl --request POST \
+  --url https://fal.run/fal-ai/clarity-upscaler \
+  --header "Authorization: Key $FAL_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+     "image_url": "https://storage.googleapis.com/falserverless/gallery/NOCA_Mick-Thompson.resized.resized.jpg"
+   }'
+```
+
+### Python
+
+Ensure you have the Python client installed:
+
+```bash
+pip install fal-client
+```
+
+Then use the API client to make requests:
+
+```python
+import fal_client
+
+def on_queue_update(update):
+    if isinstance(update, fal_client.InProgress):
+        for log in update.logs:
+           print(log["message"])
+
+result = fal_client.subscribe(
+    "fal-ai/clarity-upscaler",
+    arguments={
+        "image_url": "https://storage.googleapis.com/falserverless/gallery/NOCA_Mick-Thompson.resized.resized.jpg"
+    },
+    with_logs=True,
+    on_queue_update=on_queue_update,
+)
+print(result)
+```
+
+### JavaScript
+
+Ensure you have the JavaScript client installed:
+
+```bash
+npm install --save @fal-ai/client
+```
+
+Then use the API client to make requests:
+
+```javascript
+import { fal } from "@fal-ai/client";
+
+const result = await fal.subscribe("fal-ai/clarity-upscaler", {
+  input: {
+    image_url: "https://storage.googleapis.com/falserverless/gallery/NOCA_Mick-Thompson.resized.resized.jpg"
+  },
+  logs: true,
+  onQueueUpdate: (update) => {
+    if (update.status === "IN_PROGRESS") {
+      update.logs.map((log) => log.message).forEach(console.log);
+    }
+  },
+});
+console.log(result.data);
+console.log(result.requestId);
+```
+
+
+## Additional Resources
+
+### Documentation
+
+- [Model Playground](https://fal.ai/models/fal-ai/clarity-upscaler)
+- [API Documentation](https://fal.ai/models/fal-ai/clarity-upscaler/api)
+- [OpenAPI Schema](https://fal.ai/api/openapi/queue/openapi.json?endpoint_id=fal-ai/clarity-upscaler)
+
+### fal.ai Platform
+
+- [Platform Documentation](https://docs.fal.ai)
+- [Python Client](https://docs.fal.ai/clients/python)
+- [JavaScript Client](https://docs.fal.ai/clients/javascript)

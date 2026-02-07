@@ -1,0 +1,167 @@
+# Crystal Upscaler
+
+> An advanced image enhancement tool designed specifically for facial details and portrait photography, utilizing Clarity AI's upscaling technology.
+
+
+## Overview
+
+- **Endpoint**: `https://fal.run/clarityai/crystal-upscaler`
+- **Model ID**: `clarityai/crystal-upscaler`
+- **Category**: image-to-image
+- **Kind**: inference
+**Tags**: image-to-image
+
+
+
+## API Information
+
+This model can be used via our HTTP API or more conveniently via our client libraries.
+See the input and output schema below, as well as the usage examples.
+
+
+### Input Schema
+
+The API accepts the following input parameters:
+
+
+- **`image_url`** (`string`, _required_):
+  URL to the input image
+  - Examples: "https://v3b.fal.media/files/b/zebra/eW3waMFDT-2_7Pq8j3r9d_upscaled.png"
+
+- **`scale_factor`** (`float`, _optional_):
+  Scale factor Default value: `2`
+  - Default: `2`
+  - Range: `1` to `200`
+
+- **`creativity`** (`float`, _optional_):
+  Creativity level for upscaling
+  - Default: `0`
+  - Range: `0` to `10`
+
+
+
+**Required Parameters Example**:
+
+```json
+{
+  "image_url": "https://v3b.fal.media/files/b/zebra/eW3waMFDT-2_7Pq8j3r9d_upscaled.png"
+}
+```
+
+**Full Example**:
+
+```json
+{
+  "image_url": "https://v3b.fal.media/files/b/zebra/eW3waMFDT-2_7Pq8j3r9d_upscaled.png",
+  "scale_factor": 2
+}
+```
+
+
+### Output Schema
+
+The API returns the following output format:
+
+- **`images`** (`list<Image>`, _required_):
+  List of upscaled images
+  - Array of Image
+  - Examples: ["https://v3b.fal.media/files/b/penguin/sVriwxLaU3fVTz5B-xBBC_upscaled.png"]
+
+
+
+**Example Response**:
+
+```json
+{
+  "images": [
+    "https://v3b.fal.media/files/b/penguin/sVriwxLaU3fVTz5B-xBBC_upscaled.png"
+  ]
+}
+```
+
+
+## Usage Examples
+
+### cURL
+
+```bash
+curl --request POST \
+  --url https://fal.run/clarityai/crystal-upscaler \
+  --header "Authorization: Key $FAL_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+     "image_url": "https://v3b.fal.media/files/b/zebra/eW3waMFDT-2_7Pq8j3r9d_upscaled.png"
+   }'
+```
+
+### Python
+
+Ensure you have the Python client installed:
+
+```bash
+pip install fal-client
+```
+
+Then use the API client to make requests:
+
+```python
+import fal_client
+
+def on_queue_update(update):
+    if isinstance(update, fal_client.InProgress):
+        for log in update.logs:
+           print(log["message"])
+
+result = fal_client.subscribe(
+    "clarityai/crystal-upscaler",
+    arguments={
+        "image_url": "https://v3b.fal.media/files/b/zebra/eW3waMFDT-2_7Pq8j3r9d_upscaled.png"
+    },
+    with_logs=True,
+    on_queue_update=on_queue_update,
+)
+print(result)
+```
+
+### JavaScript
+
+Ensure you have the JavaScript client installed:
+
+```bash
+npm install --save @fal-ai/client
+```
+
+Then use the API client to make requests:
+
+```javascript
+import { fal } from "@fal-ai/client";
+
+const result = await fal.subscribe("clarityai/crystal-upscaler", {
+  input: {
+    image_url: "https://v3b.fal.media/files/b/zebra/eW3waMFDT-2_7Pq8j3r9d_upscaled.png"
+  },
+  logs: true,
+  onQueueUpdate: (update) => {
+    if (update.status === "IN_PROGRESS") {
+      update.logs.map((log) => log.message).forEach(console.log);
+    }
+  },
+});
+console.log(result.data);
+console.log(result.requestId);
+```
+
+
+## Additional Resources
+
+### Documentation
+
+- [Model Playground](https://fal.ai/models/clarityai/crystal-upscaler)
+- [API Documentation](https://fal.ai/models/clarityai/crystal-upscaler/api)
+- [OpenAPI Schema](https://fal.ai/api/openapi/queue/openapi.json?endpoint_id=clarityai/crystal-upscaler)
+
+### fal.ai Platform
+
+- [Platform Documentation](https://docs.fal.ai)
+- [Python Client](https://docs.fal.ai/clients/python)
+- [JavaScript Client](https://docs.fal.ai/clients/javascript)
