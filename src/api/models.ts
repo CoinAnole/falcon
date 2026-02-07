@@ -83,7 +83,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		name: "Flux 2 Flash",
 		endpoint: "fal-ai/flux-2/flash",
 		type: "generation",
-		pricing: "$0.03-$0.05/image",
+		pricing: "$0.015-$0.025/image",
 		supportsAspect: false, // Uses image_size instead
 		supportsResolution: false,
 		supportsEdit: true,
@@ -93,7 +93,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		name: "Flux 2 Turbo",
 		endpoint: "fal-ai/flux-2/turbo",
 		type: "generation",
-		pricing: "$0.015-$0.025/image",
+		pricing: "$0.03-$0.05/image",
 		supportsAspect: false, // Uses image_size instead
 		supportsResolution: false,
 		supportsEdit: true,
@@ -239,10 +239,10 @@ export function estimateCost(
 			baseCost = 0.05;
 			break;
 		case "flux2Flash":
-			baseCost = 0.035;
+			baseCost = 0.02;
 			break;
 		case "flux2Turbo":
-			baseCost = 0.02;
+			baseCost = 0.035;
 			break;
 		case "clarity":
 		case "crystal":
