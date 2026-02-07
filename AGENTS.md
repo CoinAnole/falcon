@@ -47,6 +47,15 @@ This document provides essential information for AI agents working on the Falcon
 │   └── utils/
 │       ├── config.ts    # Config & history management
 │       └── image.ts     # Image download, resize, open utilities
+├── docs_for_AIs/        # API documentation for AI models
+│   ├── flux2_tti_llms.txt      # Flux 2 text-to-image docs
+│   ├── flux2_iti_llms.txt      # Flux 2 image-to-image docs
+│   ├── gemini3pro_tti_llms.txt # Gemini 3 Pro text-to-image docs
+│   ├── gemini3pro_iti_llms.txt # Gemini 3 Pro image-to-image docs
+│   ├── imagine_tti_llms.txt    # Grok Imagine text-to-image docs
+│   ├── imagine_iti_llms.txt    # Grok Imagine image-to-image docs
+│   ├── pricing.md              # Model pricing information
+│   └── estimate.md             # Cost estimation details
 ├── package.json
 ├── tsconfig.json
 ├── biome.json           # Code formatting/linting config
@@ -251,10 +260,14 @@ bun run dev --help             # View all options
 
 The following files contain detailed fal.ai API documentation for supported models:
 
-- [`flux2_tti_llms.txt`](flux2_tti_llms.txt) - Flux 2 text-to-image generation
-- [`flux2_iti_llms.txt`](flux2_iti_llms.txt) - Flux 2 image-to-image editing
-- [`imagine_tti_llms.txt`](imagine_tti_llms.txt) - Grok Imagine text-to-image generation
-- [`imagine_iti_llms.txt`](imagine_iti_llms.txt) - Grok Imagine image-to-image editing
+- [`flux2_tti_llms.txt`](docs_for_AIs/flux2_tti_llms.txt) - Flux 2 text-to-image generation
+- [`flux2_iti_llms.txt`](docs_for_AIs/flux2_iti_llms.txt) - Flux 2 image-to-image editing
+- [`gemini3pro_tti_llms.txt`](docs_for_AIs/gemini3pro_tti_llms.txt) - Gemini 3 Pro text-to-image generation
+- [`gemini3pro_iti_llms.txt`](docs_for_AIs/gemini3pro_iti_llms.txt) - Gemini 3 Pro image-to-image editing
+- [`imagine_tti_llms.txt`](docs_for_AIs/imagine_tti_llms.txt) - Grok Imagine text-to-image generation
+- [`imagine_iti_llms.txt`](docs_for_AIs/imagine_iti_llms.txt) - Grok Imagine image-to-image editing
+- [`pricing.md`](docs_for_AIs/pricing.md) - Model pricing information
+- [`estimate.md`](docs_for_AIs/estimate.md) - Cost estimation details
 
 ### Flux 2 Specifics
 
@@ -279,6 +292,33 @@ Grok Imagine supports model-specific aspect ratios via the `supportedAspectRatio
 - **Edit support**: Yes, via `/edit` endpoint
 - **Returns**: `images[]` + `revised_prompt`
 - **Pricing**: ~$0.04/image
+
+### Gemini 3 Pro Specifics
+
+Gemini 3 Pro (gemini-2.0-flash-exp-preview-05-30) is Google's latest image generation model:
+
+- **Image sizing**: Uses standard `aspect_ratio` parameter
+- **Resolution support**: Supports `1K`, `2K`, `4K` resolutions
+- **Edit support**: Yes, via image editing endpoint
+- **Returns**: `images[]` with generated images
+- **Pricing**: ~$0.05/image
+
+### Output Format Support
+
+Grok, Flux 2, and Gemini 3 Pro models support the `output_format` parameter to specify the desired image format:
+
+- **Supported formats**: `png`, `jpeg`, `webp`
+- **CLI flag**: `--format <format>` or `-f <format>`
+- **Default**: `png` (if not specified)
+- **Studio UI**: Format selection available in the generation workflow
+
+Example CLI usage:
+```bash
+falcon "a cat" --model grok --format webp
+falcon "landscape" --model flux2 --format jpeg
+```
+
+The output format is passed directly to the fal.ai API and affects the generated image's MIME type and file extension.
 
 ### Model-Specific Aspect Ratios
 
