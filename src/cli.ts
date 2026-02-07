@@ -11,6 +11,7 @@ import {
 	estimateCost,
 	GENERATION_MODELS,
 	MODELS,
+	OUTPUT_FORMATS,
 	RESOLUTIONS,
 	type Resolution,
 } from "./api/models";
@@ -119,6 +120,8 @@ interface CliOptions {
 	promptExpansion?: boolean;
 	inferenceSteps?: string;
 	acceleration?: string;
+	// Output format option
+	format?: string;
 }
 
 export async function runCli(args: string[]): Promise<void> {
@@ -180,6 +183,10 @@ export async function runCli(args: string[]): Promise<void> {
 		.option(
 			"--acceleration <level>",
 			"Flux 2 base: acceleration level - none, regular, high (default: regular)",
+		)
+		.option(
+			"-f, --format <format>",
+			`Output format (${OUTPUT_FORMATS.join(", ")}) - for Grok, Flux, Gemini 3 Pro`,
 		);
 
 	program.parse(args);
@@ -301,18 +308,54 @@ async function generateImage(
 	const model = options.model || config.defaultModel;
 	const numImages = Math.min(4, Math.max(1, parseInt(options.num || "1", 10)));
 
+	// Determine output format
+	const modelConfig = MODELS[model];
+	let outputFormat: string | undefined;
+	if (modelConfig?.supportsOutputFormat) {
+		// Validate format if provided
+		if (options.format) {
+			if (
+				!OUTPUT_FORMATS.includes(
+					options.format as (typeof OUTPUT_FORMATS)[number],
+				)
+			) {
+				console.error(
+					chalk.red(
+						`Invalid format: ${options.format}. Valid options: ${OUTPUT_FORMATS.join(", ")}`,
+					),
+				);
+				process.exit(1);
+			}
+			outputFormat = options.format;
+		}
+	} else if (options.format) {
+		// User specified format but model doesn't support it
+		console.warn(
+			chalk.yellow(
+				`Warning: Model ${model} does not support output format selection. Ignoring --format option.`,
+			),
+		);
+	}
+
+	// Determine file extension based on format or model
+	let fileExt = "png";
+	if (outputFormat) {
+		fileExt = outputFormat;
+	} else if (model === "gpt" && options.transparent) {
+		fileExt = "png"; // GPT transparent mode uses PNG
+	}
+
 	// Validate output path if specified
 	let outputPath: string;
 	try {
 		outputPath = options.output
 			? validateOutputPath(options.output)
-			: generateFilename();
+			: generateFilename("falcon", fileExt);
 	} catch (err) {
 		console.error(chalk.red(getErrorMessage(err)));
 		process.exit(1);
 	}
 
-	const modelConfig = MODELS[model];
 	if (!modelConfig) {
 		console.error(chalk.red(`Unknown model: ${model}`));
 		console.log(`Available models: ${GENERATION_MODELS.join(", ")}`);
@@ -377,6 +420,7 @@ async function generateImage(
 				| "regular"
 				| "high"
 				| undefined,
+			outputFormat: outputFormat as "jpeg" | "png" | "webp" | undefined,
 		});
 
 		spinner.succeed("Generated!");
@@ -386,7 +430,7 @@ async function generateImage(
 			const image = result.images[i];
 			const path =
 				numImages > 1
-					? outputPath.replace(".png", `-${i + 1}.png`)
+					? outputPath.replace(`.${fileExt}`, `-${i + 1}.${fileExt}`)
 					: outputPath;
 
 			await downloadImage(image.url, path);
@@ -638,6 +682,7 @@ ${chalk.bold("Options:")}
   -r, --resolution <res>   Resolution: 1K, 2K, 4K
   -o, --output <file>      Output filename
   -n, --num <count>        Number of images (1-4)
+  -f, --format <format>    Output format: jpeg, png, webp (Grok, Flux, Gemini 3 Pro)
   --transparent            Transparent background PNG (GPT only)
   --no-open                Don't auto-open image after generation
 

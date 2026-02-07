@@ -3,6 +3,7 @@ import {
 	aspectToFlux2Size,
 	aspectToGptSize,
 	MODELS,
+	type OutputFormat,
 	type Resolution,
 } from "./models";
 
@@ -20,6 +21,7 @@ export interface GenerateOptions {
 	enablePromptExpansion?: boolean; // Flux 2 prompt expansion
 	numInferenceSteps?: number; // Flux 2 base only: inference steps (4-50, default 28)
 	acceleration?: "none" | "regular" | "high"; // Flux 2 base only: acceleration level (default: regular)
+	outputFormat?: OutputFormat; // Output format: jpeg, png, webp (Grok, Flux, Gemini 3 Pro only)
 }
 
 export interface UpscaleOptions {
@@ -83,6 +85,7 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 		enablePromptExpansion,
 		numInferenceSteps,
 		acceleration,
+		outputFormat,
 	} = options;
 
 	const config = MODELS[model];
@@ -134,6 +137,11 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 
 	if (config.supportsNumImages) {
 		body.num_images = numImages;
+	}
+
+	// Add output_format for models that support it
+	if (config.supportsOutputFormat && outputFormat) {
+		body.output_format = outputFormat;
 	}
 
 	// Handle edit mode

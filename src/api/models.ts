@@ -20,6 +20,8 @@ export type Resolution = "1K" | "2K" | "4K";
 
 export type ModelType = "generation" | "utility";
 
+export type OutputFormat = "jpeg" | "png" | "webp";
+
 export interface ModelConfig {
 	name: string;
 	endpoint: string;
@@ -29,6 +31,7 @@ export interface ModelConfig {
 	supportsResolution: boolean;
 	supportsEdit: boolean;
 	supportsNumImages: boolean;
+	supportsOutputFormat: boolean;
 	defaultParams?: Record<string, unknown>;
 	supportedAspectRatios?: AspectRatio[];
 }
@@ -44,6 +47,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		supportsResolution: false,
 		supportsEdit: true,
 		supportsNumImages: true,
+		supportsOutputFormat: false,
 		defaultParams: { quality: "high" },
 	},
 	banana: {
@@ -55,6 +59,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		supportsResolution: true,
 		supportsEdit: true,
 		supportsNumImages: true,
+		supportsOutputFormat: false,
 	},
 	gemini: {
 		name: "Gemini 2.5 Flash",
@@ -65,6 +70,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		supportsResolution: false,
 		supportsEdit: true,
 		supportsNumImages: true,
+		supportsOutputFormat: false,
 	},
 	gemini3: {
 		name: "Gemini 3 Pro",
@@ -75,6 +81,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		supportsResolution: true,
 		supportsEdit: true,
 		supportsNumImages: true,
+		supportsOutputFormat: true,
 	},
 	flux2: {
 		name: "Flux 2",
@@ -85,6 +92,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		supportsResolution: false,
 		supportsEdit: true,
 		supportsNumImages: true,
+		supportsOutputFormat: true,
 	},
 	flux2Flash: {
 		name: "Flux 2 Flash",
@@ -95,6 +103,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		supportsResolution: false,
 		supportsEdit: true,
 		supportsNumImages: true,
+		supportsOutputFormat: true,
 	},
 	flux2Turbo: {
 		name: "Flux 2 Turbo",
@@ -105,6 +114,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		supportsResolution: false,
 		supportsEdit: true,
 		supportsNumImages: true,
+		supportsOutputFormat: true,
 	},
 	imagine: {
 		name: "Grok Imagine",
@@ -115,6 +125,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		supportsResolution: false,
 		supportsEdit: true,
 		supportsNumImages: true,
+		supportsOutputFormat: true,
 		supportedAspectRatios: [
 			"1:1",
 			"4:3",
@@ -145,6 +156,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		supportsResolution: false,
 		supportsEdit: false,
 		supportsNumImages: false,
+		supportsOutputFormat: false,
 	},
 	crystal: {
 		name: "Crystal Upscaler",
@@ -155,6 +167,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		supportsResolution: false,
 		supportsEdit: false,
 		supportsNumImages: false,
+		supportsOutputFormat: false,
 	},
 	rmbg: {
 		name: "BiRefNet (Background Removal)",
@@ -165,6 +178,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		supportsResolution: false,
 		supportsEdit: false,
 		supportsNumImages: false,
+		supportsOutputFormat: false,
 	},
 	bria: {
 		name: "Bria RMBG 2.0",
@@ -175,6 +189,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		supportsResolution: false,
 		supportsEdit: false,
 		supportsNumImages: false,
+		supportsOutputFormat: false,
 	},
 };
 
@@ -201,6 +216,8 @@ export const ASPECT_RATIOS: AspectRatio[] = [
 ];
 
 export const RESOLUTIONS: Resolution[] = ["1K", "2K", "4K"];
+
+export const OUTPUT_FORMATS: OutputFormat[] = ["jpeg", "png", "webp"];
 
 // Map aspect ratio to GPT image_size (GPT doesn't support arbitrary aspects)
 export function aspectToGptSize(aspect: AspectRatio): string {

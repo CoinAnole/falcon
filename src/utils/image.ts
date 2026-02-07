@@ -113,10 +113,13 @@ export async function getFileSize(filePath: string): Promise<string> {
 /**
  * Generate a timestamped filename
  */
-export function generateFilename(prefix: string = "falcon"): string {
+export function generateFilename(
+	prefix: string = "falcon",
+	format: string = "png",
+): string {
 	const now = new Date();
 	const timestamp = now.toISOString().slice(0, 19).replace(/[-:T]/g, "");
-	return `${prefix}-${timestamp}.png`;
+	return `${prefix}-${timestamp}.${format}`;
 }
 
 /**
