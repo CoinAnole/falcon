@@ -18,6 +18,8 @@ export interface GenerateOptions {
 	transparent?: boolean; // Generate with transparent background (GPT model only)
 	guidanceScale?: number; // Flux 2 guidance scale (0-20, default 2.5)
 	enablePromptExpansion?: boolean; // Flux 2 prompt expansion
+	numInferenceSteps?: number; // Flux 2 base only: inference steps (4-50, default 28)
+	acceleration?: "none" | "regular" | "high"; // Flux 2 base only: acceleration level (default: regular)
 }
 
 export interface UpscaleOptions {
@@ -79,6 +81,8 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 		transparent,
 		guidanceScale,
 		enablePromptExpansion,
+		numInferenceSteps,
+		acceleration,
 	} = options;
 
 	const config = MODELS[model];
@@ -109,6 +113,15 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 		// Add optional prompt expansion
 		if (enablePromptExpansion !== undefined) {
 			body.enable_prompt_expansion = enablePromptExpansion;
+		}
+		// Add base Flux 2 specific parameters (not available on Flash/Turbo)
+		if (model === "flux2") {
+			if (numInferenceSteps !== undefined) {
+				body.num_inference_steps = numInferenceSteps;
+			}
+			if (acceleration !== undefined) {
+				body.acceleration = acceleration;
+			}
 		}
 	} else {
 		if (config.supportsAspect) {

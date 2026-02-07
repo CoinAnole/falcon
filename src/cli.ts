@@ -114,6 +114,11 @@ interface CliOptions {
 	rmbg?: boolean;
 	scale?: string;
 	noOpen?: boolean;
+	// Flux 2 specific options
+	guidanceScale?: string;
+	promptExpansion?: boolean;
+	inferenceSteps?: string;
+	acceleration?: string;
 }
 
 export async function runCli(args: string[]): Promise<void> {
@@ -158,7 +163,24 @@ export async function runCli(args: string[]): Promise<void> {
 		.option("--up", "Upscale image (provide path, or uses last)")
 		.option("--rmbg", "Remove background from last image")
 		.option("--scale <factor>", "Upscale factor (for --up)")
-		.option("--no-open", "Don't open image after generation");
+		.option("--no-open", "Don't open image after generation")
+		// Flux 2 specific options
+		.option(
+			"--guidance-scale <scale>",
+			"Flux 2: guidance scale 0-20 (default: 2.5)",
+		)
+		.option(
+			"--prompt-expansion",
+			"Flux 2: enable prompt expansion for better results",
+		)
+		.option(
+			"--inference-steps <steps>",
+			"Flux 2 base: inference steps 4-50 (default: 28)",
+		)
+		.option(
+			"--acceleration <level>",
+			"Flux 2 base: acceleration level - none, regular, high (default: regular)",
+		);
 
 	program.parse(args);
 
@@ -343,6 +365,18 @@ async function generateImage(
 			numImages,
 			editImage: editImageData,
 			transparent: options.transparent,
+			guidanceScale: options.guidanceScale
+				? parseFloat(options.guidanceScale)
+				: undefined,
+			enablePromptExpansion: options.promptExpansion,
+			numInferenceSteps: options.inferenceSteps
+				? parseInt(options.inferenceSteps, 10)
+				: undefined,
+			acceleration: options.acceleration as
+				| "none"
+				| "regular"
+				| "high"
+				| undefined,
 		});
 
 		spinner.succeed("Generated!");
@@ -606,6 +640,12 @@ ${chalk.bold("Options:")}
   -n, --num <count>        Number of images (1-4)
   --transparent            Transparent background PNG (GPT only)
   --no-open                Don't auto-open image after generation
+
+${chalk.bold("Flux 2 Options:")}
+  --guidance-scale <n>     Guidance scale 0-20 (default: 2.5)
+  --prompt-expansion       Enable prompt expansion for better results
+  --inference-steps <n>    Base Flux 2 only: steps 4-50 (default: 28)
+  --acceleration <level>   Base Flux 2 only: none, regular, high (default: regular)
 
 ${chalk.bold("Post-processing:")}
   --last                   Show last generation info
