@@ -1,3 +1,4 @@
+import { loadConfig } from "../utils/config";
 import {
 	type AspectRatio,
 	aspectToFlux2Size,
@@ -59,7 +60,7 @@ function setApiKey(key: string): void {
 	_apiKey = key;
 }
 
-function getApiKey(): string {
+async function getApiKey(): Promise<string> {
 	// Check manually set key first
 	if (_apiKey) return _apiKey;
 
@@ -67,8 +68,12 @@ function getApiKey(): string {
 	const envKey = process.env.FAL_KEY;
 	if (envKey) return envKey;
 
+	// Fall back to config file
+	const config = await loadConfig();
+	if (config.apiKey) return config.apiKey;
+
 	throw new Error(
-		"FAL_KEY not found. Set FAL_KEY environment variable or configure in ~/.falcon/config.json",
+		"FAL_KEY not found. Set FAL_KEY environment variable or add apiKey to ~/.falcon/config.json",
 	);
 }
 
@@ -156,7 +161,7 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 	const response = await fetch(endpoint, {
 		method: "POST",
 		headers: {
-			Authorization: `Key ${getApiKey()}`,
+			Authorization: `Key ${await getApiKey()}`,
 			"Content-Type": "application/json",
 		},
 		body: JSON.stringify(body),
@@ -196,7 +201,7 @@ export async function upscale(options: UpscaleOptions): Promise<FalResponse> {
 	const response = await fetch(`${FAL_BASE_URL}/${config.endpoint}`, {
 		method: "POST",
 		headers: {
-			Authorization: `Key ${getApiKey()}`,
+			Authorization: `Key ${await getApiKey()}`,
 			"Content-Type": "application/json",
 		},
 		body: JSON.stringify(body),
@@ -229,7 +234,7 @@ export async function removeBackground(
 	const response = await fetch(`${FAL_BASE_URL}/${config.endpoint}`, {
 		method: "POST",
 		headers: {
-			Authorization: `Key ${getApiKey()}`,
+			Authorization: `Key ${await getApiKey()}`,
 			"Content-Type": "application/json",
 		},
 		body: JSON.stringify({ image_url: imageUrl }),
