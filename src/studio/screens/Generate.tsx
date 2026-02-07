@@ -205,7 +205,8 @@ export function GenerateScreen({
 					setModel(m);
 					setConfirmIndex(0);
 					setConfirmField(null);
-					setStep(modelConfig?.supportsAspect ? "aspect" : "confirm");
+					// Use the newly selected model's config, not the stale one
+					setStep(MODELS[m]?.supportsAspect ? "aspect" : "confirm");
 				},
 				key,
 				input,
