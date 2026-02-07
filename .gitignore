@@ -9,3 +9,4 @@ falcon-*.png
 falcon-edit-*.png
 fal-*.png
 edit-*.png
+.husky/pre-commit
