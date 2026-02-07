@@ -7,7 +7,7 @@ This document provides essential information for AI agents working on the Falcon
 **Falcon** is a CLI tool for generating images using [fal.ai](https://fal.ai) AI models. It provides both a command-line interface for quick generation and an interactive terminal UI (Studio mode) for a guided experience.
 
 ### Key Features
-- Generate images from text prompts using multiple AI models (GPT Image 1.5, Gemini, Nano Banana, Flux 2)
+- Generate images from text prompts using multiple AI models (GPT Image 1.5, Gemini, Nano Banana, Flux 2/Flash/Turbo, Grok Imagine)
 - Interactive terminal UI with keyboard navigation
 - Post-processing: upscaling, background removal, variations
 - Aspect ratio presets for common use cases (social media, wallpapers, book covers)
@@ -66,9 +66,9 @@ The main API client for fal.ai services:
 
 #### `models.ts`
 Central configuration for all supported models:
-- **Generation models**: `gpt`, `banana`, `gemini`, `gemini3`, `flux2`
+- **Generation models**: `gpt`, `banana`, `gemini`, `gemini3`, `flux2`, `flux2Flash`, `flux2Turbo`, `imagine`
 - **Utility models**: `clarity`, `crystal` (upscalers), `rmbg`, `bria` (background removal)
-- Aspect ratios: `21:9`, `16:9`, `3:2`, `4:3`, `5:4`, `1:1`, `4:5`, `3:4`, `2:3`, `9:16`
+- Aspect ratios: `21:9`, `16:9`, `3:2`, `4:3`, `5:4`, `1:1`, `4:5`, `3:4`, `2:3`, `9:16` (common); Grok adds: `2:1`, `20:9`, `19.5:9`, `9:19.5`, `9:20`, `1:2`
 - Resolutions: `1K`, `2K`, `4K`
 - [`estimateCost()`](src/api/models.ts:160) - Calculates estimated cost per generation
 
@@ -264,10 +264,40 @@ Flux 2 uses different parameter conventions than other models:
 - **Unique parameters**:
   - `guidance_scale` (0-20, default 2.5) - Controls prompt adherence
   - `enable_prompt_expansion` (boolean) - Auto-expands prompts for better results
-- **Endpoints**: 
-  - Generation: `fal-ai/flux-2/flash`
-  - Editing: `fal-ai/flux-2/flash/edit`
-- **Mapping**: See [`aspectToFlux2Size()`](src/api/models.ts:168) for aspect ratio conversions
+- **Endpoints**:
+  - `flux2`: `fal-ai/flux-2` - Full quality Flux 2
+  - `flux2Flash`: `fal-ai/flux-2/flash` - Fastest generation, lowest cost
+  - `flux2Turbo`: `fal-ai/flux-2/turbo` - Balanced speed and quality
+- **Mapping**: See [`aspectToFlux2Size()`](src/api/models.ts:189) for aspect ratio conversions
+
+### Grok Imagine Specifics
+
+Grok Imagine supports model-specific aspect ratios via the `supportedAspectRatios` configuration:
+
+- **Image sizing**: Uses standard `aspect_ratio` parameter (like Gemini/Banana)
+- **Unique aspect ratios**: `2:1`, `20:9`, `19.5:9`, `9:19.5`, `9:20`, `1:2` (in addition to common ratios)
+- **Edit support**: Yes, via `/edit` endpoint
+- **Returns**: `images[]` + `revised_prompt`
+- **Pricing**: ~$0.04/image
+
+### Model-Specific Aspect Ratios
+
+The project supports model-specific aspect ratios through the `supportedAspectRatios` field in [`ModelConfig`](src/api/models.ts:17):
+
+```typescript
+// Models can declare their own supported aspect ratios
+imagine: {
+  ...
+  supportedAspectRatios: ["1:1", "16:9", "9:16", "2:1", "20:9", ...],
+}
+
+// Helper function to get ratios for a model
+getAspectRatiosForModel(model) -> AspectRatio[]
+```
+
+- Models without `supportedAspectRatios` use the common [`ASPECT_RATIOS`](src/api/models.ts:155)
+- The Studio UI dynamically adjusts the grid layout based on the number of ratios
+- See [`getAspectRatiosForModel()`](src/api/models.ts:263) for implementation
 
 ## Resources
 

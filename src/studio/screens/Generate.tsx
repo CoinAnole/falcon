@@ -4,10 +4,10 @@ import TextInput from "ink-text-input";
 import { useState } from "react";
 import { generate } from "../../api/fal";
 import {
-	ASPECT_RATIOS,
 	type AspectRatio,
 	estimateCost,
 	GENERATION_MODELS,
+	getAspectRatiosForModel,
 	MODELS,
 	RESOLUTIONS,
 	type Resolution,
@@ -211,10 +211,10 @@ export function GenerateScreen({
 				input,
 			);
 		} else if (step === "aspect") {
-			// Grid navigation: 5 columns, 2 rows
-			const cols = 5;
-			const total = ASPECT_RATIOS.length;
-			const _rows = Math.ceil(total / cols);
+			// Grid navigation: dynamic columns based on aspect ratio count
+			const aspectRatios = getAspectRatiosForModel(model);
+			const cols = aspectRatios.length > 10 ? 4 : 5;
+			const total = aspectRatios.length;
 			const row = Math.floor(selectedIndex / cols);
 			const col = selectedIndex % cols;
 
@@ -228,7 +228,7 @@ export function GenerateScreen({
 				const newIndex = selectedIndex + cols;
 				if (newIndex < total) setSelectedIndex(newIndex);
 			} else if (key.return) {
-				setAspect(ASPECT_RATIOS[selectedIndex] as AspectRatio);
+				setAspect(aspectRatios[selectedIndex] as AspectRatio);
 				setSelectedIndex(0);
 				setConfirmIndex(0);
 				setConfirmField(null);
@@ -264,8 +264,9 @@ export function GenerateScreen({
 						input,
 					);
 				} else if (confirmField === "aspect") {
+					const aspectRatios = getAspectRatiosForModel(model);
 					handleListNavigation(
-						[...ASPECT_RATIOS] as string[] as readonly string[],
+						aspectRatios as readonly string[],
 						(a) => {
 							setAspect(a as AspectRatio);
 							setConfirmField(null);
@@ -304,7 +305,7 @@ export function GenerateScreen({
 					if (field === "model") {
 						setSelectedIndex(GENERATION_MODELS.indexOf(model));
 					} else if (field === "aspect") {
-						setSelectedIndex(ASPECT_RATIOS.indexOf(aspect));
+						setSelectedIndex(getAspectRatiosForModel(model).indexOf(aspect));
 					} else if (field === "resolution") {
 						setSelectedIndex(RESOLUTIONS.indexOf(resolution));
 					}
@@ -485,30 +486,38 @@ export function GenerateScreen({
 				</Box>
 			)}
 
-			{/* Aspect ratio selection - 5 column grid */}
+			{/* Aspect ratio selection - dynamic grid */}
 			{step === "aspect" && (
 				<Box flexDirection="column">
 					<Text bold>Select aspect ratio:</Text>
 					<Text dimColor>↑↓←→ to navigate</Text>
 					<Box marginTop={1} flexDirection="column">
-						{[0, 1].map((row) => (
-							<Box key={row} flexDirection="row">
-								{ASPECT_RATIOS.slice(row * 5, row * 5 + 5).map((a, colIdx) => {
-									const i = row * 5 + colIdx;
-									return (
-										<Box key={a} width={12}>
-											<Text
-												color={i === selectedIndex ? "magenta" : undefined}
-												bold={i === selectedIndex}
-											>
-												{i === selectedIndex ? "◆" : " "}
-												{a.padEnd(6)}
-											</Text>
-										</Box>
-									);
-								})}
-							</Box>
-						))}
+						{(() => {
+							const aspectRatios = getAspectRatiosForModel(model);
+							const cols = aspectRatios.length > 10 ? 4 : 5;
+							const rows = Math.ceil(aspectRatios.length / cols);
+							return Array.from({ length: rows }, (_, row) => (
+								// biome-ignore lint/suspicious/noArrayIndexKey: Row index is stable for static grid layout
+								<Box key={`row-${row}`} flexDirection="row">
+									{aspectRatios
+										.slice(row * cols, row * cols + cols)
+										.map((a: AspectRatio, colIdx: number) => {
+											const i = row * cols + colIdx;
+											return (
+												<Box key={a} width={12}>
+													<Text
+														color={i === selectedIndex ? "magenta" : undefined}
+														bold={i === selectedIndex}
+													>
+														{i === selectedIndex ? "◆" : " "}
+														{a.padEnd(6)}
+													</Text>
+												</Box>
+											);
+										})}
+								</Box>
+							));
+						})()}
 					</Box>
 				</Box>
 			)}
@@ -575,17 +584,19 @@ export function GenerateScreen({
 						)}
 						{confirmField === "aspect" ? (
 							<Box flexDirection="column">
-								{ASPECT_RATIOS.map((a, i) => (
-									<Box key={a}>
-										<Text
-											color={i === selectedIndex ? "magenta" : undefined}
-											bold={i === selectedIndex}
-										>
-											{i === selectedIndex ? "◆ " : "  "}
-											{a}
-										</Text>
-									</Box>
-								))}
+								{getAspectRatiosForModel(model).map(
+									(a: AspectRatio, i: number) => (
+										<Box key={a}>
+											<Text
+												color={i === selectedIndex ? "magenta" : undefined}
+												bold={i === selectedIndex}
+											>
+												{i === selectedIndex ? "◆ " : "  "}
+												{a}
+											</Text>
+										</Box>
+									),
+								)}
 							</Box>
 						) : (
 							<Text>

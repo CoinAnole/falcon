@@ -8,7 +8,13 @@ export type AspectRatio =
 	| "4:5"
 	| "3:4"
 	| "2:3"
-	| "9:16";
+	| "9:16"
+	| "2:1"
+	| "20:9"
+	| "19.5:9"
+	| "9:19.5"
+	| "9:20"
+	| "1:2";
 
 export type Resolution = "1K" | "2K" | "4K";
 
@@ -24,6 +30,7 @@ export interface ModelConfig {
 	supportsEdit: boolean;
 	supportsNumImages: boolean;
 	defaultParams?: Record<string, unknown>;
+	supportedAspectRatios?: AspectRatio[];
 }
 
 export const MODELS: Record<string, ModelConfig> = {
@@ -98,6 +105,34 @@ export const MODELS: Record<string, ModelConfig> = {
 		supportsResolution: false,
 		supportsEdit: true,
 		supportsNumImages: true,
+	},
+	imagine: {
+		name: "Grok Imagine",
+		endpoint: "xai/grok-imagine-image",
+		type: "generation",
+		pricing: "$0.04/image",
+		supportsAspect: true,
+		supportsResolution: false,
+		supportsEdit: true,
+		supportsNumImages: true,
+		supportedAspectRatios: [
+			"1:1",
+			"4:3",
+			"3:4",
+			"16:9",
+			"9:16",
+			"3:2",
+			"2:3",
+			"4:5",
+			"5:4",
+			"21:9",
+			"2:1",
+			"20:9",
+			"19.5:9",
+			"9:19.5",
+			"9:20",
+			"1:2",
+		],
 	},
 
 	// Utility models
@@ -244,6 +279,9 @@ export function estimateCost(
 		case "flux2Turbo":
 			baseCost = 0.035;
 			break;
+		case "imagine":
+			baseCost = 0.04;
+			break;
 		case "clarity":
 		case "crystal":
 		case "rmbg":
@@ -255,4 +293,10 @@ export function estimateCost(
 	}
 
 	return baseCost * numImages;
+}
+
+// Get aspect ratios for a specific model (model-specific or default)
+export function getAspectRatiosForModel(model: string): AspectRatio[] {
+	const config = MODELS[model];
+	return config?.supportedAspectRatios ?? ASPECT_RATIOS;
 }
