@@ -33,7 +33,10 @@ This document provides essential information for AI agents working on the Falcon
 │   ├── cli.ts           # Command-line argument parsing & handlers
 │   ├── api/
 │   │   ├── fal.ts       # Fal.ai API client (generate, upscale, rmbg)
-│   │   └── models.ts    # Model configurations, aspect ratios, pricing
+│   │   ├── models.ts    # Model configurations, aspect ratios, static pricing
+│   │   └── pricing.ts   # Live pricing client with caching and estimates
+│   ├── types/
+│   │   └── pricing.ts   # Pricing metadata types
 │   ├── studio/
 │   │   ├── App.tsx      # Main React app with screen routing
 │   │   ├── components/
@@ -47,15 +50,7 @@ This document provides essential information for AI agents working on the Falcon
 │   └── utils/
 │       ├── config.ts    # Config & history management
 │       └── image.ts     # Image download, resize, open utilities
-├── docs_for_AIs/        # API documentation for AI models
-│   ├── flux2_tti_llms.txt      # Flux 2 text-to-image docs
-│   ├── flux2_iti_llms.txt      # Flux 2 image-to-image docs
-│   ├── gemini3pro_tti_llms.txt # Gemini 3 Pro text-to-image docs
-│   ├── gemini3pro_iti_llms.txt # Gemini 3 Pro image-to-image docs
-│   ├── imagine_tti_llms.txt    # Grok Imagine text-to-image docs
-│   ├── imagine_iti_llms.txt    # Grok Imagine image-to-image docs
-│   ├── pricing.md              # Model pricing information
-│   └── estimate.md             # Cost estimation details
+├── docs_for_AIs/        # API documentation for AI models (see Model Documentation section)
 ├── package.json
 ├── tsconfig.json
 ├── biome.json           # Code formatting/linting config
@@ -79,7 +74,17 @@ Central configuration for all supported models:
 - **Utility models**: `clarity`, `crystal` (upscalers), `rmbg`, `bria` (background removal)
 - Aspect ratios: `21:9`, `16:9`, `3:2`, `4:3`, `5:4`, `1:1`, `4:5`, `3:4`, `2:3`, `9:16` (common); Grok adds: `2:1`, `20:9`, `19.5:9`, `9:19.5`, `9:20`, `1:2`
 - Resolutions: `1K`, `2K`, `4K`
-- [`estimateCost()`](src/api/models.ts:160) - Calculates estimated cost per generation
+- [`estimateCost()`](src/api/models.ts:160) - Static cost estimation (fallback)
+
+#### `pricing.ts`
+Live pricing client with caching and estimates from fal.ai API:
+- [`estimateGenerationCost()`](src/api/pricing.ts:229) - Get live cost estimate for image generation
+- [`estimateUpscaleCost()`](src/api/pricing.ts:302) - Get live cost estimate for upscaling
+- [`estimateBackgroundRemovalCost()`](src/api/pricing.ts:369) - Get live cost estimate for background removal
+- [`refreshPricingCache()`](src/api/pricing.ts:218) - Force refresh pricing cache
+- Caches pricing data for 6 hours in `~/.falcon/pricing.json`
+- Falls back to static estimates if API is unavailable
+- Supports both `unit_price` (per-image) and `historical_api_price` (compute-based) models
 
 ### Studio Mode (`src/studio/`)
 
@@ -221,12 +226,20 @@ onError(new Error("Something went wrong"));
 
 ## Cost Tracking
 
-Every generation is recorded with its cost:
-- Session cost: Reset on new run
-- Daily cost: Reset each day
-- All-time cost: Cumulative
+Every generation is recorded with its cost and metadata:
+- **Live pricing**: Estimates now prefer live `unit_price` from fal.ai API when available
+- **Per-currency tracking**: Costs are tracked per currency (USD, EUR, etc.)
+- **Session cost**: Reset on new run
+- **Daily cost**: Reset each day
+- **All-time cost**: Cumulative across all time
+- **Cost metadata**: Includes currency, unit price, estimate source, and endpoint ID
 
-Costs are estimated pre-generation and tracked in history.
+Cost estimation priority:
+1. Live API estimate (`estimateWithApi()`)
+2. Cached unit price from pricing API
+3. Static fallback estimates from [`models.ts`](src/api/models.ts:160)
+
+Use `falcon pricing --refresh` to force refresh the pricing cache.
 
 ## Important Notes
 
@@ -266,6 +279,10 @@ The following files contain detailed fal.ai API documentation for supported mode
 - [`gemini3pro_iti_llms.txt`](docs_for_AIs/gemini3pro_iti_llms.txt) - Gemini 3 Pro image-to-image editing
 - [`imagine_tti_llms.txt`](docs_for_AIs/imagine_tti_llms.txt) - Grok Imagine text-to-image generation
 - [`imagine_iti_llms.txt`](docs_for_AIs/imagine_iti_llms.txt) - Grok Imagine image-to-image editing
+- [`birefnet_llms.txt`](docs_for_AIs/birefnet_llms.txt) - Birefnet background removal docs
+- [`bria_background_remove_llms.txt`](docs_for_AIs/bria_background_remove_llms.txt) - Bria background removal docs
+- [`clarity_upscaler_llms.txt`](docs_for_AIs/clarity_upscaler_llms.txt) - Clarity upscaler docs
+- [`crystal_upscaler_llms.txt`](docs_for_AIs/crystal_upscaler_llms.txt) - Crystal upscaler docs
 - [`pricing.md`](docs_for_AIs/pricing.md) - Model pricing information
 - [`estimate.md`](docs_for_AIs/estimate.md) - Cost estimation details
 
