@@ -110,11 +110,13 @@ result.unmount();
 
 ## Mocking & Stubbing
 - Stub `globalThis.fetch` for API-layer tests using `withMockFetch` helper.
+- Always restore any mocked globals (like `globalThis.fetch`, timers, or env vars) in a `finally` block or `afterEach` to prevent cross-test leakage, especially when the runner executes files concurrently.
 - Mock time-based behavior where needed to keep results deterministic.
 - Do not open external apps or spawn long-running processes in tests.
 
 ## Platform Considerations
 - `resizeImage()` uses `sips` (macOS). Guard tests with `process.platform === "darwin"` and skip otherwise.
+- If a utility depends on platform-specific tools or paths, gate the test by platform or mock the dependency so cross-platform runs remain deterministic.
 
 ## Running Tests
 ```bash
@@ -153,6 +155,8 @@ describe("cli", () => {
 });
 ```
 
+Prefer writing outputs to temporary directories in CLI tests (not project or user paths) to keep isolation consistent with config/history guidance.
+
 ### Studio Tests
 Test screen navigation:
 ```typescript
@@ -167,3 +171,5 @@ describe("studio routing", () => {
   });
 });
 ```
+
+Always ensure `unmount()` runs via `try/finally` to prevent resource leaks on failures, and include explicit timeouts with `waitUntil()` to avoid hung tests.
