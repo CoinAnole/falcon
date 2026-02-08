@@ -46,10 +46,14 @@ describe("studio app routing", () => {
 	it("navigates to generate screen", async () => {
 		const result = renderApp();
 		try {
-			await waitUntil(() => (result.lastFrame() ?? "").length > 0);
+			await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
+				timeoutMs: 3000,
+			});
 			await writeInput(result, KEYS.enter);
-			await waitUntil(() =>
-				stripAnsi(result.lastFrame() ?? "").includes("Enter your prompt:"),
+			await waitUntil(
+				() =>
+					stripAnsi(result.lastFrame() ?? "").includes("Enter your prompt:"),
+				{ timeoutMs: 3000 },
 			);
 			const output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("Enter your prompt:");
@@ -61,20 +65,24 @@ describe("studio app routing", () => {
 	it("routes to settings and back with escape", async () => {
 		const result = renderApp();
 		try {
-			await waitUntil(() => (result.lastFrame() ?? "").length > 0);
+			await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
+				timeoutMs: 3000,
+			});
 			await writeInput(result, KEYS.down);
 			await writeInput(result, KEYS.down);
 			await writeInput(result, KEYS.down);
 			await writeInput(result, KEYS.enter);
-			await waitUntil(() =>
-				stripAnsi(result.lastFrame() ?? "").includes("Settings"),
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Settings"),
+				{ timeoutMs: 3000 },
 			);
 			let output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("Settings");
 
 			await writeInput(result, KEYS.escape);
-			await waitUntil(() =>
-				stripAnsi(result.lastFrame() ?? "").includes("Generate"),
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Generate"),
+				{ timeoutMs: 3000 },
 			);
 			output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("Generate");
@@ -86,19 +94,24 @@ describe("studio app routing", () => {
 	it("opens gallery and returns to home", async () => {
 		const result = renderApp();
 		try {
-			await waitUntil(() => (result.lastFrame() ?? "").length > 0);
+			await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
+				timeoutMs: 3000,
+			});
 			await writeInput(result, KEYS.down);
 			await writeInput(result, KEYS.down);
 			await writeInput(result, KEYS.enter);
-			await waitUntil(() =>
-				stripAnsi(result.lastFrame() ?? "").includes("No generations yet"),
+			await waitUntil(
+				() =>
+					stripAnsi(result.lastFrame() ?? "").includes("No generations yet"),
+				{ timeoutMs: 3000 },
 			);
 			let output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("No generations yet");
 
 			await writeInput(result, KEYS.escape);
-			await waitUntil(() =>
-				stripAnsi(result.lastFrame() ?? "").includes("Generate"),
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Generate"),
+				{ timeoutMs: 3000 },
 			);
 			output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("Generate");

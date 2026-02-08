@@ -1,7 +1,8 @@
 import "../helpers/env";
 
 import { describe, expect, it } from "bun:test";
-import { existsSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
 	deleteTempFile,
@@ -34,9 +35,14 @@ describe("image utils", () => {
 	});
 
 	it("deleteTempFile removes temp files safely", () => {
-		const tempPath = "/tmp/falcon-test-temp.png";
+		const tempDir = mkdtempSync(join(tmpdir(), "falcon-test-"));
+		const tempPath = join(tempDir, "falcon-test-temp.png");
 		writeFileSync(tempPath, "temp");
-		deleteTempFile(tempPath);
-		expect(existsSync(tempPath)).toBe(false);
+		try {
+			deleteTempFile(tempPath);
+			expect(existsSync(tempPath)).toBe(false);
+		} finally {
+			rmSync(tempDir, { recursive: true, force: true });
+		}
 	});
 });
