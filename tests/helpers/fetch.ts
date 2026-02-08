@@ -3,9 +3,10 @@ export interface MockFetchCall {
 	init?: RequestInit;
 }
 
-export function withMockFetch(
+export async function withMockFetch<T>(
 	impl: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>,
-): { restore: () => void; calls: MockFetchCall[] } {
+	run: () => Promise<T> | T,
+): Promise<{ result: T; calls: MockFetchCall[] }> {
 	const calls: MockFetchCall[] = [];
 	const original = globalThis.fetch;
 
@@ -14,10 +15,10 @@ export function withMockFetch(
 		return impl(input, init);
 	}) as typeof fetch;
 
-	return {
-		calls,
-		restore: () => {
-			globalThis.fetch = original;
-		},
-	};
+	try {
+		const result = await run();
+		return { result, calls };
+	} finally {
+		globalThis.fetch = original;
+	}
 }

@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { render } from "ink-testing-library";
 import { App } from "../../src/studio/App";
 import type { FalconConfig, History } from "../../src/utils/config";
-import { KEYS, stripAnsi, waitForRender, writeInput } from "../helpers/ink";
+import { KEYS, stripAnsi, waitUntil, writeInput } from "../helpers/ink";
 
 const baseConfig: FalconConfig = {
 	defaultModel: "banana",
@@ -42,8 +42,11 @@ describe("studio app routing", () => {
 
 	it("navigates to generate screen", async () => {
 		const result = renderApp();
-		await waitForRender();
+		await waitUntil(() => (result.lastFrame() ?? "").length > 0);
 		await writeInput(result, KEYS.enter);
+		await waitUntil(() =>
+			stripAnsi(result.lastFrame() ?? "").includes("Enter your prompt:"),
+		);
 		const output = stripAnsi(result.lastFrame() ?? "");
 		expect(output).toContain("Enter your prompt:");
 		result.unmount();
@@ -51,15 +54,21 @@ describe("studio app routing", () => {
 
 	it("routes to settings and back with escape", async () => {
 		const result = renderApp();
-		await waitForRender();
+		await waitUntil(() => (result.lastFrame() ?? "").length > 0);
 		await writeInput(result, KEYS.down);
 		await writeInput(result, KEYS.down);
 		await writeInput(result, KEYS.down);
 		await writeInput(result, KEYS.enter);
+		await waitUntil(() =>
+			stripAnsi(result.lastFrame() ?? "").includes("Settings"),
+		);
 		let output = stripAnsi(result.lastFrame() ?? "");
 		expect(output).toContain("Settings");
 
 		await writeInput(result, KEYS.escape);
+		await waitUntil(() =>
+			stripAnsi(result.lastFrame() ?? "").includes("Generate"),
+		);
 		output = stripAnsi(result.lastFrame() ?? "");
 		expect(output).toContain("Generate");
 		result.unmount();
@@ -67,14 +76,20 @@ describe("studio app routing", () => {
 
 	it("opens gallery and returns to home", async () => {
 		const result = renderApp();
-		await waitForRender();
+		await waitUntil(() => (result.lastFrame() ?? "").length > 0);
 		await writeInput(result, KEYS.down);
 		await writeInput(result, KEYS.down);
 		await writeInput(result, KEYS.enter);
+		await waitUntil(() =>
+			stripAnsi(result.lastFrame() ?? "").includes("No generations yet"),
+		);
 		let output = stripAnsi(result.lastFrame() ?? "");
 		expect(output).toContain("No generations yet");
 
 		await writeInput(result, KEYS.escape);
+		await waitUntil(() =>
+			stripAnsi(result.lastFrame() ?? "").includes("Generate"),
+		);
 		output = stripAnsi(result.lastFrame() ?? "");
 		expect(output).toContain("Generate");
 		result.unmount();
