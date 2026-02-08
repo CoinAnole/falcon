@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { existsSync, unlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { extname, resolve } from "node:path";
 
 /**
@@ -50,7 +51,7 @@ export async function resizeImage(
 	maxSize: number = 1024,
 ): Promise<string> {
 	// Use cryptographically random UUID for temp file to prevent race conditions
-	const tempPath = `/tmp/falcon-resize-${randomUUID()}.png`;
+	const tempPath = `${tmpdir()}/falcon-resize-${randomUUID()}.png`;
 
 	// Try sips first (macOS)
 	try {
@@ -157,7 +158,7 @@ export async function openImage(imagePath: string): Promise<void> {
  */
 export function deleteTempFile(filePath: string): void {
 	try {
-		if (filePath.startsWith("/tmp/falcon-") && existsSync(filePath)) {
+		if (filePath.includes("falcon-") && existsSync(filePath)) {
 			unlinkSync(filePath);
 		}
 	} catch {

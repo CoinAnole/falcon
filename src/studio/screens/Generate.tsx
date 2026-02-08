@@ -1,17 +1,20 @@
 import { resolve } from "node:path";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { generate } from "../../api/fal";
 import {
 	type AspectRatio,
-	estimateCost,
 	GENERATION_MODELS,
 	getAspectRatiosForModel,
 	MODELS,
 	RESOLUTIONS,
 	type Resolution,
 } from "../../api/models";
+import {
+	estimateGenerationCost,
+	type PricingEstimate,
+} from "../../api/pricing";
 import {
 	addGeneration,
 	type FalconConfig,
@@ -24,6 +27,7 @@ import {
 	getImageDimensions,
 	openImage,
 } from "../../utils/image";
+import { validateOutputPath } from "../../utils/paths";
 import { Spinner } from "../components/Spinner";
 
 type Step =
@@ -129,6 +133,8 @@ export function GenerateScreen({
 	const [confirmField, setConfirmField] = useState<ConfirmField | null>(null);
 	const [confirmIndex, setConfirmIndex] = useState(0);
 	const [status, setStatus] = useState("");
+	const [estimate, setEstimate] = useState<PricingEstimate | null>(null);
+	const [estimateLoading, setEstimateLoading] = useState(false);
 	const [result, setResult] = useState<{
 		path: string;
 		dims: string;
@@ -136,7 +142,40 @@ export function GenerateScreen({
 	} | null>(null);
 
 	const modelConfig = MODELS[model];
-	const cost = estimateCost(model, resolution);
+
+	useEffect(() => {
+		if (step !== "confirm") return;
+		let cancelled = false;
+		setEstimateLoading(true);
+		void (async () => {
+			try {
+				const nextEstimate = await estimateGenerationCost({
+					model,
+					resolution,
+					numImages: 1,
+				});
+				if (!cancelled) {
+					setEstimate(nextEstimate);
+				}
+			} finally {
+				if (!cancelled) {
+					setEstimateLoading(false);
+				}
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, [model, resolution, step]);
+
+	const formatEstimateLabel = () => {
+		if (estimateLoading) return "Estimating...";
+		if (!estimate) return "Unavailable";
+		const source = estimate.costDetails.estimateSource
+			? ` (${estimate.costDetails.estimateSource})`
+			: "";
+		return `${estimate.costDetails.currency} $${estimate.cost.toFixed(3)}${source}`;
+	};
 
 	useInput((input, key) => {
 		if (key.escape) {
@@ -371,6 +410,14 @@ export function GenerateScreen({
 		setStatus("Generating...");
 
 		try {
+			const pricingEstimate =
+				estimate ??
+				(await estimateGenerationCost({
+					model,
+					resolution,
+					numImages: 1,
+				}));
+
 			const result = await generate({
 				prompt,
 				model,
@@ -380,7 +427,7 @@ export function GenerateScreen({
 			});
 
 			setStatus("Downloading...");
-			const outputPath = generateFilename();
+			const outputPath = validateOutputPath(generateFilename());
 			await downloadImage(result.images[0].url, outputPath);
 
 			const dims = await getImageDimensions(outputPath);
@@ -394,7 +441,8 @@ export function GenerateScreen({
 				aspect,
 				resolution,
 				output: resolve(outputPath),
-				cost,
+				cost: pricingEstimate.cost,
+				costDetails: pricingEstimate.costDetails,
 				timestamp: new Date().toISOString(),
 			});
 
@@ -643,7 +691,8 @@ export function GenerateScreen({
 								</Text>
 							))}
 						<Text>
-							{"  "}Est. cost: <Text color="yellow">${cost.toFixed(3)}</Text>
+							{"  "}Est. cost:{" "}
+							<Text color="yellow">{formatEstimateLabel()}</Text>
 						</Text>
 					</Box>
 					{!confirmField && (

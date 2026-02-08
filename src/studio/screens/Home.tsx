@@ -42,7 +42,7 @@ interface HomeScreenProps {
 export function HomeScreen({ history, onNavigate }: HomeScreenProps) {
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const hasLast = history.generations.length > 0;
-	const last = history.generations[0];
+	const last = history.generations[history.generations.length - 1];
 
 	useInput((_input, key) => {
 		if (key.upArrow) {

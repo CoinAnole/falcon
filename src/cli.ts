@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { isAbsolute, relative, resolve } from "node:path";
+import { resolve } from "node:path";
 import chalk from "chalk";
 import { Command } from "commander";
 import ora from "ora";
@@ -39,6 +39,7 @@ import {
 	openImage,
 	resizeImage,
 } from "./utils/image";
+import { validateOutputPath } from "./utils/paths";
 
 /**
  * Get error message safely from unknown error type
@@ -47,24 +48,6 @@ function getErrorMessage(err: unknown): string {
 	if (err instanceof Error) return err.message;
 	if (typeof err === "string") return err;
 	return "Unknown error";
-}
-
-/**
- * Validate output path is safe (no path traversal, within cwd)
- */
-function validateOutputPath(outputPath: string): string {
-	const resolved = resolve(outputPath);
-	const cwd = process.cwd();
-
-	// Ensure path stays within current working directory
-	const rel = relative(cwd, resolved);
-	if (rel.startsWith("..") || isAbsolute(rel)) {
-		throw new Error(
-			`Output path must be within current directory: ${outputPath}`,
-		);
-	}
-
-	return resolved;
 }
 
 /**

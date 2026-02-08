@@ -125,7 +125,7 @@ async function fetchPricingForEndpoints(
 		}
 	}
 
-	const apiKey = getApiKey();
+	const apiKey = await getApiKey();
 	const results: Record<string, PriceEntry> = {};
 
 	for (const batch of chunk(endpointIds, 50)) {
@@ -202,7 +202,7 @@ async function estimateWithApi(
 	endpointId: string,
 	quantity: number,
 ): Promise<{ cost: number; currency: string }> {
-	const apiKey = getApiKey();
+	const apiKey = await getApiKey();
 	const response = await fetch(`${PRICING_BASE_URL}/models/pricing/estimate`, {
 		method: "POST",
 		headers: {

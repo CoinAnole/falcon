@@ -26,6 +26,7 @@ import {
 	imageToDataUrl,
 	openImage,
 } from "../../utils/image";
+import { validateOutputPath } from "../../utils/paths";
 import { Spinner } from "../components/Spinner";
 
 type Mode = "edit" | "variations" | "upscale" | "rmbg";
@@ -272,7 +273,7 @@ export function EditScreen({
 					editImage: imageData,
 				});
 
-				outputPath = generateFilename("falcon-edit");
+				outputPath = validateOutputPath(generateFilename("falcon-edit"));
 				await downloadImage(result.images[0].url, outputPath);
 				cost = estimateCost(editModel);
 				promptLabel = prompt;
@@ -286,7 +287,7 @@ export function EditScreen({
 					numImages: 1,
 				});
 
-				outputPath = generateFilename("falcon-edit");
+				outputPath = validateOutputPath(generateFilename("falcon-edit"));
 				await downloadImage(result.images[0].url, outputPath);
 				cost = estimateCost(source.model, source.resolution);
 				promptLabel = source.prompt;
@@ -301,9 +302,8 @@ export function EditScreen({
 					scaleFactor: scale,
 				});
 
-				outputPath = source.output.replace(
-					/\.(png|jpg|jpeg|webp)$/i,
-					`-up${scale}x.png`,
+				outputPath = validateOutputPath(
+					source.output.replace(/\.(png|jpg|jpeg|webp)$/i, `-up${scale}x.png`),
 				);
 				await downloadImage(result.images[0].url, outputPath);
 				cost = 0.02;
@@ -319,9 +319,8 @@ export function EditScreen({
 					model: config.backgroundRemover,
 				});
 
-				outputPath = source.output.replace(
-					/\.(png|jpg|jpeg|webp)$/i,
-					"-nobg.png",
+				outputPath = validateOutputPath(
+					source.output.replace(/\.(png|jpg|jpeg|webp)$/i, "-nobg.png"),
 				);
 				await downloadImage(result.images[0].url, outputPath);
 				cost = 0.02;

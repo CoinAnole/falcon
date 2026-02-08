@@ -103,6 +103,8 @@ describe("pricing", () => {
 		);
 
 		expect(calls.length).toBeGreaterThan(0);
+		const firstHeaders = calls[0]?.init?.headers as Record<string, string>;
+		expect(firstHeaders?.Authorization).toBe("Key test-key");
 		const cacheFile = Bun.file(cachePath);
 		const cache = (await cacheFile.json()) as {
 			fetchedAt: string;
@@ -181,7 +183,7 @@ describe("pricing", () => {
 	});
 
 	it("uses cached pricing when estimate API fails", async () => {
-		const { result: estimate } = await withMockFetch(
+		const { result: estimate, calls } = await withMockFetch(
 			async (input, init) => {
 				const url = input.toString();
 				if (url.includes("/models/pricing?")) {
@@ -216,7 +218,7 @@ describe("pricing", () => {
 	});
 
 	it("returns estimate results when API succeeds", async () => {
-		const { result: estimate } = await withMockFetch(
+		const { result: estimate, calls } = await withMockFetch(
 			async (input) => {
 				const url = input.toString();
 				if (url.includes("/models/pricing?")) {
@@ -246,6 +248,14 @@ describe("pricing", () => {
 			},
 		);
 
+		const estimateCall = calls.find((call) =>
+			call.input.toString().includes("/models/pricing/estimate"),
+		);
+		const estimateHeaders = estimateCall?.init?.headers as Record<
+			string,
+			string
+		>;
+		expect(estimateHeaders?.Authorization).toBe("Key test-key");
 		expect(estimate.costDetails.estimateSource).toBe("estimate");
 		expect(estimate.cost).toBeCloseTo(0.2);
 	});
