@@ -19,6 +19,7 @@ describe("cli", () => {
 	it("refreshes pricing cache with --refresh", async () => {
 		const result = await runCli(["pricing", "--refresh"], {
 			FAL_KEY: "test-key",
+			FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
 		});
 		expect(result.exitCode).toBe(0);
 		expect(result.stdout).toContain("Pricing cache refreshed.");

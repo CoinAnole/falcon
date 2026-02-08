@@ -88,6 +88,43 @@ async function fetchPricingForEndpoints(
 	endpointIds: string[],
 ): Promise<Record<string, PriceEntry>> {
 	if (endpointIds.length === 0) return {};
+
+	const fixturePath = process.env.FALCON_PRICING_FIXTURE;
+	if (fixturePath) {
+		try {
+			const file = Bun.file(fixturePath);
+			const data = (await file.json()) as {
+				prices: {
+					endpoint_id: string;
+					unit_price: number;
+					unit: string;
+					currency: string;
+				}[];
+			};
+			const results: Record<string, PriceEntry> = {};
+			for (const endpointId of endpointIds) {
+				const price = data.prices?.find(
+					(entry) => entry.endpoint_id === endpointId,
+				);
+				if (!price) {
+					throw new Error(`Pricing fixture missing endpoint: ${endpointId}`);
+				}
+				results[endpointId] = {
+					endpointId: price.endpoint_id,
+					unitPrice: price.unit_price,
+					unit: price.unit,
+					currency: price.currency,
+				};
+			}
+			return results;
+		} catch (err) {
+			const message = err instanceof Error ? err.message : String(err);
+			throw new Error(
+				`Failed to load pricing fixture: ${fixturePath}. ${message}`,
+			);
+		}
+	}
+
 	const apiKey = getApiKey();
 	const results: Record<string, PriceEntry> = {};
 
