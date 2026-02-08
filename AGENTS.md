@@ -10,6 +10,7 @@ This document provides essential information for AI agents working on the Falcon
 - Generate images from text prompts using multiple AI models (GPT Image 1.5, Gemini, Nano Banana, Flux 2/Flash/Turbo, Grok Imagine)
 - Interactive terminal UI with keyboard navigation
 - Post-processing: upscaling, background removal, variations
+- Reproducible generations via seed control
 - Aspect ratio presets for common use cases (social media, wallpapers, book covers)
 - Generation history with cost tracking
 - Configurable defaults via config files
@@ -67,10 +68,10 @@ This document provides essential information for AI agents working on the Falcon
 
 #### `fal.ts`
 The main API client for fal.ai services:
-- [`generate()`](src/api/fal.ts:68) - Generate images from prompts
-- [`upscale()`](src/api/fal.ts:137) - Upscale images using Clarity/Crystal
-- [`removeBackground()`](src/api/fal.ts:182) - Remove backgrounds
-- Handles API key management via [`getApiKey()`](src/api/fal.ts:55)
+- [`generate()`](src/api/fal.ts:82) - Generate images from prompts
+- [`upscale()`](src/api/fal.ts:193) - Upscale images using Clarity/Crystal
+- [`removeBackground()`](src/api/fal.ts:250) - Remove backgrounds
+- Handles API key management via [`getApiKey()`](src/api/fal.ts:65)
 
 #### `models.ts`
 Central configuration for all supported models:
@@ -89,6 +90,7 @@ Live pricing client with caching and estimates from fal.ai API:
 - Caches pricing data for 6 hours in `~/.falcon/pricing.json`
 - Falls back to static estimates if API is unavailable
 - Supports both `unit_price` (per-image) and `historical_api_price` (compute-based) models
+- Use `falcon pricing --refresh` to force refresh the cache via CLI
 
 ### Studio Mode (`src/studio/`)
 
@@ -123,9 +125,18 @@ Default config:
   defaultResolution: "2K",
   openAfterGenerate: true,
   upscaler: "clarity",
-  backgroundRemover: "rmbg"
+  backgroundRemover: "rmbg",
+  promptExpansion: false
 }
 ```
+
+### Generation History (`src/utils/config.ts`)
+
+Every generation is stored in `~/.falcon/history.json` (up to 100). The `Generation` object includes:
+- `id`, `prompt`, `model`, `aspect`, `resolution`, `output` (path)
+- `cost`, `costDetails` (currency, source, etc.)
+- `timestamp`, `seed`
+- `editedFrom` (original path if variation/upscale/rmbg)
 
 ### Image Utilities (`src/utils/image.ts`)
 
@@ -342,6 +353,8 @@ Flux 2 uses different parameter conventions than other models:
 - **Unique parameters**:
   - `guidance_scale` (0-20, default 2.5) - Controls prompt adherence
   - `enable_prompt_expansion` (boolean) - Auto-expands prompts for better results
+  - `num_inference_steps` (4-50, default 28) - Inference steps (Flux 2 base only)
+  - `acceleration` (none, regular, high, default: regular) - Acceleration level (Flux 2 base only)
 - **Endpoints**:
   - `flux2`: `fal-ai/flux-2` - Full quality Flux 2
   - `flux2Flash`: `fal-ai/flux-2/flash` - Fastest generation, lowest cost
@@ -402,7 +415,22 @@ getAspectRatiosForModel(model) -> AspectRatio[]
 
 - Models without `supportedAspectRatios` use the common [`ASPECT_RATIOS`](src/api/models.ts:155)
 - The Studio UI dynamically adjusts the grid layout based on the number of ratios
-- See [`getAspectRatiosForModel()`](src/api/models.ts:263) for implementation
+- See [`getAspectRatiosForModel()`](src/api/models.ts:316) for implementation
+
+## Seed Support
+
+The project supports reproducible generations through seeds:
+
+- **CLI**: Use `--seed <number>` to specify a fixed seed.
+- **Studio**: In the confirmation step of the generation workflow, you can select and edit the `Seed` field.
+- **API**: The `generate()` and `upscale()` functions accept an optional `seed` parameter.
+- **Storage**: Seeds are returned by the fal.ai API and stored in the generation history, allowing them to be retrieved via `falcon --last` or the Gallery screen.
+- **Variations**: When generating variations, the same prompt and parameters are used, but typically with a random seed unless specified.
+
+Example CLI usage:
+```bash
+falcon "a cyberpunk city" --seed 42
+```
 
 ## Resources
 
