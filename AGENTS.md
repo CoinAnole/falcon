@@ -315,10 +315,16 @@ bun run dev --help             # View all options
 
 The following files contain detailed fal.ai API documentation for supported models:
 
-- [`flux2_tti_llms.txt`](docs_for_AIs/flux2_tti_llms.txt) - Flux 2 text-to-image generation
-- [`flux2_iti_llms.txt`](docs_for_AIs/flux2_iti_llms.txt) - Flux 2 image-to-image editing
+- [`gpt-image-1.5_tti_llms.txt`](docs_for_AIs/gpt-image-1.5_tti_llms.txt) - GPT Image 1.5 text-to-image generation
+- [`gpt-image-1.5_iti_llms.txt`](docs_for_AIs/gpt-image-1.5_iti_llms.txt) - GPT Image 1.5 image-to-image editing
+- [`nano-banana-pro_tti_llms.txt`](docs_for_AIs/nano-banana-pro_tti_llms.txt) - Nano Banana Pro text-to-image generation
+- [`nano-banana-pro_iti_llms.txt`](docs_for_AIs/nano-banana-pro_iti_llms.txt) - Nano Banana Pro image-to-image editing
+- [`gemini-25-flash-image_tti_llms.txt`](docs_for_AIs/gemini-25-flash-image_tti_llms.txt) - Gemini 2.5 Flash text-to-image generation
+- [`gemini-25-flash-image_iti_llms.txt`](docs_for_AIs/gemini-25-flash-image_iti_llms.txt) - Gemini 2.5 Flash image-to-image editing
 - [`gemini3pro_tti_llms.txt`](docs_for_AIs/gemini3pro_tti_llms.txt) - Gemini 3 Pro text-to-image generation
 - [`gemini3pro_iti_llms.txt`](docs_for_AIs/gemini3pro_iti_llms.txt) - Gemini 3 Pro image-to-image editing
+- [`flux2_tti_llms.txt`](docs_for_AIs/flux2_tti_llms.txt) - Flux 2 text-to-image generation
+- [`flux2_iti_llms.txt`](docs_for_AIs/flux2_iti_llms.txt) - Flux 2 image-to-image editing
 - [`imagine_tti_llms.txt`](docs_for_AIs/imagine_tti_llms.txt) - Grok Imagine text-to-image generation
 - [`imagine_iti_llms.txt`](docs_for_AIs/imagine_iti_llms.txt) - Grok Imagine image-to-image editing
 - [`birefnet_llms.txt`](docs_for_AIs/birefnet_llms.txt) - Birefnet background removal docs
