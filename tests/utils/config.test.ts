@@ -56,11 +56,13 @@ describe("config", () => {
 		);
 		process.chdir(tempDir);
 
-		const config = await loadConfig();
-		expect(config.defaultModel).toBe("gemini");
-
-		process.chdir(baseCwd);
-		rmSync(tempDir, { recursive: true, force: true });
+		try {
+			const config = await loadConfig();
+			expect(config.defaultModel).toBe("gemini");
+		} finally {
+			process.chdir(baseCwd);
+			rmSync(tempDir, { recursive: true, force: true });
+		}
 	});
 
 	it("merges config updates on save", async () => {

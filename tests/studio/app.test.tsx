@@ -34,64 +34,76 @@ const renderApp = (history: History = createHistory()) =>
 describe("studio app routing", () => {
 	it("renders the home menu", () => {
 		const result = renderApp();
-		const output = stripAnsi(result.lastFrame() ?? "");
-		expect(output).toContain("Generate");
-		expect(output).toContain("Gallery");
-		result.unmount();
+		try {
+			const output = stripAnsi(result.lastFrame() ?? "");
+			expect(output).toContain("Generate");
+			expect(output).toContain("Gallery");
+		} finally {
+			result.unmount();
+		}
 	});
 
 	it("navigates to generate screen", async () => {
 		const result = renderApp();
-		await waitUntil(() => (result.lastFrame() ?? "").length > 0);
-		await writeInput(result, KEYS.enter);
-		await waitUntil(() =>
-			stripAnsi(result.lastFrame() ?? "").includes("Enter your prompt:"),
-		);
-		const output = stripAnsi(result.lastFrame() ?? "");
-		expect(output).toContain("Enter your prompt:");
-		result.unmount();
+		try {
+			await waitUntil(() => (result.lastFrame() ?? "").length > 0);
+			await writeInput(result, KEYS.enter);
+			await waitUntil(() =>
+				stripAnsi(result.lastFrame() ?? "").includes("Enter your prompt:"),
+			);
+			const output = stripAnsi(result.lastFrame() ?? "");
+			expect(output).toContain("Enter your prompt:");
+		} finally {
+			result.unmount();
+		}
 	});
 
 	it("routes to settings and back with escape", async () => {
 		const result = renderApp();
-		await waitUntil(() => (result.lastFrame() ?? "").length > 0);
-		await writeInput(result, KEYS.down);
-		await writeInput(result, KEYS.down);
-		await writeInput(result, KEYS.down);
-		await writeInput(result, KEYS.enter);
-		await waitUntil(() =>
-			stripAnsi(result.lastFrame() ?? "").includes("Settings"),
-		);
-		let output = stripAnsi(result.lastFrame() ?? "");
-		expect(output).toContain("Settings");
+		try {
+			await waitUntil(() => (result.lastFrame() ?? "").length > 0);
+			await writeInput(result, KEYS.down);
+			await writeInput(result, KEYS.down);
+			await writeInput(result, KEYS.down);
+			await writeInput(result, KEYS.enter);
+			await waitUntil(() =>
+				stripAnsi(result.lastFrame() ?? "").includes("Settings"),
+			);
+			let output = stripAnsi(result.lastFrame() ?? "");
+			expect(output).toContain("Settings");
 
-		await writeInput(result, KEYS.escape);
-		await waitUntil(() =>
-			stripAnsi(result.lastFrame() ?? "").includes("Generate"),
-		);
-		output = stripAnsi(result.lastFrame() ?? "");
-		expect(output).toContain("Generate");
-		result.unmount();
+			await writeInput(result, KEYS.escape);
+			await waitUntil(() =>
+				stripAnsi(result.lastFrame() ?? "").includes("Generate"),
+			);
+			output = stripAnsi(result.lastFrame() ?? "");
+			expect(output).toContain("Generate");
+		} finally {
+			result.unmount();
+		}
 	});
 
 	it("opens gallery and returns to home", async () => {
 		const result = renderApp();
-		await waitUntil(() => (result.lastFrame() ?? "").length > 0);
-		await writeInput(result, KEYS.down);
-		await writeInput(result, KEYS.down);
-		await writeInput(result, KEYS.enter);
-		await waitUntil(() =>
-			stripAnsi(result.lastFrame() ?? "").includes("No generations yet"),
-		);
-		let output = stripAnsi(result.lastFrame() ?? "");
-		expect(output).toContain("No generations yet");
+		try {
+			await waitUntil(() => (result.lastFrame() ?? "").length > 0);
+			await writeInput(result, KEYS.down);
+			await writeInput(result, KEYS.down);
+			await writeInput(result, KEYS.enter);
+			await waitUntil(() =>
+				stripAnsi(result.lastFrame() ?? "").includes("No generations yet"),
+			);
+			let output = stripAnsi(result.lastFrame() ?? "");
+			expect(output).toContain("No generations yet");
 
-		await writeInput(result, KEYS.escape);
-		await waitUntil(() =>
-			stripAnsi(result.lastFrame() ?? "").includes("Generate"),
-		);
-		output = stripAnsi(result.lastFrame() ?? "");
-		expect(output).toContain("Generate");
-		result.unmount();
+			await writeInput(result, KEYS.escape);
+			await waitUntil(() =>
+				stripAnsi(result.lastFrame() ?? "").includes("Generate"),
+			);
+			output = stripAnsi(result.lastFrame() ?? "");
+			expect(output).toContain("Generate");
+		} finally {
+			result.unmount();
+		}
 	});
 });
