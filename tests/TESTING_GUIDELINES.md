@@ -43,6 +43,11 @@ tests/
 - Spawn the CLI with Bun (e.g., `Bun.spawn` or `Bun.spawnSync`) and assert exit code + output.
 - Avoid end-to-end calls that hit the network or rely on API keys.
 
+### Studio UI Tests (Ink)
+- Use `ink-testing-library` to render components and simulate keyboard input.
+- Prefer screen-level routing checks (home → settings → home) and avoid full network flows.
+- Keep UI tests focused on input handling and rendering of basic text.
+
 ## Isolation & Fixtures
 - Use temporary directories for config/history and output files.
 - Override environment variables (e.g., `HOME`, `FAL_KEY`) within the test process.
