@@ -262,22 +262,45 @@ Use `falcon pricing --refresh` to force refresh the pricing cache.
 
 ## Testing
 
-The project includes a comprehensive test suite using Bun's built-in test runner. See [`tests/TESTING_GUIDELINES.md`](tests/TESTING_GUIDELINES.md) for detailed testing guidelines.
+The project uses Bun's built-in test runner with a comprehensive test suite. For detailed testing guidelines, patterns, and examples, see [`tests/TESTING_GUIDELINES.md`](tests/TESTING_GUIDELINES.md).
 
-### Running Tests
+### Quick Reference
+
 ```bash
 bun test                     # Run all tests
 bun test --watch            # Run in watch mode for development
+bun test tests/api          # Run specific directory
 ```
 
-### Test Guidelines
-- **Fast and deterministic**: Tests avoid live API calls and network access by mocking/stubbing external requests
-- **Isolated**: Use temporary directories for config/history and output files; override environment variables within test processes
-- **Platform-aware**: Some tests (like `resizeImage()`) are guarded for macOS (`process.platform === "darwin"`)
-- **Mirror source structure**: Test files follow the same directory structure as source files for clarity
+### Test Structure Overview
+
+Tests mirror the source structure under [`tests/`](tests/):
+- `api/` - API client and pricing tests
+- `cli/` - CLI parsing and command tests  
+- `studio/` - Ink UI component tests
+- `utils/` - Utility function tests
+- `helpers/` - Test utilities (CLI runner, fetch mocking, Ink helpers, environment setup)
+- `fixtures/` - Test data and sample files
+
+### Key Testing Principles
+
+- **Fast and deterministic** - No live API calls; mock external requests
+- **Isolated** - Temporary directories for config/history; isolated environment variables
+- **Platform-aware** - macOS-specific tests are guarded appropriately
+
+### Test Helpers
+
+Import from [`tests/helpers/`](tests/helpers/) for common testing needs:
+- `cli.ts` - `runCli()` for spawning CLI commands
+- `fetch.ts` - `withMockFetch()` for stubbing API calls
+- `ink.ts` - Keyboard input simulation and ANSI stripping
+- `env.ts` - Automatic temp directory setup for isolated config/history
+
+See [`tests/TESTING_GUIDELINES.md`](tests/TESTING_GUIDELINES.md) for detailed usage examples and patterns.
 
 ### Manual Testing
-In addition to automated tests, you can manually test:
+
+For interactive testing during development:
 ```bash
 bun run dev                    # Launch studio
 bun run dev "test prompt"      # CLI mode
