@@ -53,9 +53,11 @@ This document provides essential information for AI agents working on the Falcon
 ├── tests/               # Test suite (Bun test runner)
 │   ├── api/             # API layer tests
 │   ├── cli/             # CLI parsing tests
+│   ├── studio/          # Studio UI tests
 │   ├── utils/           # Utility tests
 │   ├── helpers/         # Test helpers
 │   ├── fixtures/        # Test fixtures
+│   ├── types/           # Type declarations (ink-testing-library)
 │   └── TESTING_GUIDELINES.md
 ├── docs_for_AIs/        # API documentation for AI models (see Model Documentation section)
 ├── package.json
