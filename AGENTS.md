@@ -54,6 +54,7 @@ This document provides essential information for AI agents working on the Falcon
 │   ├── api/             # API layer tests
 │   ├── cli/             # CLI parsing tests
 │   ├── utils/           # Utility tests
+│   ├── helpers/         # Test helpers
 │   ├── fixtures/        # Test fixtures
 │   └── TESTING_GUIDELINES.md
 ├── docs_for_AIs/        # API documentation for AI models (see Model Documentation section)
@@ -259,28 +260,7 @@ Use `falcon pricing --refresh` to force refresh the pricing cache.
 
 ## Testing
 
-The project includes a comprehensive test suite using Bun's built-in test runner:
-
-### Test Structure
-```
-tests/
-├── api/                      # API layer tests
-│   ├── fal.test.ts          # Fal.ai API client tests
-│   ├── models.test.ts       # Model configuration tests
-│   └── pricing.test.ts      # Pricing client tests
-├── cli/                      # CLI tests
-│   └── cli.test.ts          # CLI parsing and command tests
-├── utils/                    # Utility tests
-│   ├── config.test.ts       # Config & history management tests
-│   └── image.test.ts        # Image utility tests
-├── helpers/                  # Test helpers
-│   ├── cli.ts               # CLI test utilities
-│   ├── env.ts               # Environment setup helpers
-│   └── fetch.ts             # Fetch mocking utilities
-├── fixtures/                 # Test fixtures
-│   └── tiny.png             # Sample image fixture
-└── TESTING_GUIDELINES.md    # Detailed testing guidelines
-```
+The project includes a comprehensive test suite using Bun's built-in test runner. See [`tests/TESTING_GUIDELINES.md`](tests/TESTING_GUIDELINES.md) for detailed testing guidelines.
 
 ### Running Tests
 ```bash
