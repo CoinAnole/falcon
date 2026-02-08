@@ -79,11 +79,11 @@ describe("cli", () => {
 
 	it("rejects unsupported aspect ratio for model", async () => {
 		const result = await runCli(
-			["prompt", "--model", "imagine", "--aspect", "21:9"],
+			["prompt", "--model", "banana", "--aspect", "20:9"],
 			{ FAL_KEY: "test-key" },
 		);
 		expect(result.exitCode).toBe(1);
-		expect(result.stderr).toContain("Aspect ratio 21:9 is not supported");
+		expect(result.stderr).toContain("Aspect ratio 20:9 is not supported");
 	});
 
 	it("handles --last with empty history", async () => {
