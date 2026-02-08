@@ -68,10 +68,10 @@ This document provides essential information for AI agents working on the Falcon
 
 #### `fal.ts`
 The main API client for fal.ai services:
-- [`generate()`](src/api/fal.ts:82) - Generate images from prompts
-- [`upscale()`](src/api/fal.ts:193) - Upscale images using Clarity/Crystal
-- [`removeBackground()`](src/api/fal.ts:250) - Remove backgrounds
-- Handles API key management via [`getApiKey()`](src/api/fal.ts:65)
+- `generate()` - Generate images from prompts
+- `upscale()` - Upscale images using Clarity/Crystal
+- `removeBackground()` - Remove backgrounds
+- Handles API key management via `getApiKey()`
 
 #### `models.ts`
 Central configuration for all supported models:
@@ -79,14 +79,14 @@ Central configuration for all supported models:
 - **Utility models**: `clarity`, `crystal` (upscalers), `rmbg`, `bria` (background removal)
 - Aspect ratios: `21:9`, `16:9`, `3:2`, `4:3`, `5:4`, `1:1`, `4:5`, `3:4`, `2:3`, `9:16` (common); Grok adds: `2:1`, `20:9`, `19.5:9`, `9:19.5`, `9:20`, `1:2`
 - Resolutions: `1K`, `2K`, `4K`
-- [`estimateCost()`](src/api/models.ts:160) - Static cost estimation (fallback)
+- `estimateCost()` - Static cost estimation (fallback)
 
 #### `pricing.ts`
 Live pricing client with caching and estimates from fal.ai API:
-- [`estimateGenerationCost()`](src/api/pricing.ts:229) - Get live cost estimate for image generation
-- [`estimateUpscaleCost()`](src/api/pricing.ts:302) - Get live cost estimate for upscaling
-- [`estimateBackgroundRemovalCost()`](src/api/pricing.ts:369) - Get live cost estimate for background removal
-- [`refreshPricingCache()`](src/api/pricing.ts:218) - Force refresh pricing cache
+- `estimateGenerationCost()` - Get live cost estimate for image generation
+- `estimateUpscaleCost()` - Get live cost estimate for upscaling
+- `estimateBackgroundRemovalCost()` - Get live cost estimate for background removal
+- `refreshPricingCache()` - Force refresh pricing cache
 - Caches pricing data for 6 hours in `~/.falcon/pricing.json`
 - Falls back to static estimates if API is unavailable
 - Supports both `unit_price` (per-image) and `historical_api_price` (compute-based) models
@@ -140,11 +140,11 @@ Every generation is stored in `~/.falcon/history.json` (up to 100). The `Generat
 
 ### Image Utilities (`src/utils/image.ts`)
 
-- [`downloadImage()`](src/utils/image.ts:8) - Download from URL to file
-- [`imageToDataUrl()`](src/utils/image.ts:24) - Convert file to base64 for API upload
-- [`resizeImage()`](src/utils/image.ts:44) - Resize using `sips` (macOS)
-- [`openImage()`](src/utils/image.ts:126) - Open in system viewer
-- [`generateFilename()`](src/utils/image.ts:116) - Timestamp-based naming
+- `downloadImage()` - Download from URL to file
+- `imageToDataUrl()` - Convert file to base64 for API upload
+- `resizeImage()` - Resize using `sips` (macOS)
+- `openImage()` - Open in system viewer
+- `generateFilename()` - Timestamp-based naming
 
 ## Development Workflow
 
@@ -179,26 +179,26 @@ export FAL_KEY="your-api-key"
 ## Common Tasks
 
 ### Adding a New Model
-1. Add model configuration to [`MODELS`](src/api/models.ts:29) in `src/api/models.ts`
-2. Update [`GENERATION_MODELS`](src/api/models.ts:116) or [`UTILITY_MODELS`](src/api/models.ts:120)
-3. Add cost estimation logic in [`estimateCost()`](src/api/models.ts:160)
-4. Update API request building in [`generate()`](src/api/fal.ts:68) if needed
+1. Add model configuration to `MODELS` in `src/api/models.ts`
+2. Update `GENERATION_MODELS` or `UTILITY_MODELS`
+3. Add cost estimation logic in `estimateCost()`
+4. Update API request building in `generate()` if needed
 
 ### Adding a New Preset
-1. Add to [`PRESETS`](src/studio/screens/Generate.tsx:49) in `Generate.tsx`
-2. Add CLI flag in [`runCli()`](src/cli.ts:119) in `cli.ts`
-3. Add preset logic in [`generateImage()`](src/cli.ts:235)
+1. Add to `PRESETS` in `Generate.tsx`
+2. Add CLI flag in `runCli()` in `cli.ts`
+3. Add preset logic in `generateImage()`
 
 ### Adding a New Screen
-1. Add screen type to [`Screen`](src/studio/App.tsx:10) in `App.tsx`
+1. Add screen type to `Screen` in `App.tsx`
 2. Create component in `src/studio/screens/`
-3. Add routing in [`renderScreen()`](src/studio/App.tsx:44)
+3. Add routing in `renderScreen()`
 4. Add navigation from appropriate screens
 
 ### Modifying Configuration
-1. Update [`FalconConfig`](src/utils/config.ts:12) interface
-2. Update [`DEFAULT_CONFIG`](src/utils/config.ts:44)
-3. Add to [`SETTINGS`](src/studio/screens/Settings.tsx:19) for UI exposure
+1. Update `FalconConfig` interface
+2. Update `DEFAULT_CONFIG`
+3. Add to `SETTINGS` for UI exposure
 
 ## Code Style
 
@@ -235,7 +235,7 @@ try {
 ```
 
 ### Studio Mode
-Errors are passed to [`handleError`](src/studio/App.tsx:39) which displays them for 5 seconds:
+Errors are passed to `handleError` which displays them for 5 seconds:
 ```typescript
 onError(new Error("Something went wrong"));
 ```
@@ -253,7 +253,7 @@ Every generation is recorded with its cost and metadata:
 Cost estimation priority:
 1. Live API estimate (`estimateWithApi()`)
 2. Cached unit price from pricing API
-3. Static fallback estimates from [`models.ts`](src/api/models.ts:160)
+3. Static fallback estimates from `models.ts`
 
 Use `falcon pricing --refresh` to force refresh the pricing cache.
 
@@ -359,7 +359,7 @@ Flux 2 uses different parameter conventions than other models:
   - `flux2`: `fal-ai/flux-2` - Full quality Flux 2
   - `flux2Flash`: `fal-ai/flux-2/flash` - Fastest generation, lowest cost
   - `flux2Turbo`: `fal-ai/flux-2/turbo` - Balanced speed and quality
-- **Mapping**: See [`aspectToFlux2Size()`](src/api/models.ts:189) for aspect ratio conversions
+- **Mapping**: See `aspectToFlux2Size()` for aspect ratio conversions
 
 ### Grok Imagine Specifics
 
@@ -400,7 +400,7 @@ The output format is passed directly to the fal.ai API and affects the generated
 
 ### Model-Specific Aspect Ratios
 
-The project supports model-specific aspect ratios through the `supportedAspectRatios` field in [`ModelConfig`](src/api/models.ts:17):
+The project supports model-specific aspect ratios through the `supportedAspectRatios` field in `ModelConfig`:
 
 ```typescript
 // Models can declare their own supported aspect ratios
@@ -413,9 +413,9 @@ imagine: {
 getAspectRatiosForModel(model) -> AspectRatio[]
 ```
 
-- Models without `supportedAspectRatios` use the common [`ASPECT_RATIOS`](src/api/models.ts:155)
+- Models without `supportedAspectRatios` use the common `ASPECT_RATIOS`
 - The Studio UI dynamically adjusts the grid layout based on the number of ratios
-- See [`getAspectRatiosForModel()`](src/api/models.ts:316) for implementation
+- See `getAspectRatiosForModel()` for implementation
 
 ## Seed Support
 
