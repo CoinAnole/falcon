@@ -13,10 +13,21 @@
 ## Test Layout
 ```
 tests/
-  api/
-  cli/
-  utils/
-  fixtures/
+├── api/
+│   ├── fal.test.ts          # Fal.ai API client tests
+│   ├── models.test.ts       # Model configuration tests
+│   └── pricing.test.ts      # Pricing client tests
+├── cli/
+│   └── cli.test.ts          # CLI parsing and command tests
+├── utils/
+│   ├── config.test.ts       # Config & history management tests
+│   └── image.test.ts        # Image utility tests
+├── helpers/
+│   ├── cli.ts               # CLI test utilities
+│   ├── env.ts               # Environment setup helpers
+│   └── fetch.ts             # Fetch mocking utilities
+└── fixtures/
+    └── tiny.png             # Sample image fixture
 ```
 - Name files `*.test.ts` to be picked up by the runner.
 - Mirror the source tree so test intent is obvious.
