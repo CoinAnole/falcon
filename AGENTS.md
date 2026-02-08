@@ -50,6 +50,12 @@ This document provides essential information for AI agents working on the Falcon
 │   └── utils/
 │       ├── config.ts    # Config & history management
 │       └── image.ts     # Image download, resize, open utilities
+├── tests/               # Test suite (Bun test runner)
+│   ├── api/             # API layer tests
+│   ├── cli/             # CLI parsing tests
+│   ├── utils/           # Utility tests
+│   ├── fixtures/        # Test fixtures
+│   └── TESTING_GUIDELINES.md
 ├── docs_for_AIs/        # API documentation for AI models (see Model Documentation section)
 ├── package.json
 ├── tsconfig.json
@@ -152,6 +158,7 @@ bun run dev          # Run in development mode
 bun run build        # Build to dist/
 bun run typecheck    # TypeScript type checking
 bun run lint         # Run Biome + Ultracite
+bun test             # Run test suite (Bun test runner)
 ```
 
 ### Environment
@@ -252,9 +259,44 @@ Use `falcon pricing --refresh` to force refresh the pricing cache.
 
 ## Testing
 
-No test suite is currently implemented. To test:
+The project includes a comprehensive test suite using Bun's built-in test runner:
+
+### Test Structure
+```
+tests/
+├── api/                      # API layer tests
+│   ├── fal.test.ts          # Fal.ai API client tests
+│   ├── models.test.ts       # Model configuration tests
+│   └── pricing.test.ts      # Pricing client tests
+├── cli/                      # CLI tests
+│   └── cli.test.ts          # CLI parsing and command tests
+├── utils/                    # Utility tests
+│   ├── config.test.ts       # Config & history management tests
+│   └── image.test.ts        # Image utility tests
+├── helpers/                  # Test helpers
+│   ├── cli.ts               # CLI test utilities
+│   ├── env.ts               # Environment setup helpers
+│   └── fetch.ts             # Fetch mocking utilities
+├── fixtures/                 # Test fixtures
+│   └── tiny.png             # Sample image fixture
+└── TESTING_GUIDELINES.md    # Detailed testing guidelines
+```
+
+### Running Tests
 ```bash
-# Manual testing workflow
+bun test                     # Run all tests
+bun test --watch            # Run in watch mode for development
+```
+
+### Test Guidelines
+- **Fast and deterministic**: Tests avoid live API calls and network access by mocking/stubbing external requests
+- **Isolated**: Use temporary directories for config/history and output files; override environment variables within test processes
+- **Platform-aware**: Some tests (like `resizeImage()`) are guarded for macOS (`process.platform === "darwin"`)
+- **Mirror source structure**: Test files follow the same directory structure as source files for clarity
+
+### Manual Testing
+In addition to automated tests, you can manually test:
+```bash
 bun run dev                    # Launch studio
 bun run dev "test prompt"      # CLI mode
 bun run dev --help             # View all options
