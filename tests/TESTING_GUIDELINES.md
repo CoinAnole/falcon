@@ -19,17 +19,22 @@ tests/
 │   └── pricing.test.ts      # Pricing client tests
 ├── cli/
 │   └── cli.test.ts          # CLI parsing and command tests
+├── studio/
+│   └── app.test.tsx         # Studio UI routing and interaction tests
 ├── utils/
 │   ├── config.test.ts       # Config & history management tests
 │   └── image.test.ts        # Image utility tests
 ├── helpers/
-│   ├── cli.ts               # CLI test utilities
-│   ├── env.ts               # Environment setup helpers
-│   └── fetch.ts             # Fetch mocking utilities
+│   ├── cli.ts               # CLI test utilities (runCli)
+│   ├── env.ts               # Environment setup helpers (temp HOME)
+│   ├── fetch.ts             # Fetch mocking utilities (withMockFetch)
+│   └── ink.ts               # Ink testing helpers (keyboard input, ANSI stripping)
+├── types/
+│   └── ink-testing-library.d.ts  # Type declarations for ink-testing-library
 └── fixtures/
     └── tiny.png             # Sample image fixture
 ```
-- Name files `*.test.ts` to be picked up by the runner.
+- Name files `*.test.ts` (or `*.test.tsx` for React components) to be picked up by the runner.
 - Mirror the source tree so test intent is obvious.
 
 ## Test Types
@@ -42,19 +47,69 @@ tests/
 - Exercise `falcon --help`, option parsing, and invalid argument handling.
 - Spawn the CLI with Bun (e.g., `Bun.spawn` or `Bun.spawnSync`) and assert exit code + output.
 - Avoid end-to-end calls that hit the network or rely on API keys.
+- Use `runCli()` helper from `tests/helpers/cli.ts` for consistent test execution.
 
 ### Studio UI Tests (Ink)
 - Use `ink-testing-library` to render components and simulate keyboard input.
-- Prefer screen-level routing checks (home → settings → home) and avoid full network flows.
+- Import helpers from `tests/helpers/ink.ts` for common operations:
+  - `KEYS` – key codes for navigation (up, down, enter, escape, etc.)
+  - `writeInput()` – send keystrokes to rendered component
+  - `waitUntil()` – wait for conditions with timeout
+  - `stripAnsi()` – remove ANSI codes for assertions
+- Test screen-level routing (home → generate, home → settings → home, etc.).
 - Keep UI tests focused on input handling and rendering of basic text.
+- Always call `unmount()` after tests to clean up resources.
+
+## Test Helpers
+
+### Environment Setup (`tests/helpers/env.ts`)
+Automatically sets up a temporary `HOME` directory for isolated config/history:
+```typescript
+import "../helpers/env"; // Import at top of test file
+// Tests now use temp directory instead of real ~/.falcon
+```
+
+### CLI Runner (`tests/helpers/cli.ts`)
+Run CLI commands and capture output:
+```typescript
+import { runCli } from "../helpers/cli";
+
+const result = await runCli(["--help"]);
+expect(result.exitCode).toBe(0);
+expect(result.stdout).toContain("fal.ai");
+```
+
+### Fetch Mocking (`tests/helpers/fetch.ts`)
+Stub API calls and inspect requests:
+```typescript
+import { withMockFetch } from "../helpers/fetch";
+
+const { calls, result } = await withMockFetch(
+  async () => Response.json({ images: [] }),
+  async () => generate({ prompt: "test", model: "banana" })
+);
+expect(calls[0].input.toString()).toContain("fal.ai");
+```
+
+### Ink Testing (`tests/helpers/ink.ts`)
+Utilities for testing Ink components:
+```typescript
+import { KEYS, stripAnsi, waitUntil, writeInput } from "../helpers/ink";
+
+const result = render(<App ... />);
+await writeInput(result, KEYS.enter);
+await waitUntil(() => stripAnsi(result.lastFrame() ?? "").includes("Prompt"));
+result.unmount();
+```
 
 ## Isolation & Fixtures
 - Use temporary directories for config/history and output files.
 - Override environment variables (e.g., `HOME`, `FAL_KEY`) within the test process.
 - Store fixtures in `tests/fixtures` and keep them small and representative.
+- Import `../helpers/env` at the top of CLI/integration tests to ensure isolation.
 
 ## Mocking & Stubbing
-- Stub `globalThis.fetch` for API-layer tests.
+- Stub `globalThis.fetch` for API-layer tests using `withMockFetch` helper.
 - Mock time-based behavior where needed to keep results deterministic.
 - Do not open external apps or spawn long-running processes in tests.
 
@@ -62,7 +117,53 @@ tests/
 - `resizeImage()` uses `sips` (macOS). Guard tests with `process.platform === "darwin"` and skip otherwise.
 
 ## Running Tests
+```bash
+bun test                     # Run all tests
+bun test --watch            # Run in watch mode for development
+bun test tests/api          # Run specific directory
+bun test tests/cli/cli.test.ts  # Run specific file
 ```
-bun test
+
+## Writing New Tests
+
+### API Tests
+Test payload building and response handling:
+```typescript
+describe("fal api", () => {
+  it("builds correct payload for model", async () => {
+    setApiKey("test-key");
+    const { calls } = await withMockFetch(
+      async () => Response.json({ images: [] }),
+      async () => generate({ prompt: "test", model: "gpt", aspect: "9:16" })
+    );
+    const body = JSON.parse(calls[0].init?.body as string);
+    expect(body.image_size).toBe("1024x1536");
+  });
+});
 ```
-Optional: `bun test --watch` for local development.
+
+### CLI Tests
+Test command parsing and validation:
+```typescript
+describe("cli", () => {
+  it("validates arguments", async () => {
+    const result = await runCli(["--invalid-flag"]);
+    expect(result.exitCode).toBe(1);
+  });
+});
+```
+
+### Studio Tests
+Test screen navigation:
+```typescript
+describe("studio routing", () => {
+  it("navigates to generate screen", async () => {
+    const result = render(<App ... />);
+    await writeInput(result, KEYS.enter);
+    await waitUntil(() => 
+      stripAnsi(result.lastFrame() ?? "").includes("Enter your prompt:")
+    );
+    result.unmount();
+  });
+});
+```
