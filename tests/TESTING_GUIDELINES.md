@@ -109,7 +109,6 @@ result.unmount();
 - Use temporary directories for config/history and output files.
 - Override environment variables (e.g., `HOME`, `FAL_KEY`) within the test process.
 - Store fixtures in `tests/fixtures` and keep them small and representative.
-- Use `tests/fixtures/pricing.json` with `FALCON_PRICING_FIXTURE` to keep pricing-related CLI tests offline.
 - Import `../helpers/env` at the top of CLI/integration tests to ensure isolation.
 
 ## Mocking & Stubbing
