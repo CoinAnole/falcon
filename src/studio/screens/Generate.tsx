@@ -424,6 +424,7 @@ export function GenerateScreen({
 				aspect,
 				resolution,
 				numImages: 1,
+				enablePromptExpansion: config.promptExpansion,
 			});
 
 			setStatus("Downloading...");

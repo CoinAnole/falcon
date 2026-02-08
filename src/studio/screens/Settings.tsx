@@ -48,6 +48,11 @@ const SETTINGS: SettingItem[] = [
 		options: ["rmbg", "bria"],
 	},
 	{ key: "openAfterGenerate", label: "Open After Generate", type: "toggle" },
+	{
+		key: "promptExpansion",
+		label: "Prompt Expansion (Flux 2)",
+		type: "toggle",
+	},
 	{ key: "apiKey", label: "API Key", type: "text" },
 ];
 

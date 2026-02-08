@@ -18,6 +18,7 @@ export interface FalconConfig {
 	openAfterGenerate: boolean;
 	upscaler: "clarity" | "crystal";
 	backgroundRemover: "rmbg" | "bria";
+	promptExpansion: boolean;
 }
 
 export interface Generation {
@@ -49,6 +50,7 @@ const DEFAULT_CONFIG: FalconConfig = {
 	openAfterGenerate: true,
 	upscaler: "clarity",
 	backgroundRemover: "rmbg",
+	promptExpansion: false,
 };
 
 const DEFAULT_HISTORY: History = {

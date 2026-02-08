@@ -294,6 +294,7 @@ export function EditScreen({
 					prompt,
 					model: editModel,
 					editImage: imageData,
+					enablePromptExpansion: config.promptExpansion,
 				});
 
 				outputPath = validateOutputPath(generateFilename("falcon-edit"));
@@ -314,6 +315,7 @@ export function EditScreen({
 					aspect: source.aspect,
 					resolution: source.resolution,
 					numImages: 1,
+					enablePromptExpansion: config.promptExpansion,
 				});
 
 				outputPath = validateOutputPath(generateFilename("falcon-edit"));
