@@ -63,6 +63,9 @@ tests/
 - Keep UI tests focused on input handling and rendering of basic text.
 - Always call `unmount()` after tests to clean up resources.
 
+> [!WARNING]
+> Because `tests/helpers/env.ts` modifies `process.env` and `tests/helpers/fetch.ts` patches `globalThis.fetch`, do **not** use `test.concurrent` within the same file. Parallel execution across different files (default Bun behavior) is safe because each test file runs in its own process/context, but concurrent tests inside a single file will race on these shared globals.
+
 ## Test Helpers
 
 ### Environment Setup (`tests/helpers/env.ts`)
@@ -124,7 +127,7 @@ result.unmount();
 ## Running Tests
 ```bash
 bun test                     # Run all tests
-bun test --watch            # Run in watch mode for development
+bun run test:watch           # Run in watch mode for development
 bun test tests/api          # Run specific directory
 bun test tests/cli/cli.test.ts  # Run specific file
 ```

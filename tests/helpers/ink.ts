@@ -35,11 +35,9 @@ export async function waitUntil(
 	throw new Error("Timed out waiting for render");
 }
 
-export function stripAnsi(value: string): string {
-	const esc = String.fromCharCode(27);
-	const ansiPattern = new RegExp(`${esc}\\[[0-9;]*m`, "g");
-	return value.replace(ansiPattern, "");
-}
+import stripAnsi from "strip-ansi";
+
+export { stripAnsi };
 
 export async function writeInput(
 	result: InkRenderResult,

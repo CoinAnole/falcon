@@ -33,6 +33,7 @@
 		"build": "bun build src/index.ts --outdir dist --target node",
 		"link": "bun link",
 		"test": "bun test",
+		"test:watch": "bun test --watch",
 		"typecheck": "tsc --noEmit",
 		"lint": "biome check --write . && ultracite",
 		"prepare": "husky"
@@ -62,6 +63,7 @@
 		"ink-testing-library": "^4.0.0",
 		"lint-staged": "^16.2.7",
 		"react-devtools-core": "^7.0.1",
+		"strip-ansi": "^7.1.2",
 		"typescript": "^5.5.0",
 		"ultracite": "^7.0.11"
 	}
