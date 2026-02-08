@@ -53,25 +53,37 @@ cd falcon && bun install && bun link
 | `gpt` | GPT Image 1.5, supports transparency | $0.01-0.20 |
 | `gemini` | Gemini 2.5 Flash, fast | $0.04 |
 | `gemini3` | Gemini 3 Pro, highest quality | $0.15-0.30 |
+| `flux2` | Flux 2 | $0.04-0.06 |
+| `flux2Flash` | Flux 2 Flash | $0.015-0.025 |
+| `flux2Turbo` | Flux 2 Turbo | $0.03-0.05 |
+| `imagine` | Grok Imagine | $0.04 |
 
 ## Options
 
 ```
 falcon [prompt] [options]
 
--m, --model <model>    Model: banana, gpt, gemini, gemini3
--a, --aspect <ratio>   21:9, 16:9, 3:2, 4:3, 1:1, 4:5, 2:3, 9:16
--r, --resolution       1K, 2K, 4K
--e, --edit <file>      Edit existing image with prompt
--n, --num <count>      Generate 1-4 images
--o, --output <file>    Output filename
---transparent          Transparent PNG (gpt only)
---no-open              Don't open after generation
+-m, --model <model>      Model: gpt, banana, gemini, gemini3, flux2, flux2Flash, flux2Turbo, imagine
+-e, --edit <file>        Edit an existing image with prompt
+-a, --aspect <ratio>     Aspect ratio (model-specific)
+-r, --resolution <res>   Resolution: 1K, 2K, 4K
+-o, --output <file>      Output filename
+-n, --num <count>        Number of images (1-4)
+-f, --format <format>    Output format: jpeg, png, webp (Grok, Flux, Gemini 3 Pro)
+--transparent            Transparent background PNG (GPT only)
+--no-open                Don't open after generation
 
---last                 Show last generation
---vary                 Variations of last image
---up [--scale 2-8]     Upscale last image
---rmbg                 Remove background
+--last                   Show last generation info
+--vary                   Generate variations of last image
+--up                     Upscale last image
+--rmbg                   Remove background from last image
+--scale <factor>         Upscale factor: 2, 4, 6, 8 (with --up)
+
+Flux 2 options:
+--guidance-scale <n>     Guidance scale 0-20 (default: 2.5)
+--prompt-expansion       Enable prompt expansion for better results
+--inference-steps <n>    Base Flux 2 only: steps 4-50 (default: 28)
+--acceleration <level>   Base Flux 2 only: none, regular, high (default: regular)
 ```
 
 ## Presets
@@ -83,9 +95,12 @@ falcon [prompt] [options]
 | `--landscape` | 16:9 | Desktop wallpapers |
 | `--portrait` | 2:3 | Phone wallpapers |
 | `--story` | 9:16 | Instagram/TikTok stories |
+| `--reel` | 9:16 | Instagram Reels |
 | `--feed` | 4:5 | Instagram feed |
 | `--og` | 16:9 | Social share images |
+| `--wallpaper` | 9:16, 2K | Phone wallpapers |
 | `--wide` | 21:9 | Cinematic |
+| `--ultra` | 21:9, 2K | Ultra-wide banner |
 
 ## Config
 

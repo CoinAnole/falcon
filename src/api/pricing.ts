@@ -1,4 +1,11 @@
-import { existsSync, mkdirSync, renameSync, writeFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import {
+	existsSync,
+	mkdirSync,
+	renameSync,
+	unlinkSync,
+	writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import type { CostMetadata, EstimateType } from "../types/pricing";
 import { FALCON_DIR } from "../utils/config";
@@ -33,9 +40,20 @@ function ensureFalconDir(): void {
 }
 
 async function atomicWrite(filePath: string, data: string): Promise<void> {
-	const tempPath = `${filePath}.tmp`;
-	writeFileSync(tempPath, data, { mode: 0o600 });
-	renameSync(tempPath, filePath);
+	const tempPath = `${filePath}.${randomUUID()}.tmp`;
+	try {
+		writeFileSync(tempPath, data, { mode: 0o600 });
+		renameSync(tempPath, filePath);
+	} catch (err) {
+		try {
+			if (existsSync(tempPath)) {
+				unlinkSync(tempPath);
+			}
+		} catch {
+			// Ignore cleanup errors
+		}
+		throw err;
+	}
 }
 
 async function loadPricingCache(): Promise<PricingCache | null> {

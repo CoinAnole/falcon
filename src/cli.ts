@@ -439,6 +439,11 @@ async function generateImage(
 		process.exit(1);
 	}
 
+	if (options.edit && !modelConfig.supportsEdit) {
+		console.error(chalk.red(`Model ${model} does not support image editing.`));
+		process.exit(1);
+	}
+
 	const supportedRatios = getAspectRatiosForModel(model);
 	if (!supportedRatios.includes(aspect)) {
 		console.error(
