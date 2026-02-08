@@ -27,43 +27,38 @@ This document provides essential information for AI agents working on the Falcon
 
 ```
 .
-├── bin/falcon           # Entry point (imports src/index.ts)
+├── bin/
+│   └── falcon           # CLI entry point
 ├── src/
-│   ├── index.ts         # Main entry - detects CLI vs Studio mode
-│   ├── cli.ts           # Command-line argument parsing & handlers
+│   ├── index.ts            # Main entry - detects CLI vs Studio mode
+│   ├── cli.ts              # Command-line argument parsing & handlers
 │   ├── api/
-│   │   ├── fal.ts       # Fal.ai API client (generate, upscale, rmbg)
-│   │   ├── models.ts    # Model configurations, aspect ratios, static pricing
-│   │   └── pricing.ts   # Live pricing client with caching and estimates
-│   ├── types/
-│   │   └── pricing.ts   # Pricing metadata types
+│   │   ├── fal.ts          # Fal.ai API client (generate, upscale, rmbg)
+│   │   ├── models.ts       # Model configurations, aspect ratios, static pricing
+│   │   └── pricing.ts      # Live pricing client with caching and estimates
+│   ├── types/              # TypeScript type definitions
 │   ├── studio/
-│   │   ├── App.tsx      # Main React app with screen routing
-│   │   ├── components/
-│   │   │   └── Spinner.tsx
-│   │   └── screens/
-│   │       ├── Home.tsx      # Main menu
-│   │       ├── Generate.tsx  # Generation workflow
-│   │       ├── Edit.tsx      # Edit/upscale/rmbg operations
-│   │       ├── Gallery.tsx   # Browse history
-│   │       └── Settings.tsx  # Configuration UI
+│   │   ├── App.tsx         # Main React app with screen routing
+│   │   ├── components/     # Reusable UI components
+│   │   └── screens/        # Screen components (Home, Generate, Edit, Gallery, Settings)
 │   └── utils/
-│       ├── config.ts    # Config & history management
-│       └── image.ts     # Image download, resize, open utilities
-├── tests/               # Test suite (Bun test runner)
-│   ├── api/             # API layer tests
-│   ├── cli/             # CLI parsing tests
-│   ├── studio/          # Studio UI tests
-│   ├── utils/           # Utility tests
-│   ├── helpers/         # Test helpers
-│   ├── fixtures/        # Test fixtures
-│   ├── types/           # Type declarations (ink-testing-library)
+│       ├── config.ts       # Config & history management
+│       └── image.ts        # Image download, resize, open utilities
+├── tests/                  # Test suite (Bun test runner)
+│   ├── api/                # API layer tests
+│   ├── cli/                # CLI parsing tests
+│   ├── studio/             # Studio UI tests
+│   ├── utils/              # Utility tests
+│   ├── helpers/            # Test utilities and helpers
+│   ├── fixtures/           # Test data and sample files
+│   ├── types/              # Type declarations
 │   └── TESTING_GUIDELINES.md
-├── docs_for_AIs/        # API documentation for AI models (see Model Documentation section)
-├── package.json
-├── tsconfig.json
-├── biome.json           # Code formatting/linting config
-└── install.sh           # Installation script
+├── docs_for_AIs/           # API documentation for AI models
+├── .husky/                 # Git hooks
+├── package.json            # Dependencies and scripts
+├── tsconfig.json           # TypeScript configuration
+├── biome.json              # Code formatting/linting config
+└── install.sh              # Installation script
 ```
 
 ## Key Components
