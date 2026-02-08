@@ -167,6 +167,13 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 		body: JSON.stringify(body),
 	});
 
+	if (!response.ok) {
+		const errorBody = await response.text();
+		throw new Error(
+			`Failed to generate image: ${response.status} ${response.statusText}${errorBody ? ` - ${errorBody}` : ""}`,
+		);
+	}
+
 	const data = await response.json();
 
 	if ("detail" in data) {
@@ -207,6 +214,13 @@ export async function upscale(options: UpscaleOptions): Promise<FalResponse> {
 		body: JSON.stringify(body),
 	});
 
+	if (!response.ok) {
+		const errorBody = await response.text();
+		throw new Error(
+			`Failed to upscale image: ${response.status} ${response.statusText}${errorBody ? ` - ${errorBody}` : ""}`,
+		);
+	}
+
 	const data = await response.json();
 
 	if ("detail" in data) {
@@ -239,6 +253,13 @@ export async function removeBackground(
 		},
 		body: JSON.stringify({ image_url: imageUrl }),
 	});
+
+	if (!response.ok) {
+		const errorBody = await response.text();
+		throw new Error(
+			`Failed to remove background: ${response.status} ${response.statusText}${errorBody ? ` - ${errorBody}` : ""}`,
+		);
+	}
 
 	const data = await response.json();
 

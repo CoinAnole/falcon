@@ -31,8 +31,12 @@ export async function imageToDataUrl(imagePath: string): Promise<string> {
 	const base64 = Buffer.from(buffer).toString("base64");
 
 	const ext = extname(imagePath).toLowerCase();
-	const mimeType =
-		ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" : "image/png";
+	let mimeType = "image/png";
+	if (ext === ".jpg" || ext === ".jpeg") {
+		mimeType = "image/jpeg";
+	} else if (ext === ".webp") {
+		mimeType = "image/webp";
+	}
 
 	return `data:${mimeType};base64,${base64}`;
 }

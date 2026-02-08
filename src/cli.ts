@@ -635,12 +635,25 @@ async function upscaleLast(
 	}
 
 	const scaleFactor = parseInt(options.scale || "2", 10);
-	const outputPath =
-		options.output ||
-		sourceImagePath.replace(
-			/\.(png|jpg|jpeg|webp)$/i,
-			`-up${scaleFactor}x.png`,
+	if (Number.isNaN(scaleFactor) || scaleFactor < 2 || scaleFactor > 8) {
+		console.error(
+			chalk.red("Invalid scale factor. Use --scale with 2, 4, 6, or 8."),
 		);
+		process.exit(1);
+	}
+
+	let outputPath: string;
+	try {
+		outputPath = options.output
+			? validateOutputPath(options.output)
+			: sourceImagePath.replace(
+					/\.(png|jpg|jpeg|webp)$/i,
+					`-up${scaleFactor}x.png`,
+				);
+	} catch (err) {
+		console.error(chalk.red(getErrorMessage(err)));
+		process.exit(1);
+	}
 
 	console.log(chalk.bold("\nUpscaling..."));
 	console.log(`Source: ${chalk.dim(sourceImagePath)}`);
@@ -723,7 +736,15 @@ async function removeBackgroundLast(
 		process.exit(1);
 	}
 
-	const outputPath = options.output || last.output.replace(".png", "-nobg.png");
+	let outputPath: string;
+	try {
+		outputPath = options.output
+			? validateOutputPath(options.output)
+			: last.output.replace(/\.(png|jpg|jpeg|webp)$/i, "-nobg.png");
+	} catch (err) {
+		console.error(chalk.red(getErrorMessage(err)));
+		process.exit(1);
+	}
 
 	console.log(chalk.bold("\nRemoving background..."));
 	console.log(`Source: ${chalk.dim(last.output)}`);
