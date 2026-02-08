@@ -40,7 +40,7 @@ type Step =
 	| "generating"
 	| "done";
 
-type ConfirmField = "model" | "aspect" | "resolution";
+type ConfirmField = "model" | "aspect" | "resolution" | "seed";
 
 interface Preset {
 	key: string;
@@ -130,6 +130,7 @@ export function GenerateScreen({
 		config.defaultResolution,
 	);
 	const [selectedIndex, setSelectedIndex] = useState(0);
+	const [seed, setSeed] = useState<number | undefined>(undefined);
 	const [confirmField, setConfirmField] = useState<ConfirmField | null>(null);
 	const [confirmIndex, setConfirmIndex] = useState(0);
 	const [status, setStatus] = useState("");
@@ -326,12 +327,17 @@ export function GenerateScreen({
 						key,
 						input,
 					);
+				} else if (confirmField === "seed") {
+					// Seed is edited via numeric input in handleInput
 				}
 			} else {
 				// Navigating confirm fields
-				const fields: ConfirmField[] = MODELS[model]?.supportsResolution
-					? ["model", "aspect", "resolution"]
-					: ["model", "aspect"];
+				const fields: ConfirmField[] = [
+					"model",
+					"aspect",
+					...(modelConfig?.supportsResolution ? (["resolution"] as const) : []),
+					"seed",
+				];
 
 				if (key.upArrow) {
 					setConfirmIndex((i) => (i > 0 ? i - 1 : fields.length - 1));
@@ -348,11 +354,22 @@ export function GenerateScreen({
 						setSelectedIndex(getAspectRatiosForModel(model).indexOf(aspect));
 					} else if (field === "resolution") {
 						setSelectedIndex(RESOLUTIONS.indexOf(resolution));
+					} else if (field === "seed") {
+						// Numeric input mode handled in useInput
 					}
 				} else if (input === "y") {
 					runGeneration();
 				} else if (input === "n") {
 					onBack();
+				} else if (confirmField === "seed" && /^\d+$/.test(input)) {
+					// Append digit to seed
+					setSeed((s) => Number(`${s ?? ""}${input}`));
+				} else if (confirmField === "seed" && key.backspace) {
+					// Remove last digit
+					setSeed((s) => {
+						const str = String(s ?? "");
+						return str.length > 1 ? Number(str.slice(0, -1)) : undefined;
+					});
 				}
 			}
 		} else if (step === "done") {
@@ -425,6 +442,7 @@ export function GenerateScreen({
 				resolution,
 				numImages: 1,
 				enablePromptExpansion: config.promptExpansion,
+				seed,
 			});
 
 			setStatus("Downloading...");
@@ -445,6 +463,7 @@ export function GenerateScreen({
 				cost: pricingEstimate.cost,
 				costDetails: pricingEstimate.costDetails,
 				timestamp: new Date().toISOString(),
+				seed: result.seed || seed,
 			});
 
 			const fullPath = resolve(outputPath);
@@ -691,6 +710,27 @@ export function GenerateScreen({
 									</Text>
 								</Text>
 							))}
+						<Text>
+							{confirmIndex === (modelConfig?.supportsResolution ? 3 : 2) &&
+							!confirmField
+								? "◆ "
+								: "  "}
+							Seed:{" "}
+							{confirmField === "seed" ? (
+								<Text color="magenta">{seed ?? ""}_</Text>
+							) : (
+								<Text
+									color={
+										confirmIndex ===
+											(modelConfig?.supportsResolution ? 3 : 2) && !confirmField
+											? "magenta"
+											: "cyan"
+									}
+								>
+									{seed ?? "random"}
+								</Text>
+							)}
+						</Text>
 						<Text>
 							{"  "}Est. cost:{" "}
 							<Text color="yellow">{formatEstimateLabel()}</Text>

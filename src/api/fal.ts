@@ -23,6 +23,7 @@ export interface GenerateOptions {
 	numInferenceSteps?: number; // Flux 2 base only: inference steps (4-50, default 28)
 	acceleration?: "none" | "regular" | "high"; // Flux 2 base only: acceleration level (default: regular)
 	outputFormat?: OutputFormat; // Output format: jpeg, png, webp (Grok, Flux, Gemini 3 Pro only)
+	seed?: number; // Seed for reproducible generations
 }
 
 export interface UpscaleOptions {
@@ -30,6 +31,7 @@ export interface UpscaleOptions {
 	model?: "clarity" | "crystal";
 	scaleFactor?: number;
 	creativity?: number;
+	seed?: number;
 }
 
 export interface RemoveBackgroundOptions {
@@ -91,6 +93,7 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 		numInferenceSteps,
 		acceleration,
 		outputFormat,
+		seed,
 	} = options;
 
 	const config = MODELS[model];
@@ -138,6 +141,10 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 		if (config.supportsResolution) {
 			body.resolution = resolution;
 		}
+	}
+
+	if (seed !== undefined) {
+		body.seed = seed;
 	}
 
 	if (config.supportsNumImages) {
@@ -189,6 +196,7 @@ export async function upscale(options: UpscaleOptions): Promise<FalResponse> {
 		model = "clarity",
 		scaleFactor = 2,
 		creativity = 0,
+		seed,
 	} = options;
 
 	const config = MODELS[model];
@@ -203,6 +211,10 @@ export async function upscale(options: UpscaleOptions): Promise<FalResponse> {
 	if (model === "crystal") {
 		body.scale_factor = scaleFactor;
 		body.creativity = creativity;
+	}
+
+	if (seed !== undefined) {
+		body.seed = seed;
 	}
 
 	const response = await fetch(`${FAL_BASE_URL}/${config.endpoint}`, {

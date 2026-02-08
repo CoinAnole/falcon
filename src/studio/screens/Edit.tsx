@@ -91,6 +91,7 @@ export function EditScreen({
 	const [prompt, setPrompt] = useState("");
 	const [scale, setScale] = useState(2);
 	const [status, setStatus] = useState("");
+	const [seed, setSeed] = useState<number | undefined>(undefined);
 	const [editModel, setEditModel] = useState<string>("gpt");
 	const [editModelIndex, setEditModelIndex] = useState(0);
 	const [result, setResult] = useState<{
@@ -258,6 +259,19 @@ export function EditScreen({
 				runProcess();
 			} else if (input === "n") {
 				setStep("operation");
+			} else if (
+				(mode === "upscale" || mode === "variations" || mode === "edit") &&
+				/^\d+$/.test(input)
+			) {
+				setSeed((s) => Number(`${s ?? ""}${input}`));
+			} else if (
+				(mode === "upscale" || mode === "variations" || mode === "edit") &&
+				key.backspace
+			) {
+				setSeed((s) => {
+					const str = String(s ?? "");
+					return str.length > 1 ? Number(str.slice(0, -1)) : undefined;
+				});
 			}
 		} else if (step === "done") {
 			if (key.return) {
@@ -295,6 +309,7 @@ export function EditScreen({
 					model: editModel,
 					editImage: imageData,
 					enablePromptExpansion: config.promptExpansion,
+					seed,
 				});
 
 				outputPath = validateOutputPath(generateFilename("falcon-edit"));
@@ -316,6 +331,7 @@ export function EditScreen({
 					resolution: source.resolution,
 					numImages: 1,
 					enablePromptExpansion: config.promptExpansion,
+					seed,
 				});
 
 				outputPath = validateOutputPath(generateFilename("falcon-edit"));
@@ -342,6 +358,7 @@ export function EditScreen({
 					imageUrl: imageData,
 					model: config.upscaler,
 					scaleFactor: scale,
+					seed,
 				});
 
 				const sourceInCwd = isPathWithinCwd(source.output);
@@ -410,6 +427,7 @@ export function EditScreen({
 				cost,
 				costDetails,
 				timestamp: new Date().toISOString(),
+				seed: result.seed || seed,
 				editedFrom: source.output,
 			});
 
@@ -616,6 +634,12 @@ export function EditScreen({
 								</Text>
 							</Text>
 						)}
+						<Text>
+							Seed: <Text color="cyan">{seed ?? "random"}</Text>
+							{step === "confirm" && (
+								<Text dimColor> (type digits to set)</Text>
+							)}
+						</Text>
 					</Box>
 					<Box marginTop={1}>
 						<Text>Proceed? </Text>

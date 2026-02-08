@@ -31,6 +31,7 @@ export interface Generation {
 	cost: number;
 	costDetails?: CostMetadata;
 	timestamp: string;
+	seed?: number;
 	editedFrom?: string;
 }
 

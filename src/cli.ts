@@ -143,6 +143,7 @@ interface CliOptions {
 	acceleration?: string;
 	// Output format option
 	format?: string;
+	seed?: string;
 }
 
 export async function runCli(args: string[]): Promise<void> {
@@ -209,7 +210,8 @@ export async function runCli(args: string[]): Promise<void> {
 		.option(
 			"-f, --format <format>",
 			`Output format (${OUTPUT_FORMATS.join(", ")}) - for Grok, Flux, Gemini 3 Pro`,
-		);
+		)
+		.option("--seed <number>", "Seed for reproducible results");
 
 	program.parse(args);
 
@@ -317,6 +319,9 @@ async function showLastGeneration(): Promise<void> {
 	);
 	console.log(`  Aspect: ${last.aspect} | Resolution: ${last.resolution}`);
 	console.log(`  Output: ${chalk.dim(last.output)}`);
+	if (last.seed !== undefined) {
+		console.log(`  Seed:   ${chalk.cyan(last.seed)}`);
+	}
 	console.log(
 		`  Cost:   ${chalk.yellow(`${currency} $${last.cost.toFixed(3)}`)}${estimateSource}`,
 	);
@@ -466,6 +471,12 @@ async function generateImage(
 		process.exit(1);
 	}
 
+	const seed = options.seed ? Number(options.seed) : undefined;
+	if (seed !== undefined && !Number.isInteger(seed)) {
+		console.error(chalk.red("Invalid seed. Use --seed with an integer."));
+		process.exit(1);
+	}
+
 	let outputPath: string;
 	try {
 		outputPath = options.output
@@ -502,6 +513,9 @@ async function generateImage(
 			),
 		)}`,
 	);
+	if (seed !== undefined) {
+		console.log(`  Seed:   ${chalk.cyan(seed)}`);
+	}
 
 	// Handle edit mode
 	let editImageData: string | undefined;
@@ -513,7 +527,7 @@ async function generateImage(
 			console.error(chalk.red(getErrorMessage(err)));
 			process.exit(1);
 		}
-		console.log(`Editing: ${chalk.dim(editPath)}`);
+		console.log(`Editing: ${chalk.dim(editPath)} `);
 
 		const resized = await resizeImage(editPath, 1024);
 		editImageData = await imageToDataUrl(resized);
@@ -540,6 +554,7 @@ async function generateImage(
 			numInferenceSteps,
 			acceleration,
 			outputFormat: outputFormat as "jpeg" | "png" | "webp" | undefined,
+			seed,
 		});
 
 		spinner.succeed("Generated!");
@@ -555,7 +570,7 @@ async function generateImage(
 			const size = await getFileSize(path);
 
 			console.log(
-				chalk.green(`✓ Saved: ${path}`) +
+				chalk.green(`✓ Saved: ${path} `) +
 					chalk.dim(
 						` (${dims ? `${dims.width}x${dims.height}` : "?"}, ${size})`,
 					),
@@ -578,6 +593,7 @@ async function generateImage(
 							: undefined,
 				},
 				timestamp: new Date().toISOString(),
+				seed: result.seed || seed,
 				editedFrom: options.edit ? resolve(options.edit) : undefined,
 			};
 			await addGeneration(generation);
@@ -596,7 +612,7 @@ async function generateImage(
 			: totals.currency;
 		console.log(
 			chalk.dim(
-				`\nSession: ${currencyLabel} $${totals.totals.session.toFixed(2)} | Today: ${currencyLabel} $${totals.totals.today.toFixed(2)}`,
+				`\nSession: ${currencyLabel} $${totals.totals.session.toFixed(2)} | Today: ${currencyLabel} $${totals.totals.today.toFixed(2)} `,
 			),
 		);
 	} catch (err) {
@@ -679,7 +695,7 @@ async function upscaleLast(
 	if (Number.isNaN(scaleFactor) || !isValidUpscaleFactor(scaleFactor)) {
 		console.error(
 			chalk.red(
-				`Invalid scale factor. Use --scale with ${UPSCALE_FACTORS.join(", ")}.`,
+				`Invalid scale factor.Use--scale with ${UPSCALE_FACTORS.join(", ")}.`,
 			),
 		);
 		process.exit(1);
@@ -694,7 +710,7 @@ async function upscaleLast(
 				? validateOutputPath(
 						sourceImagePath.replace(
 							/\.(png|jpg|jpeg|webp)$/i,
-							`-up${scaleFactor}x.png`,
+							`- up${scaleFactor} x.png`,
 						),
 					)
 				: generateFilename("falcon-upscale", "png");
@@ -704,8 +720,8 @@ async function upscaleLast(
 	}
 
 	console.log(chalk.bold("\nUpscaling..."));
-	console.log(`Source: ${chalk.dim(sourceImagePath)}`);
-	console.log(`Scale: ${scaleFactor}x | Model: ${config.upscaler}`);
+	console.log(`Source: ${chalk.dim(sourceImagePath)} `);
+	console.log(`Scale: ${scaleFactor} x | Model: ${config.upscaler} `);
 
 	const inputDims = await getImageDimensions(sourceImagePath);
 	const estimate = await estimateUpscaleCost({
@@ -715,13 +731,13 @@ async function upscaleLast(
 		scaleFactor,
 	});
 	console.log(
-		`Est. cost: ${chalk.yellow(
+		`Est.cost: ${chalk.yellow(
 			formatEstimateLabel(
 				estimate.cost,
 				estimate.costDetails.currency,
 				estimate.costDetails.estimateSource,
 			),
-		)}`,
+		)} `,
 	);
 
 	const spinner = ora("Upscaling...").start();
@@ -734,6 +750,7 @@ async function upscaleLast(
 			imageUrl: imageData,
 			model: config.upscaler,
 			scaleFactor,
+			seed,
 		});
 
 		spinner.succeed("Upscaled!");
@@ -744,7 +761,7 @@ async function upscaleLast(
 		const size = await getFileSize(outputPath);
 
 		console.log(
-			chalk.green(`✓ Saved: ${outputPath}`) +
+			chalk.green(`✓ Saved: ${outputPath} `) +
 				chalk.dim(` (${dims ? `${dims.width}x${dims.height}` : "?"}, ${size})`),
 		);
 
@@ -759,6 +776,7 @@ async function upscaleLast(
 			cost: estimate.cost,
 			costDetails: estimate.costDetails,
 			timestamp: new Date().toISOString(),
+			seed: result.seed || seed,
 			editedFrom: sourceImagePath,
 		});
 
@@ -800,20 +818,20 @@ async function removeBackgroundLast(
 	}
 
 	console.log(chalk.bold("\nRemoving background..."));
-	console.log(`Source: ${chalk.dim(last.output)}`);
-	console.log(`Model: ${config.backgroundRemover}`);
+	console.log(`Source: ${chalk.dim(last.output)} `);
+	console.log(`Model: ${config.backgroundRemover} `);
 
 	const estimate = await estimateBackgroundRemovalCost({
 		model: config.backgroundRemover,
 	});
 	console.log(
-		`Est. cost: ${chalk.yellow(
+		`Est.cost: ${chalk.yellow(
 			formatEstimateLabel(
 				estimate.cost,
 				estimate.costDetails.currency,
 				estimate.costDetails.estimateSource,
 			),
-		)}`,
+		)} `,
 	);
 
 	const spinner = ora("Processing...").start();
@@ -834,13 +852,13 @@ async function removeBackgroundLast(
 		const size = await getFileSize(outputPath);
 
 		console.log(
-			chalk.green(`✓ Saved: ${outputPath}`) +
+			chalk.green(`✓ Saved: ${outputPath} `) +
 				chalk.dim(` (${dims ? `${dims.width}x${dims.height}` : "?"}, ${size})`),
 		);
 
 		await addGeneration({
 			id: generateId(),
-			prompt: `[rmbg] ${last.prompt}`,
+			prompt: `[rmbg] ${last.prompt} `,
 			model: config.backgroundRemover,
 			aspect: last.aspect,
 			resolution: last.resolution,
@@ -867,63 +885,63 @@ ${chalk.bold("falcon")} - fal.ai image generation CLI
 
 ${chalk.bold("Usage:")}
   falcon                           Launch interactive studio
-  falcon "prompt" [options]        Generate image from prompt
-  falcon pricing --refresh          Refresh cached pricing data
-  falcon --last                    Show last generation info
-  falcon --vary                    Generate variations of last image
-  falcon --up                      Upscale last image
-  falcon --rmbg                    Remove background from last image
+  falcon "prompt"[options]        Generate image from prompt
+  falcon pricing--refresh          Refresh cached pricing data
+falcon--last                    Show last generation info
+falcon--vary                    Generate variations of last image
+falcon--up                      Upscale last image
+falcon--rmbg                    Remove background from last image
 
 ${chalk.bold("Options:")}
-  -m, --model <model>      Model: gpt, banana, gemini, gemini3, flux2, flux2Flash, flux2Turbo, imagine
-  -e, --edit <file>        Edit an existing image with prompt
-  -a, --aspect <ratio>     Aspect ratio (see below)
-  -r, --resolution <res>   Resolution: 1K, 2K, 4K
-  -o, --output <file>      Output filename
-  -n, --num <count>        Number of images (1-4)
-  -f, --format <format>    Output format: jpeg, png, webp (Grok, Flux, Gemini 3 Pro)
-  --transparent            Transparent background PNG (GPT only)
-  --no-open                Don't auto-open image after generation
+-m, --model < model > Model: gpt, banana, gemini, gemini3, flux2, flux2Flash, flux2Turbo, imagine
+	- e, --edit < file > Edit an existing image with prompt
+	- a, --aspect < ratio > Aspect ratio(see below)
+		- r, --resolution < res > Resolution: 1K, 2K, 4K
+			- o, --output < file > Output filename
+				- n, --num < count > Number of images(1 - 4)
+					- f, --format < format > Output format: jpeg, png, webp(Grok, Flux, Gemini 3 Pro)
+--transparent            Transparent background PNG(GPT only)
+--no - open                Don't auto-open image after generation
 
 ${chalk.bold("Flux 2 Options:")}
-  --guidance-scale <n>     Guidance scale 0-20 (default: 2.5)
-  --prompt-expansion       Enable prompt expansion for better results
-  --inference-steps <n>    Base Flux 2 only: steps 4-50 (default: 28)
-  --acceleration <level>   Base Flux 2 only: none, regular, high (default: regular)
+--guidance - scale < n > Guidance scale 0 - 20(default: 2.5)
+--prompt - expansion       Enable prompt expansion for better results
+  --inference - steps < n > Base Flux 2 only: steps 4 - 50(default: 28)
+--acceleration < level > Base Flux 2 only: none, regular, high(default: regular)
 
 ${chalk.bold("Post-processing:")}
-  --last                   Show last generation info
-  --vary                   Generate variations of last image
-  --up                     Upscale last image
-  --rmbg                   Remove background from last image
-  --scale <factor>         Upscale factor: 2, 4, 6, 8 (with --up)
+--last                   Show last generation info
+--vary                   Generate variations of last image
+--up                     Upscale last image
+--rmbg                   Remove background from last image
+--scale < factor > Upscale factor: 2, 4, 6, 8(with --up)
 
 ${chalk.bold("Presets:")}
   ${chalk.dim("Format:")}
-  --cover                  Kindle/eBook cover: 2:3, 2K
-  --square                 Square: 1:1
-  --landscape              Landscape: 16:9
-  --portrait               Portrait: 2:3
+--cover                  Kindle / eBook cover: 2: 3, 2K
+--square                 Square: 1: 1
+--landscape              Landscape: 16: 9
+--portrait               Portrait: 2: 3
   ${chalk.dim("Social Media:")}
-  --story                  Instagram/TikTok Story: 9:16
-  --reel                   Instagram Reel: 9:16
-  --feed                   Instagram Feed: 4:5
-  --og                     Open Graph / social share: 16:9
+--story                  Instagram / TikTok Story: 9: 16
+--reel                   Instagram Reel: 9: 16
+--feed                   Instagram Feed: 4: 5
+--og                     Open Graph / social share: 16: 9
   ${chalk.dim("Devices:")}
-  --wallpaper              iPhone wallpaper: 9:16, 2K
+--wallpaper              iPhone wallpaper: 9: 16, 2K
   ${chalk.dim("Cinematic:")}
-  --wide                   Cinematic wide: 21:9
-  --ultra                  Ultra-wide banner: 21:9, 2K
+--wide                   Cinematic wide: 21: 9
+--ultra                  Ultra - wide banner: 21: 9, 2K
 
 ${chalk.bold("Aspect Ratios:")}
-  21:9, 16:9, 3:2, 4:3, 5:4, 1:1, 4:5, 3:4, 2:3, 9:16
+21: 9, 16: 9, 3: 2, 4: 3, 5: 4, 1: 1, 4: 5, 3: 4, 2: 3, 9: 16
 
 ${chalk.bold("Examples:")}
-  falcon "a cat on a windowsill" -m gpt
-  falcon "urban landscape" --landscape -r 4K
-  falcon "add rain" -e photo.png
-  falcon --vary -n 4
-  falcon --up --scale 4
-  falcon --rmbg
-`);
+  falcon "a cat on a windowsill" - m gpt
+  falcon "urban landscape" --landscape - r 4K
+  falcon "add rain" - e photo.png
+falcon--vary - n 4
+falcon--up--scale 4
+falcon--rmbg
+	`);
 }

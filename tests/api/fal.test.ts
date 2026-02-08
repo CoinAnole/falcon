@@ -141,4 +141,47 @@ describe("fal api", () => {
 		);
 		expect(result.images).toHaveLength(1);
 	});
+
+	it("includes seed in generate payload", async () => {
+		setApiKey("test-key");
+		const { calls } = await withMockFetch(
+			async () => {
+				return Response.json({ images: [], seed: 12345 });
+			},
+			async () => {
+				await generate({
+					prompt: "test",
+					model: "banana",
+					seed: 12345,
+				});
+			},
+		);
+
+		const call = calls[0];
+		const body = JSON.parse(call.init?.body as string);
+		expect(body.seed).toBe(12345);
+	});
+
+	it("includes seed in upscale payload", async () => {
+		setApiKey("test-key");
+		const { calls } = await withMockFetch(
+			async () => {
+				return Response.json({
+					image: { url: "https://example.com/x.png" },
+					seed: 54321,
+				});
+			},
+			async () => {
+				await upscale({
+					imageUrl: "data:image/png;base64,abc",
+					model: "clarity",
+					seed: 54321,
+				});
+			},
+		);
+
+		const call = calls[0];
+		const body = JSON.parse(call.init?.body as string);
+		expect(body.seed).toBe(54321);
+	});
 });
