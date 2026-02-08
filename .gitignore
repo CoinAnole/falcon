@@ -4,10 +4,12 @@ dist/
 .env.local
 *.log
 .DS_Store
-
+.husky/pre-commit
+.vscode
+.kiro
+.kilocode
 # Generated images
 falcon-*.png
 falcon-edit-*.png
 fal-*.png
 edit-*.png
-.husky/pre-commit
