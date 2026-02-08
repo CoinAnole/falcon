@@ -1,0 +1,132 @@
+import { afterEach, describe, expect, it } from "bun:test";
+import {
+	generate,
+	removeBackground,
+	setApiKey,
+	upscale,
+} from "../../src/api/fal";
+import { withMockFetch } from "../helpers/fetch";
+
+afterEach(() => {
+	setApiKey("");
+});
+
+describe("fal api", () => {
+	it("builds GPT payload with transparency", async () => {
+		setApiKey("test-key");
+		const { restore, calls } = withMockFetch(async () => {
+			return Response.json({ images: [] });
+		});
+
+		await generate({
+			prompt: "cat",
+			model: "gpt",
+			aspect: "9:16",
+			transparent: true,
+		});
+
+		restore();
+		const call = calls[0];
+		const body = JSON.parse(call.init?.body as string) as Record<
+			string,
+			unknown
+		>;
+		expect(body.image_size).toBe("1024x1536");
+		expect(body.background).toBe("transparent");
+		expect(body.output_format).toBe("png");
+	});
+
+	it("builds Flux 2 payload with guidance options", async () => {
+		setApiKey("test-key");
+		const { restore, calls } = withMockFetch(async () => {
+			return Response.json({ images: [] });
+		});
+
+		await generate({
+			prompt: "city",
+			model: "flux2",
+			aspect: "16:9",
+			guidanceScale: 7,
+			enablePromptExpansion: true,
+			numInferenceSteps: 20,
+			acceleration: "high",
+			outputFormat: "webp",
+		});
+
+		restore();
+		const call = calls[0];
+		const body = JSON.parse(call.init?.body as string) as Record<
+			string,
+			unknown
+		>;
+		expect(body.image_size).toBe("landscape_16_9");
+		expect(body.guidance_scale).toBe(7);
+		expect(body.enable_prompt_expansion).toBe(true);
+		expect(body.num_inference_steps).toBe(20);
+		expect(body.acceleration).toBe("high");
+		expect(body.output_format).toBe("webp");
+	});
+
+	it("adds edit endpoint and image URLs", async () => {
+		setApiKey("test-key");
+		const { restore, calls } = withMockFetch(async () => {
+			return Response.json({ images: [] });
+		});
+
+		await generate({
+			prompt: "edit",
+			model: "banana",
+			editImage: "data:image/png;base64,abc",
+		});
+
+		restore();
+		const call = calls[0];
+		expect(call.input.toString()).toContain("/edit");
+		const body = JSON.parse(call.init?.body as string) as Record<
+			string,
+			unknown
+		>;
+		expect(body.image_urls).toEqual(["data:image/png;base64,abc"]);
+	});
+
+	it("throws on API error response", async () => {
+		setApiKey("test-key");
+		const { restore } = withMockFetch(async () => {
+			return Response.json({ detail: "Bad request" });
+		});
+
+		await expect(generate({ prompt: "bad", model: "banana" })).rejects.toThrow(
+			"Bad request",
+		);
+		restore();
+	});
+
+	it("normalizes upscale response", async () => {
+		setApiKey("test-key");
+		const { restore } = withMockFetch(async () => {
+			return Response.json({ image: { url: "https://example.com/x.png" } });
+		});
+
+		const result = await upscale({
+			imageUrl: "data:image/png;base64,abc",
+			model: "clarity",
+		});
+		restore();
+
+		expect(result.images).toHaveLength(1);
+	});
+
+	it("normalizes background removal response", async () => {
+		setApiKey("test-key");
+		const { restore } = withMockFetch(async () => {
+			return Response.json({ image: { url: "https://example.com/x.png" } });
+		});
+
+		const result = await removeBackground({
+			imageUrl: "data:image/png;base64,abc",
+			model: "rmbg",
+		});
+		restore();
+		expect(result.images).toHaveLength(1);
+	});
+});

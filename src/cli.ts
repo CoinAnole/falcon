@@ -132,13 +132,14 @@ interface CliOptions {
 
 export async function runCli(args: string[]): Promise<void> {
 	const config = await loadConfig();
-	let handledCommand = false;
+	const handledCommand = false;
 
 	const program = new Command()
 		.name("falcon")
 		.description("fal.ai image generation CLI")
 		.version("1.0.0")
 		.argument("[prompt]", "Image generation prompt")
+		.option("--refresh", "Refresh cached pricing data")
 		.option(
 			"-m, --model <model>",
 			`Model to use (${GENERATION_MODELS.join(", ")})`,
@@ -196,41 +197,44 @@ export async function runCli(args: string[]): Promise<void> {
 			`Output format (${OUTPUT_FORMATS.join(", ")}) - for Grok, Flux, Gemini 3 Pro`,
 		);
 
-	program
-		.command("pricing")
-		.description("Pricing cache utilities")
-		.option("--refresh", "Refresh cached pricing data")
-		.action(async (commandOptions: CliOptions) => {
-			handledCommand = true;
-			if (!commandOptions.refresh) {
-				console.log("Use --refresh to update cached pricing data.");
-				return;
-			}
-
-			try {
-				getApiKey(config);
-			} catch (err) {
-				console.error(chalk.red(getErrorMessage(err)));
-				process.exit(1);
-			}
-
-			const endpointIds = Array.from(
-				new Set(Object.values(MODELS).map((model) => model.endpoint)),
-			);
-			try {
-				await refreshPricingCache(endpointIds);
-				console.log(chalk.green("Pricing cache refreshed."));
-			} catch (err) {
-				console.error(chalk.red(getErrorMessage(err)));
-				process.exit(1);
-			}
-		});
-
 	program.parse(args);
 	if (handledCommand) return;
 
 	const options = program.opts<CliOptions>();
 	const prompt = program.args[0];
+
+	if (prompt === "pricing") {
+		if (!options.refresh) {
+			console.log("Use --refresh to update cached pricing data.");
+			return;
+		}
+
+		try {
+			getApiKey(config);
+		} catch (err) {
+			console.error(chalk.red(getErrorMessage(err)));
+			process.exit(1);
+		}
+
+		const endpointIds = Array.from(
+			new Set(Object.values(MODELS).map((model) => model.endpoint)),
+		);
+		try {
+			await refreshPricingCache(endpointIds);
+			console.log(chalk.green("Pricing cache refreshed."));
+		} catch (err) {
+			console.error(chalk.red(getErrorMessage(err)));
+			process.exit(1);
+		}
+		return;
+	}
+
+	if (options.refresh) {
+		console.log(
+			"Use 'falcon pricing --refresh' to update cached pricing data.",
+		);
+		return;
+	}
 
 	// Handle --last (doesn't need API key)
 	if (options.last) {

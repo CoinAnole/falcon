@@ -1,4 +1,4 @@
-# Testing Guide
+# Testing Guidelines
 
 ## Goals
 - Keep tests fast and deterministic.
