@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { render } from "ink-testing-library";
 import { App } from "../../src/studio/App";
 import type { FalconConfig, History } from "../../src/utils/config";
-import { KEYS, stripAnsi, writeInput } from "../helpers/ink";
+import { KEYS, stripAnsi, waitForRender, writeInput } from "../helpers/ink";
 
 const baseConfig: FalconConfig = {
 	defaultModel: "banana",
@@ -42,6 +42,7 @@ describe("studio app routing", () => {
 
 	it("navigates to generate screen", async () => {
 		const result = renderApp();
+		await waitForRender();
 		await writeInput(result, KEYS.enter);
 		const output = stripAnsi(result.lastFrame() ?? "");
 		expect(output).toContain("Enter your prompt:");
@@ -50,6 +51,7 @@ describe("studio app routing", () => {
 
 	it("routes to settings and back with escape", async () => {
 		const result = renderApp();
+		await waitForRender();
 		await writeInput(result, KEYS.down);
 		await writeInput(result, KEYS.down);
 		await writeInput(result, KEYS.down);
@@ -65,6 +67,7 @@ describe("studio app routing", () => {
 
 	it("opens gallery and returns to home", async () => {
 		const result = renderApp();
+		await waitForRender();
 		await writeInput(result, KEYS.down);
 		await writeInput(result, KEYS.down);
 		await writeInput(result, KEYS.enter);

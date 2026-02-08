@@ -16,6 +16,10 @@ export const KEYS = {
 	tab: "\t",
 } as const;
 
+export async function waitForRender(delayMs = 8): Promise<void> {
+	await new Promise((resolve) => setTimeout(resolve, delayMs));
+}
+
 export function stripAnsi(value: string): string {
 	const esc = String.fromCharCode(27);
 	const ansiPattern = new RegExp(`${esc}\\[[0-9;]*m`, "g");
@@ -27,5 +31,5 @@ export async function writeInput(
 	input: string,
 ): Promise<void> {
 	result.stdin.write(input);
-	await new Promise((resolve) => setTimeout(resolve, 0));
+	await waitForRender();
 }
