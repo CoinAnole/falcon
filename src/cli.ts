@@ -29,6 +29,7 @@ import {
 	loadConfig,
 	loadHistory,
 } from "./utils/config";
+import { isValidUpscaleFactor, UPSCALE_FACTORS } from "./utils/constants";
 import {
 	deleteTempFile,
 	downloadImage,
@@ -39,7 +40,11 @@ import {
 	openImage,
 	resizeImage,
 } from "./utils/image";
-import { validateOutputPath } from "./utils/paths";
+import {
+	isPathWithinCwd,
+	validateImagePath,
+	validateOutputPath,
+} from "./utils/paths";
 
 /**
  * Get error message safely from unknown error type
@@ -54,23 +59,7 @@ function getErrorMessage(err: unknown): string {
  * Validate edit path exists and is a valid image
  */
 function validateEditPath(editPath: string): string {
-	const resolved = resolve(editPath);
-
-	if (!existsSync(resolved)) {
-		throw new Error(`Edit image not found: ${editPath}`);
-	}
-
-	const ext = resolved.toLowerCase();
-	if (
-		!ext.endsWith(".png") &&
-		!ext.endsWith(".jpg") &&
-		!ext.endsWith(".jpeg") &&
-		!ext.endsWith(".webp")
-	) {
-		throw new Error(`Edit image must be PNG, JPG, or WebP: ${editPath}`);
-	}
-
-	return resolved;
+	return validateImagePath(editPath);
 }
 
 interface CliOptions {
@@ -618,21 +607,28 @@ async function upscaleLast(
 	}
 
 	const scaleFactor = parseInt(options.scale || "2", 10);
-	if (Number.isNaN(scaleFactor) || scaleFactor < 2 || scaleFactor > 8) {
+	if (Number.isNaN(scaleFactor) || !isValidUpscaleFactor(scaleFactor)) {
 		console.error(
-			chalk.red("Invalid scale factor. Use --scale with 2, 4, 6, or 8."),
+			chalk.red(
+				`Invalid scale factor. Use --scale with ${UPSCALE_FACTORS.join(", ")}.`,
+			),
 		);
 		process.exit(1);
 	}
 
+	const sourceInCwd = isPathWithinCwd(sourceImagePath);
 	let outputPath: string;
 	try {
 		outputPath = options.output
 			? validateOutputPath(options.output)
-			: sourceImagePath.replace(
-					/\.(png|jpg|jpeg|webp)$/i,
-					`-up${scaleFactor}x.png`,
-				);
+			: sourceInCwd
+				? validateOutputPath(
+						sourceImagePath.replace(
+							/\.(png|jpg|jpeg|webp)$/i,
+							`-up${scaleFactor}x.png`,
+						),
+					)
+				: generateFilename("falcon-upscale", "png");
 	} catch (err) {
 		console.error(chalk.red(getErrorMessage(err)));
 		process.exit(1);
@@ -719,11 +715,16 @@ async function removeBackgroundLast(
 		process.exit(1);
 	}
 
+	const sourceInCwd = isPathWithinCwd(last.output);
 	let outputPath: string;
 	try {
 		outputPath = options.output
 			? validateOutputPath(options.output)
-			: last.output.replace(/\.(png|jpg|jpeg|webp)$/i, "-nobg.png");
+			: sourceInCwd
+				? validateOutputPath(
+						last.output.replace(/\.(png|jpg|jpeg|webp)$/i, "-nobg.png"),
+					)
+				: generateFilename("falcon-nobg", "png");
 	} catch (err) {
 		console.error(chalk.red(getErrorMessage(err)));
 		process.exit(1);

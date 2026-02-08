@@ -217,6 +217,44 @@ describe("pricing", () => {
 		expect(estimate.cost).toBeCloseTo(0.3);
 	});
 
+	it("defaults to unit pricing when unit is missing", async () => {
+		const { result: estimate, calls } = await withMockFetch(
+			async (input) => {
+				const url = input.toString();
+				if (url.includes("/models/pricing?")) {
+					return Response.json({
+						prices: [
+							{
+								endpoint_id: "fal-ai/nano-banana-pro",
+								unit_price: 0.15,
+								currency: "USD",
+							},
+						],
+					});
+				}
+				if (url.includes("/models/pricing/estimate")) {
+					return Response.json({ total_cost: 0.3, currency: "USD" });
+				}
+				return new Response("not found", { status: 404 });
+			},
+			async () => {
+				process.env.FAL_KEY = "test-key";
+				return await estimateGenerationCost({
+					model: "banana",
+					resolution: "2K",
+					numImages: 2,
+				});
+			},
+		);
+
+		const body = JSON.parse(calls[1]?.init?.body as string) as {
+			estimate_type: string;
+		};
+		expect(body.estimate_type).toBe("unit_price");
+		expect(estimate.costDetails.estimateSource).toBe("estimate");
+		expect(estimate.cost).toBeCloseTo(0.3);
+	});
+
 	it("returns estimate results when API succeeds", async () => {
 		const { result: estimate, calls } = await withMockFetch(
 			async (input) => {

@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
@@ -12,12 +11,19 @@ import {
 	type Resolution,
 } from "../../api/models";
 import {
+	estimateBackgroundRemovalCost,
+	estimateGenerationCost,
+	estimateUpscaleCost,
+	type PricingEstimate,
+} from "../../api/pricing";
+import {
 	addGeneration,
 	type FalconConfig,
 	type Generation,
 	generateId,
 	loadHistory,
 } from "../../utils/config";
+import { isValidUpscaleFactor, UPSCALE_FACTORS } from "../../utils/constants";
 import {
 	downloadImage,
 	generateFilename,
@@ -26,7 +32,11 @@ import {
 	imageToDataUrl,
 	openImage,
 } from "../../utils/image";
-import { validateOutputPath } from "../../utils/paths";
+import {
+	isPathWithinCwd,
+	validateImagePath,
+	validateOutputPath,
+} from "../../utils/paths";
 import { Spinner } from "../components/Spinner";
 
 type Mode = "edit" | "variations" | "upscale" | "rmbg";
@@ -133,8 +143,10 @@ export function EditScreen({
 		if (useCustomPath) {
 			const path = customPath.trim();
 			if (!path) return;
-			if (!existsSync(path)) {
-				onError(new Error(`File not found: ${path}`));
+			try {
+				validateImagePath(path);
+			} catch (err) {
+				onError(err as Error);
 				return;
 			}
 		} else if (!selectedGen) {
@@ -224,10 +236,20 @@ export function EditScreen({
 				setStep("prompt");
 			}
 		} else if (step === "scale") {
-			if (key.upArrow && scale < 8) {
-				setScale(scale + 1);
-			} else if (key.downArrow && scale > 1) {
-				setScale(scale - 1);
+			if (key.upArrow) {
+				const currentIdx = UPSCALE_FACTORS.indexOf(
+					scale as (typeof UPSCALE_FACTORS)[number],
+				);
+				if (currentIdx < UPSCALE_FACTORS.length - 1) {
+					setScale(UPSCALE_FACTORS[currentIdx + 1]);
+				}
+			} else if (key.downArrow) {
+				const currentIdx = UPSCALE_FACTORS.indexOf(
+					scale as (typeof UPSCALE_FACTORS)[number],
+				);
+				if (currentIdx > 0) {
+					setScale(UPSCALE_FACTORS[currentIdx - 1]);
+				}
 			} else if (key.return) {
 				setStep("confirm");
 			}
@@ -260,6 +282,7 @@ export function EditScreen({
 		try {
 			let outputPath: string;
 			let cost = 0;
+			let costDetails: PricingEstimate["costDetails"] | undefined;
 			let promptLabel = "";
 
 			if (mode === "edit") {
@@ -275,7 +298,13 @@ export function EditScreen({
 
 				outputPath = validateOutputPath(generateFilename("falcon-edit"));
 				await downloadImage(result.images[0].url, outputPath);
-				cost = estimateCost(editModel);
+				const estimate = await estimateGenerationCost({
+					model: editModel,
+					resolution: source.resolution,
+					numImages: 1,
+				});
+				cost = estimate.cost;
+				costDetails = estimate.costDetails;
 				promptLabel = prompt;
 			} else if (mode === "variations") {
 				setStatus("Generating variations...");
@@ -289,9 +318,20 @@ export function EditScreen({
 
 				outputPath = validateOutputPath(generateFilename("falcon-edit"));
 				await downloadImage(result.images[0].url, outputPath);
-				cost = estimateCost(source.model, source.resolution);
+				const estimate = await estimateGenerationCost({
+					model: source.model,
+					resolution: source.resolution,
+					numImages: 1,
+				});
+				cost = estimate.cost;
+				costDetails = estimate.costDetails;
 				promptLabel = source.prompt;
 			} else if (mode === "upscale") {
+				if (!isValidUpscaleFactor(scale)) {
+					throw new Error(
+						`Invalid upscale factor. Choose ${UPSCALE_FACTORS.join(", ")}.`,
+					);
+				}
 				setStatus("Uploading image...");
 				const imageData = await imageToDataUrl(source.output);
 
@@ -302,11 +342,25 @@ export function EditScreen({
 					scaleFactor: scale,
 				});
 
-				outputPath = validateOutputPath(
-					source.output.replace(/\.(png|jpg|jpeg|webp)$/i, `-up${scale}x.png`),
-				);
+				const sourceInCwd = isPathWithinCwd(source.output);
+				outputPath = sourceInCwd
+					? validateOutputPath(
+							source.output.replace(
+								/\.(png|jpg|jpeg|webp)$/i,
+								`-up${scale}x.png`,
+							),
+						)
+					: validateOutputPath(generateFilename("falcon-upscale"));
 				await downloadImage(result.images[0].url, outputPath);
-				cost = 0.02;
+				const dims = await getImageDimensions(source.output);
+				const estimate = await estimateUpscaleCost({
+					model: config.upscaler,
+					inputWidth: dims?.width,
+					inputHeight: dims?.height,
+					scaleFactor: scale,
+				});
+				cost = estimate.cost;
+				costDetails = estimate.costDetails;
 				promptLabel = `[upscale ${scale}x] ${source.prompt}`;
 			} else {
 				// rmbg
@@ -319,11 +373,18 @@ export function EditScreen({
 					model: config.backgroundRemover,
 				});
 
-				outputPath = validateOutputPath(
-					source.output.replace(/\.(png|jpg|jpeg|webp)$/i, "-nobg.png"),
-				);
+				const sourceInCwd = isPathWithinCwd(source.output);
+				outputPath = sourceInCwd
+					? validateOutputPath(
+							source.output.replace(/\.(png|jpg|jpeg|webp)$/i, "-nobg.png"),
+						)
+					: validateOutputPath(generateFilename("falcon-nobg"));
 				await downloadImage(result.images[0].url, outputPath);
-				cost = 0.02;
+				const estimate = await estimateBackgroundRemovalCost({
+					model: config.backgroundRemover,
+				});
+				cost = estimate.cost;
+				costDetails = estimate.costDetails;
 				promptLabel = `[rmbg] ${source.prompt}`;
 			}
 
@@ -345,6 +406,7 @@ export function EditScreen({
 				resolution: source.resolution,
 				output: resolve(outputPath),
 				cost,
+				costDetails,
 				timestamp: new Date().toISOString(),
 				editedFrom: source.output,
 			});

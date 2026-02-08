@@ -69,7 +69,7 @@ function chunk<T>(items: T[], size: number): T[][] {
 }
 
 function isComputeUnit(unit: string | undefined): boolean {
-	if (!unit) return true;
+	if (!unit) return false;
 	const normalized = unit.toLowerCase();
 	return (
 		normalized.includes("gpu") ||
