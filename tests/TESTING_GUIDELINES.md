@@ -91,10 +91,25 @@ Stub API calls and inspect requests:
 import { withMockFetch } from "../helpers/fetch";
 
 const { calls, result } = await withMockFetch(
-  async () => Response.json({ images: [] }),
+  () => Response.json({ images: [] }),  // Sync mock - simpler for static responses
   async () => generate({ prompt: "test", model: "banana" })
 );
 expect(calls[0].input.toString()).toContain("fal.ai");
+```
+
+Both sync and async implementations are supported. Use sync for simple static responses, async when you need conditional logic or async operations:
+```typescript
+// Async mock for conditional responses
+const { calls } = await withMockFetch(
+  async (input) => {
+    const url = input.toString();
+    if (url.includes("/pricing")) {
+      return Response.json({ prices: [...] });
+    }
+    return new Response("not found", { status: 404 });
+  },
+  async () => { /* test code */ }
+);
 ```
 
 ### Ink Testing (`tests/helpers/ink.ts`)
@@ -141,7 +156,7 @@ describe("fal api", () => {
   it("builds correct payload for model", async () => {
     setApiKey("test-key");
     const { calls } = await withMockFetch(
-      async () => Response.json({ images: [] }),
+      () => Response.json({ images: [] }),  // Sync mock
       async () => generate({ prompt: "test", model: "gpt", aspect: "9:16" })
     );
     const body = JSON.parse(calls[0].init?.body as string);
