@@ -32,6 +32,7 @@ tests/
 ├── types/
 │   └── ink-testing-library.d.ts  # Type declarations for ink-testing-library
 └── fixtures/
+    ├── pricing.json         # Pricing cache fixture for CLI tests
     └── tiny.png             # Sample image fixture
 ```
 - Name files `*.test.ts` (or `*.test.tsx` for React components) to be picked up by the runner.
@@ -39,7 +40,8 @@ tests/
 
 ## Test Types
 ### Unit Tests
-- **API logic:** cost estimation fallbacks, aspect-ratio mapping, and model metadata.
+- **API logic:** request payload building, error handling, response normalization, and cost estimation fallbacks.
+- **Model metadata:** aspect-ratio mapping and model configuration helpers.
 - **Config/history:** read/write behavior, defaults, and atomic write logic.
 - **Image utils:** pure helpers like filename generation; gate OS-specific functions.
 
@@ -48,6 +50,7 @@ tests/
 - Spawn the CLI with Bun (e.g., `Bun.spawn` or `Bun.spawnSync`) and assert exit code + output.
 - Avoid end-to-end calls that hit the network or rely on API keys.
 - Use `runCli()` helper from `tests/helpers/cli.ts` for consistent test execution.
+- Cover pricing command behavior and output-format/model validation without network access.
 
 ### Studio UI Tests (Ink)
 - Use `ink-testing-library` to render components and simulate keyboard input.
@@ -106,6 +109,7 @@ result.unmount();
 - Use temporary directories for config/history and output files.
 - Override environment variables (e.g., `HOME`, `FAL_KEY`) within the test process.
 - Store fixtures in `tests/fixtures` and keep them small and representative.
+- Use `tests/fixtures/pricing.json` with `FALCON_PRICING_FIXTURE` to keep pricing-related CLI tests offline.
 - Import `../helpers/env` at the top of CLI/integration tests to ensure isolation.
 
 ## Mocking & Stubbing
