@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { extname, isAbsolute, relative, resolve } from "node:path";
+import { extname, isAbsolute, join, parse, relative, resolve } from "node:path";
 
 /**
  * Validate output path is safe (no path traversal, within cwd)
@@ -13,6 +13,34 @@ export function validateOutputPath(outputPath: string): string {
 	}
 
 	return resolved;
+}
+
+/**
+ * Normalize an output path to ensure it ends with the expected extension.
+ */
+export function normalizeOutputPath(
+	outputPath: string,
+	fileExt: string,
+): string {
+	const currentExt = extname(outputPath);
+	const basePath = currentExt
+		? outputPath.slice(0, -currentExt.length)
+		: outputPath;
+	return validateOutputPath(`${basePath}.${fileExt}`);
+}
+
+/**
+ * Build an indexed filename for multi-image outputs.
+ */
+export function buildIndexedOutputPath(
+	outputPath: string,
+	index: number,
+	fileExt: string,
+): string {
+	if (index === 0) return outputPath;
+	const { dir, name } = parse(outputPath);
+	const filename = `${name}-${index + 1}.${fileExt}`;
+	return dir ? join(dir, filename) : filename;
 }
 
 /**

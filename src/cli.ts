@@ -9,6 +9,7 @@ import {
 	ASPECT_RATIOS,
 	type AspectRatio,
 	GENERATION_MODELS,
+	getAspectRatiosForModel,
 	MODELS,
 	OUTPUT_FORMATS,
 	RESOLUTIONS,
@@ -41,7 +42,9 @@ import {
 	resizeImage,
 } from "./utils/image";
 import {
+	buildIndexedOutputPath,
 	isPathWithinCwd,
+	normalizeOutputPath,
 	validateImagePath,
 	validateOutputPath,
 } from "./utils/paths";
@@ -53,6 +56,46 @@ function getErrorMessage(err: unknown): string {
 	if (err instanceof Error) return err.message;
 	if (typeof err === "string") return err;
 	return "Unknown error";
+}
+
+function parseNumImages(value: string | undefined, fallback: number): number {
+	const parsed = value === undefined ? fallback : Number(value);
+	if (!Number.isInteger(parsed) || parsed < 1 || parsed > 4) {
+		throw new Error("Invalid number of images. Use --num with 1-4.");
+	}
+	return parsed;
+}
+
+function parseGuidanceScale(value: string | undefined): number | undefined {
+	if (value === undefined) return undefined;
+	const parsed = Number(value);
+	if (!Number.isFinite(parsed) || parsed < 0 || parsed > 20) {
+		throw new Error("Invalid guidance scale. Use --guidance-scale with 0-20.");
+	}
+	return parsed;
+}
+
+function parseInferenceSteps(value: string | undefined): number | undefined {
+	if (value === undefined) return undefined;
+	const parsed = Number(value);
+	if (!Number.isInteger(parsed) || parsed < 4 || parsed > 50) {
+		throw new Error(
+			"Invalid inference steps. Use --inference-steps with 4-50.",
+		);
+	}
+	return parsed;
+}
+
+function parseAcceleration(
+	value: string | undefined,
+): "none" | "regular" | "high" | undefined {
+	if (value === undefined) return undefined;
+	if (value !== "none" && value !== "regular" && value !== "high") {
+		throw new Error(
+			"Invalid acceleration level. Use --acceleration with none, regular, or high.",
+		);
+	}
+	return value;
 }
 
 /**
@@ -104,7 +147,6 @@ interface CliOptions {
 
 export async function runCli(args: string[]): Promise<void> {
 	const config = await loadConfig();
-	const handledCommand = false;
 
 	const program = new Command()
 		.name("falcon")
@@ -170,7 +212,6 @@ export async function runCli(args: string[]): Promise<void> {
 		);
 
 	program.parse(args);
-	if (handledCommand) return;
 
 	const options = program.opts<CliOptions>();
 	const prompt = program.args[0];
@@ -346,7 +387,13 @@ async function generateImage(
 	}
 
 	const model = options.model || config.defaultModel;
-	const numImages = Math.min(4, Math.max(1, parseInt(options.num || "1", 10)));
+	let numImages: number;
+	try {
+		numImages = parseNumImages(options.num, 1);
+	} catch (err) {
+		console.error(chalk.red(getErrorMessage(err)));
+		process.exit(1);
+	}
 
 	// Determine output format
 	const modelConfig = MODELS[model];
@@ -386,19 +433,41 @@ async function generateImage(
 	}
 
 	// Validate output path if specified
-	let outputPath: string;
+	if (!modelConfig) {
+		console.error(chalk.red(`Unknown model: ${model}`));
+		console.log(`Available models: ${GENERATION_MODELS.join(", ")}`);
+		process.exit(1);
+	}
+
+	const supportedRatios = getAspectRatiosForModel(model);
+	if (!supportedRatios.includes(aspect)) {
+		console.error(
+			chalk.red(
+				`Aspect ratio ${aspect} is not supported for model ${model}. Supported ratios: ${supportedRatios.join(", ")}`,
+			),
+		);
+		process.exit(1);
+	}
+
+	let guidanceScale: number | undefined;
+	let numInferenceSteps: number | undefined;
+	let acceleration: "none" | "regular" | "high" | undefined;
 	try {
-		outputPath = options.output
-			? validateOutputPath(options.output)
-			: generateFilename("falcon", fileExt);
+		guidanceScale = parseGuidanceScale(options.guidanceScale);
+		numInferenceSteps = parseInferenceSteps(options.inferenceSteps);
+		acceleration = parseAcceleration(options.acceleration);
 	} catch (err) {
 		console.error(chalk.red(getErrorMessage(err)));
 		process.exit(1);
 	}
 
-	if (!modelConfig) {
-		console.error(chalk.red(`Unknown model: ${model}`));
-		console.log(`Available models: ${GENERATION_MODELS.join(", ")}`);
+	let outputPath: string;
+	try {
+		outputPath = options.output
+			? normalizeOutputPath(options.output, fileExt)
+			: generateFilename("falcon", fileExt);
+	} catch (err) {
+		console.error(chalk.red(getErrorMessage(err)));
 		process.exit(1);
 	}
 
@@ -461,18 +530,10 @@ async function generateImage(
 			numImages,
 			editImage: editImageData,
 			transparent: options.transparent,
-			guidanceScale: options.guidanceScale
-				? parseFloat(options.guidanceScale)
-				: undefined,
+			guidanceScale,
 			enablePromptExpansion: options.promptExpansion,
-			numInferenceSteps: options.inferenceSteps
-				? parseInt(options.inferenceSteps, 10)
-				: undefined,
-			acceleration: options.acceleration as
-				| "none"
-				| "regular"
-				| "high"
-				| undefined,
+			numInferenceSteps,
+			acceleration,
 			outputFormat: outputFormat as "jpeg" | "png" | "webp" | undefined,
 		});
 
@@ -481,10 +542,7 @@ async function generateImage(
 		// Download all images
 		for (let i = 0; i < result.images.length; i++) {
 			const image = result.images[i];
-			const path =
-				numImages > 1
-					? outputPath.replace(`.${fileExt}`, `-${i + 1}.${fileExt}`)
-					: outputPath;
+			const path = buildIndexedOutputPath(outputPath, i, fileExt);
 
 			await downloadImage(image.url, path);
 
@@ -556,7 +614,13 @@ async function generateVariations(
 
 	// Use the last prompt or a custom one
 	const prompt = customPrompt || last.prompt;
-	const numImages = Math.min(4, Math.max(1, parseInt(options.num || "4", 10)));
+	let numImages: number;
+	try {
+		numImages = parseNumImages(options.num, 4);
+	} catch (err) {
+		console.error(chalk.red(getErrorMessage(err)));
+		process.exit(1);
+	}
 
 	console.log(chalk.bold("\nGenerating variations..."));
 	console.log(`Base: ${chalk.dim(last.prompt.slice(0, 50))}...`);

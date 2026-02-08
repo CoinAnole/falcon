@@ -42,6 +42,50 @@ describe("cli", () => {
 		expect(result.stderr).toContain("Unknown model: unknown");
 	});
 
+	it("rejects invalid image count", async () => {
+		const result = await runCli(["prompt", "--num", "0"], {
+			FAL_KEY: "test-key",
+		});
+		expect(result.exitCode).toBe(1);
+		expect(result.stderr).toContain("Invalid number of images");
+	});
+
+	it("rejects invalid Flux guidance scale", async () => {
+		const result = await runCli(
+			["prompt", "--model", "flux2", "--guidance-scale", "25"],
+			{ FAL_KEY: "test-key" },
+		);
+		expect(result.exitCode).toBe(1);
+		expect(result.stderr).toContain("Invalid guidance scale");
+	});
+
+	it("rejects invalid Flux inference steps", async () => {
+		const result = await runCli(
+			["prompt", "--model", "flux2", "--inference-steps", "2"],
+			{ FAL_KEY: "test-key" },
+		);
+		expect(result.exitCode).toBe(1);
+		expect(result.stderr).toContain("Invalid inference steps");
+	});
+
+	it("rejects invalid Flux acceleration", async () => {
+		const result = await runCli(
+			["prompt", "--model", "flux2", "--acceleration", "fast"],
+			{ FAL_KEY: "test-key" },
+		);
+		expect(result.exitCode).toBe(1);
+		expect(result.stderr).toContain("Invalid acceleration level");
+	});
+
+	it("rejects unsupported aspect ratio for model", async () => {
+		const result = await runCli(
+			["prompt", "--model", "imagine", "--aspect", "21:9"],
+			{ FAL_KEY: "test-key" },
+		);
+		expect(result.exitCode).toBe(1);
+		expect(result.stderr).toContain("Aspect ratio 21:9 is not supported");
+	});
+
 	it("handles --last with empty history", async () => {
 		const result = await runCli(["--last"]);
 		expect(result.exitCode).toBe(0);
