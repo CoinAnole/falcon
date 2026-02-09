@@ -3,7 +3,7 @@ import { render } from "ink";
 import React from "react";
 import { setApiKey } from "./api/fal";
 import { runCli } from "./cli";
-import { App } from "./studio/App";
+import { App } from "./studio/app";
 import {
 	type FalconConfig,
 	getApiKey,
@@ -52,7 +52,7 @@ async function launchStudio() {
 				history,
 				onConfigChange: handleConfigChange,
 				onHistoryChange: handleHistoryChange,
-			}),
+			})
 		);
 	};
 
@@ -62,7 +62,7 @@ async function launchStudio() {
 			history,
 			onConfigChange: handleConfigChange,
 			onHistoryChange: handleHistoryChange,
-		}),
+		})
 	);
 
 	await waitUntilExit();

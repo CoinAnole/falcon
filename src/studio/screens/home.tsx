@@ -2,7 +2,20 @@ import { Box, Text, useInput } from "ink";
 import { useState } from "react";
 import { MODELS } from "../../api/models";
 import type { History } from "../../utils/config";
-import type { Screen } from "../App";
+import type { Screen } from "../app";
+
+function getMenuItemColor(
+	isDisabled: boolean,
+	isSelected: boolean
+): string | undefined {
+	if (isDisabled) {
+		return "gray";
+	}
+	if (isSelected) {
+		return "magenta";
+	}
+	return undefined;
+}
 
 interface MenuItem {
 	key: Screen;
@@ -64,13 +77,13 @@ export function HomeScreen({ history, onNavigate }: HomeScreenProps) {
 		<Box flexDirection="column">
 			{MENU_ITEMS.map((item, index) => {
 				const isSelected = index === selectedIndex;
-				const isDisabled = item.requiresLast && !hasLast;
+				const isDisabled = Boolean(item.requiresLast && !hasLast);
 
 				return (
 					<Box key={item.key} marginLeft={1}>
 						<Text
-							color={isDisabled ? "gray" : isSelected ? "magenta" : undefined}
 							bold={isSelected}
+							color={getMenuItemColor(isDisabled, isSelected)}
 							dimColor={isDisabled}
 						>
 							{isSelected ? "◆ " : "  "}
@@ -82,7 +95,7 @@ export function HomeScreen({ history, onNavigate }: HomeScreenProps) {
 			})}
 
 			{last && (
-				<Box marginTop={1} flexDirection="column" paddingLeft={2}>
+				<Box flexDirection="column" marginTop={1} paddingLeft={2}>
 					<Box>
 						<Text dimColor>────────────────────────────</Text>
 					</Box>

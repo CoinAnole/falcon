@@ -1,11 +1,11 @@
 import { Box, Text, useApp, useInput } from "ink";
 import { useState } from "react";
 import type { FalconConfig, History } from "../utils/config";
-import { EditScreen } from "./screens/Edit";
-import { GalleryScreen } from "./screens/Gallery";
-import { GenerateScreen } from "./screens/Generate";
-import { HomeScreen } from "./screens/Home";
-import { SettingsScreen } from "./screens/Settings";
+import { EditScreen } from "./screens/edit";
+import { GalleryScreen } from "./screens/gallery";
+import { GenerateScreen } from "./screens/generate";
+import { HomeScreen } from "./screens/home";
+import { SettingsScreen } from "./screens/settings";
 
 export type Screen = "home" | "generate" | "gallery" | "settings" | "edit";
 
@@ -85,11 +85,11 @@ export function App({
 				return (
 					<SettingsScreen
 						config={config}
+						onBack={() => setScreen("home")}
 						onSave={async (newConfig) => {
 							await onConfigChange(newConfig);
 							setScreen("home");
 						}}
-						onBack={() => setScreen("home")}
 					/>
 				);
 			default:

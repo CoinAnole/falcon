@@ -1,13 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { existsSync, unlinkSync } from "node:fs";
-import { extname, resolve } from "node:path";
+import { resolve } from "node:path";
+
+const DIMENSION_REGEX = /(\d+)\s*x\s*(\d+)/;
 
 /**
  * Download an image from a URL and save it to a file
  */
 export async function downloadImage(
 	url: string,
-	outputPath: string,
+	outputPath: string
 ): Promise<void> {
 	const response = await fetch(url);
 	if (!response.ok) {
@@ -30,9 +32,20 @@ export async function imageToDataUrl(imagePath: string): Promise<string> {
 	const buffer = await file.arrayBuffer();
 	const base64 = Buffer.from(buffer).toString("base64");
 
-	const ext = extname(imagePath).toLowerCase();
-	const mimeType =
-		ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" : "image/png";
+	// Detect MIME type from file content (magic bytes) rather than extension,
+	// because sips can output JPEG data with a .png extension
+	const bytes = new Uint8Array(buffer.slice(0, 4));
+	let mimeType = "image/png";
+	if (bytes[0] === 0xff && bytes[1] === 0xd8) {
+		mimeType = "image/jpeg";
+	} else if (
+		bytes[0] === 0x52 &&
+		bytes[1] === 0x49 &&
+		bytes[2] === 0x46 &&
+		bytes[3] === 0x46
+	) {
+		mimeType = "image/webp";
+	}
 
 	return `data:${mimeType};base64,${base64}`;
 }
@@ -43,7 +56,7 @@ export async function imageToDataUrl(imagePath: string): Promise<string> {
  */
 export async function resizeImage(
 	imagePath: string,
-	maxSize: number = 1024,
+	maxSize = 1024
 ): Promise<string> {
 	// Use cryptographically random UUID for temp file to prevent race conditions
 	const tempPath = `/tmp/falcon-resize-${randomUUID()}.png`;
@@ -55,7 +68,7 @@ export async function resizeImage(
 			{
 				stdout: "pipe",
 				stderr: "pipe",
-			},
+			}
 		);
 		await proc.exited;
 
@@ -74,7 +87,7 @@ export async function resizeImage(
  * Get image dimensions from a file
  */
 export async function getImageDimensions(
-	imagePath: string,
+	imagePath: string
 ): Promise<{ width: number; height: number } | null> {
 	try {
 		// Try using file command to get dimensions
@@ -83,12 +96,12 @@ export async function getImageDimensions(
 		});
 
 		const output = await new Response(proc.stdout).text();
-		const match = output.match(/(\d+)\s*x\s*(\d+)/);
+		const match = output.match(DIMENSION_REGEX);
 
 		if (match) {
 			return {
-				width: parseInt(match[1], 10),
-				height: parseInt(match[2], 10),
+				width: Number.parseInt(match[1], 10),
+				height: Number.parseInt(match[2], 10),
 			};
 		}
 	} catch {
@@ -101,19 +114,23 @@ export async function getImageDimensions(
 /**
  * Get file size in human-readable format
  */
-export async function getFileSize(filePath: string): Promise<string> {
+export function getFileSize(filePath: string): string {
 	const file = Bun.file(filePath);
 	const bytes = file.size;
 
-	if (bytes < 1024) return `${bytes}B`;
-	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+	if (bytes < 1024) {
+		return `${bytes}B`;
+	}
+	if (bytes < 1024 * 1024) {
+		return `${(bytes / 1024).toFixed(1)}KB`;
+	}
 	return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
 }
 
 /**
  * Generate a timestamped filename
  */
-export function generateFilename(prefix: string = "falcon"): string {
+export function generateFilename(prefix = "falcon"): string {
 	const now = new Date();
 	const timestamp = now.toISOString().slice(0, 19).replace(/[-:T]/g, "");
 	return `${prefix}-${timestamp}.png`;
@@ -123,7 +140,7 @@ export function generateFilename(prefix: string = "falcon"): string {
  * Open an image in Preview
  * Uses 'open' command for a clean experience without debug output
  */
-export async function openImage(imagePath: string): Promise<void> {
+export function openImage(imagePath: string): void {
 	// Validate the path exists to provide better error messages
 	if (!existsSync(imagePath)) {
 		throw new Error(`Image not found: ${imagePath}`);
