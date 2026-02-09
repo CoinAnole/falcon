@@ -1,12 +1,13 @@
 /**
  * Logging utility for Falcon
  *
- * Logs to /tmp/falcon-debug.log when FALCON_DEBUG=1 is set
+ * Logs to OS temp directory (e.g., /tmp/falcon-debug.log on Unix) when FALCON_DEBUG=1 is set
  * Levels: debug < info < warn < error
  */
 
 import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 
 type LogLevel = "debug" | "info" | "warn" | "error";
 
@@ -17,8 +18,8 @@ const LOG_LEVELS: Record<LogLevel, number> = {
 	error: 3,
 };
 
-// Log file path - using /tmp for persistence after app exit
-const LOG_FILE = "/tmp/falcon-debug.log";
+// Log file path - using OS temp directory for persistence after app exit
+const LOG_FILE = join(tmpdir(), "falcon-debug.log");
 
 // Check if logging is enabled via environment variable
 function isLoggingEnabled(): boolean {

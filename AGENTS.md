@@ -242,12 +242,12 @@ onError(new Error("Something went wrong"));
 
 ## Logging System
 
-Falcon includes a logging system that captures debug info and errors to `/tmp/falcon-debug.log`. Useful for debugging Studio mode errors that clear from the UI.
+Falcon includes a logging system that captures debug info and errors to the OS temp directory (`falcon-debug.log`). Useful for debugging Studio mode errors that clear from the UI.
 
 ### Logger Module (`src/utils/logger.ts`)
 
 - **Log levels**: `debug`, `info`, `warn`, `error`
-- **Output**: `/tmp/falcon-debug.log` (persists after app exit)
+- **Output**: OS temp directory (e.g., `/tmp/falcon-debug.log` on Unix, `%TEMP%\falcon-debug.log` on Windows) - persists after app exit
 - **Automatic sanitization**: API keys redacted from logs
 - **Write modes**: Synchronous for errors/warnings, async for debug/info
 
@@ -285,6 +285,7 @@ errorWithStack("Generation failed", error, { prompt, model });
 ### Viewing Logs
 
 ```bash
+# Unix/macOS
 tail -f /tmp/falcon-debug.log   # Watch in real-time
 cat /tmp/falcon-debug.log       # View last session
 ```
