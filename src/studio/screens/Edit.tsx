@@ -167,7 +167,7 @@ export function EditScreen({
 			}
 		};
 		loadGenerations();
-	}, [skipToOperation, initialOperation, EDIT_MODELS]);
+	}, [skipToOperation, initialOperation]);
 
 	const proceedFromSelect = () => {
 		if (useCustomPath) {
