@@ -333,7 +333,7 @@ bun test tests/api          # Run specific directory
 Tests mirror the source structure under [`tests/`](tests/):
 - `api/` - API client and pricing tests
 - `cli/` - CLI parsing and command tests  
-- `studio/` - Ink UI component tests
+- `studio/` - Comprehensive Ink UI tests for all screens (Home, Generate, Edit, Gallery, Settings)
 - `utils/` - Utility function tests
 - `helpers/` - Test utilities (CLI runner, fetch mocking, Ink helpers, environment setup)
 - `fixtures/` - Test data and sample files
@@ -349,10 +349,22 @@ Tests mirror the source structure under [`tests/`](tests/):
 Import from [`tests/helpers/`](tests/helpers/) for common testing needs:
 - `cli.ts` - `runCli()` for spawning CLI commands
 - `fetch.ts` - `withMockFetch()` for stubbing API calls
-- `ink.ts` - Keyboard input simulation and ANSI stripping
+- `ink.ts` - Keyboard input simulation (`KEYS`, `writeInput`), ANSI stripping, and async waiting (`waitUntil`)
 - `env.ts` - Automatic temp directory setup for isolated config/history
 
 See [`tests/TESTING_GUIDELINES.md`](tests/TESTING_GUIDELINES.md) for detailed usage examples and patterns.
+
+### Studio UI Test Coverage
+
+The Studio UI has comprehensive test coverage across all five screens:
+
+- **Home** (`home.test.tsx`) - Menu navigation, wrapping, last generation display, and property-based navigation mapping
+- **Generate** (`generate.test.tsx`) - Multi-step flow (prompt → preset → model → aspect → resolution → confirm), escape-back behavior, seed input, and property-based step transitions
+- **Edit** (`edit.test.tsx`) - Image selection, operation routing (Edit/Variations/Upscale/Remove Background), skipToOperation shortcuts, and property-based operation mapping
+- **Gallery** (`gallery.test.tsx`) - Empty state, pagination, navigation, and item selection
+- **Settings** (`settings.test.tsx`) - Setting navigation, toggle/select/text editing, save behavior, and property-based state mutations
+
+Tests use `ink-testing-library` for rendering, keyboard input simulation via `KEYS` constants, and property-based testing with `fast-check` to verify behavioral invariants across input ranges.
 
 ### Manual Testing
 

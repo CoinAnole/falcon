@@ -20,7 +20,12 @@ tests/
 ├── cli/
 │   └── cli.test.ts          # CLI parsing and command tests
 ├── studio/
-│   └── app.test.tsx         # Studio UI routing and interaction tests
+│   ├── app.test.tsx         # Studio UI routing tests
+│   ├── home.test.tsx        # Home screen navigation and rendering
+│   ├── generate.test.tsx    # Generate flow step transitions and seed input
+│   ├── edit.test.tsx        # Edit screen flows and operation selection
+│   ├── gallery.test.tsx     # Gallery pagination and navigation
+│   └── settings.test.tsx    # Settings editing, toggling, and saving
 ├── utils/
 │   ├── config.test.ts       # Config & history management tests
 │   └── image.test.ts        # Image utility tests
@@ -28,7 +33,7 @@ tests/
 │   ├── cli.ts               # CLI test utilities (runCli)
 │   ├── env.ts               # Environment setup helpers (temp HOME)
 │   ├── fetch.ts             # Fetch mocking utilities (withMockFetch)
-│   └── ink.ts               # Ink testing helpers (keyboard input, ANSI stripping)
+│   └── ink.ts               # Ink testing helpers (keyboard input, ANSI stripping, waitUntil)
 ├── types/
 │   └── ink-testing-library.d.ts  # Type declarations for ink-testing-library
 └── fixtures/
@@ -55,13 +60,17 @@ tests/
 ### Studio UI Tests (Ink)
 - Use `ink-testing-library` to render components and simulate keyboard input.
 - Import helpers from `tests/helpers/ink.ts` for common operations:
-  - `KEYS` – key codes for navigation (up, down, enter, escape, etc.)
+  - `KEYS` – key codes for navigation (up, down, enter, escape, tab, backspace)
   - `writeInput()` – send keystrokes to rendered component
   - `waitUntil()` – wait for conditions with timeout
   - `stripAnsi()` – remove ANSI codes for assertions
 - Test screen-level routing (home → generate, home → settings → home, etc.).
+- Test individual screen behaviors: navigation, input handling, step transitions, and state changes.
+- Use property-based testing with `fast-check` to verify behavioral invariants across input ranges.
 - Keep UI tests focused on input handling and rendering of basic text.
-- Always call `unmount()` after tests to clean up resources.
+- Always call `unmount()` after tests to clean up resources (use `try/finally` pattern).
+- Mock external dependencies (`../../src/utils/image`, `../../src/utils/config`, etc.) using `mock.module` from `bun:test`.
+- Use `withMockFetch` to intercept API calls and prevent live network requests.
 
 > [!WARNING]
 > Because `tests/helpers/env.ts` modifies `process.env` and `tests/helpers/fetch.ts` patches `globalThis.fetch`, do **not** use `test.concurrent` within the same file. Parallel execution across different files (default Bun behavior) is safe because each test file runs in its own process/context, but concurrent tests inside a single file will race on these shared globals.
@@ -118,10 +127,20 @@ Utilities for testing Ink components:
 import { KEYS, stripAnsi, waitUntil, writeInput } from "../helpers/ink";
 
 const result = render(<App ... />);
-await writeInput(result, KEYS.enter);
-await waitUntil(() => stripAnsi(result.lastFrame() ?? "").includes("Prompt"));
-result.unmount();
+try {
+  await writeInput(result, KEYS.enter);
+  await waitUntil(() => stripAnsi(result.lastFrame() ?? "").includes("Prompt"), { timeoutMs: 3000 });
+  expect(stripAnsi(result.lastFrame() ?? "")).toContain("Enter your prompt:");
+} finally {
+  result.unmount();
+}
 ```
+
+Available key constants in `KEYS`:
+- Navigation: `up`, `down`, `left`, `right`
+- Actions: `enter`, `escape`, `tab`, `backspace`
+
+Always use `try/finally` to ensure `unmount()` is called even when assertions fail.
 
 ## Isolation & Fixtures
 - Use temporary directories for config/history and output files.
@@ -181,18 +200,62 @@ Prefer writing outputs to temporary directories in CLI tests (not project or use
 When testing pricing flows, use `FALCON_PRICING_FIXTURE` to avoid network calls (see `tests/fixtures/pricing.json`).
 
 ### Studio Tests
-Test screen navigation:
+Test screen navigation and interactions:
 ```typescript
 describe("studio routing", () => {
   it("navigates to generate screen", async () => {
     const result = render(<App ... />);
-    await writeInput(result, KEYS.enter);
-    await waitUntil(() => 
-      stripAnsi(result.lastFrame() ?? "").includes("Enter your prompt:")
-    );
-    result.unmount();
+    try {
+      await writeInput(result, KEYS.enter);
+      await waitUntil(() => 
+        stripAnsi(result.lastFrame() ?? "").includes("Enter your prompt:"),
+        { timeoutMs: 3000 }
+      );
+      expect(stripAnsi(result.lastFrame() ?? "")).toContain("Enter your prompt:");
+    } finally {
+      result.unmount();
+    }
   });
 });
 ```
 
 Always ensure `unmount()` runs via `try/finally` to prevent resource leaks on failures, and include explicit timeouts with `waitUntil()` to avoid hung tests.
+
+For screens that import utilities directly, mock them using `mock.module`:
+```typescript
+import { mock } from "bun:test";
+
+mock.module("../../src/utils/image", () => ({
+  downloadImage: mock(() => Promise.resolve()),
+  openImage: mock(() => Promise.resolve()),
+  generateFilename: mock(() => "test-output.png"),
+}));
+
+mock.module("../../src/utils/config", () => ({
+  addGeneration: mock(() => Promise.resolve()),
+  loadHistory: mock(() => Promise.resolve(testHistory)),
+}));
+```
+
+Use property-based testing with `fast-check` for behavioral invariants:
+```typescript
+import fc from "fast-check";
+
+it("property: toggle flips value", async () => {
+  await fc.assert(
+    fc.asyncProperty(fc.boolean(), async (initialValue) => {
+      const result = render(<Settings config={{ ...baseConfig, openAfterGenerate: initialValue }} ... />);
+      try {
+        // Navigate to toggle setting and press enter
+        await writeInput(result, KEYS.enter);
+        const frame = stripAnsi(result.lastFrame() ?? "");
+        const expectedValue = initialValue ? "No" : "Yes";
+        expect(frame).toContain(expectedValue);
+      } finally {
+        result.unmount();
+      }
+    }),
+    { numRuns: 100 }
+  );
+});
+```
