@@ -421,4 +421,58 @@ describe("fal api", () => {
 		>;
 		expect(body.resolution).toBeUndefined();
 	});
+
+	it("throws error with status code, status text, and body on generate HTTP failure", async () => {
+		setApiKey("test-key");
+		await withMockFetch(
+			async () =>
+				new Response("Internal Server Error", {
+					status: 500,
+					statusText: "Internal Server Error",
+				}),
+			async () => {
+				await expect(
+					generate({ prompt: "fail", model: "banana" }),
+				).rejects.toThrow(/500.*Internal Server Error/);
+			},
+		);
+	});
+
+	it("throws error with status code, status text, and body on upscale HTTP failure", async () => {
+		setApiKey("test-key");
+		await withMockFetch(
+			async () =>
+				new Response("Service Unavailable", {
+					status: 503,
+					statusText: "Service Unavailable",
+				}),
+			async () => {
+				await expect(
+					upscale({
+						imageUrl: "data:image/png;base64,abc",
+						model: "clarity",
+					}),
+				).rejects.toThrow(/503.*Service Unavailable/);
+			},
+		);
+	});
+
+	it("throws error with status code, status text, and body on removeBackground HTTP failure", async () => {
+		setApiKey("test-key");
+		await withMockFetch(
+			async () =>
+				new Response("Forbidden", {
+					status: 403,
+					statusText: "Forbidden",
+				}),
+			async () => {
+				await expect(
+					removeBackground({
+						imageUrl: "data:image/png;base64,abc",
+						model: "rmbg",
+					}),
+				).rejects.toThrow(/403.*Forbidden/);
+			},
+		);
+	});
 });
