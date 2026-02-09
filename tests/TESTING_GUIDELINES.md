@@ -237,25 +237,60 @@ mock.module("../../src/utils/config", () => ({
 }));
 ```
 
-Use property-based testing with `fast-check` for behavioral invariants:
+Use property-based testing with `fast-check` for behavioral invariants. Keep `numRuns` small for UI tests since each run mounts/unmounts Ink components:
 ```typescript
 import fc from "fast-check";
 
-it("property: toggle flips value", async () => {
+// Good: Small input space (4 menu items), minimal runs needed
+it("property: menu navigation maps to correct screen", async () => {
   await fc.assert(
-    fc.asyncProperty(fc.boolean(), async (initialValue) => {
-      const result = render(<Settings config={{ ...baseConfig, openAfterGenerate: initialValue }} ... />);
+    fc.asyncProperty(fc.integer({ min: 0, max: 3 }), async (menuIndex) => {
+      const onNavigate = mock(() => {});
+      const result = render(<Home history={emptyHistory} onNavigate={onNavigate} />);
       try {
-        // Navigate to toggle setting and press enter
+        // Navigate to menu item
+        for (let i = 0; i < menuIndex; i++) {
+          await writeInput(result, KEYS.down);
+        }
         await writeInput(result, KEYS.enter);
-        const frame = stripAnsi(result.lastFrame() ?? "");
-        const expectedValue = initialValue ? "No" : "Yes";
-        expect(frame).toContain(expectedValue);
+        
+        const expectedScreens = ["generate", "edit", "gallery", "settings"];
+        expect(onNavigate).toHaveBeenCalledWith(expectedScreens[menuIndex]);
       } finally {
         result.unmount();
       }
     }),
-    { numRuns: 100 }
+    { numRuns: 10 }  // 10 runs sufficient for 4 possible values
+  );
+});
+
+// Good: Larger input space (digit sequences), more runs justified
+it("property: seed input builds correct value", async () => {
+  await fc.assert(
+    fc.asyncProperty(
+      fc.array(fc.integer({ min: 0, max: 9 }), { minLength: 1, maxLength: 6 }),
+      async (digits) => {
+        const result = render(<Generate ... />);
+        try {
+          // Navigate to seed field and type digits
+          // ... navigation code ...
+          for (const digit of digits) {
+            await writeInput(result, digit.toString());
+          }
+          const expectedSeed = digits.join("");
+          expect(stripAnsi(result.lastFrame() ?? "")).toContain(expectedSeed);
+        } finally {
+          result.unmount();
+        }
+      }
+    ),
+    { numRuns: 20 }  // Reasonable for testing digit sequences
   );
 });
 ```
+
+**Property test sizing guidelines:**
+- Small input spaces (booleans, enums with <10 values): Use unit tests instead, or 2-5 runs if property testing
+- Medium input spaces (menu indices, step sequences): 10-20 runs
+- Large input spaces (strings, digit sequences, combinations): 20-50 runs
+- Avoid 100+ runs for UI tests—each run has significant overhead (component mount/unmount)
