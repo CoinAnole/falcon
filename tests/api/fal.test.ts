@@ -1,10 +1,14 @@
 import { afterEach, describe, expect, it } from "bun:test";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import {
 	generate,
 	removeBackground,
 	setApiKey,
 	upscale,
 } from "../../src/api/fal";
+// Import env helper FIRST to set process.env.HOME before config.ts is loaded
+import { getTestHome } from "../helpers/env";
 import { withMockFetch } from "../helpers/fetch";
 
 afterEach(() => {
@@ -473,6 +477,99 @@ describe("fal api", () => {
 					}),
 				).rejects.toThrow(/403.*Forbidden/);
 			},
+		);
+	});
+});
+
+describe("getApiKey fallback chain", () => {
+	let savedFalKey: string | undefined;
+
+	afterEach(() => {
+		setApiKey("");
+		// Restore FAL_KEY env var
+		if (savedFalKey !== undefined) {
+			process.env.FAL_KEY = savedFalKey;
+		} else {
+			delete process.env.FAL_KEY;
+		}
+	});
+
+	it("uses setApiKey value in Authorization header when set", async () => {
+		savedFalKey = process.env.FAL_KEY;
+		setApiKey("manual-key-priority");
+
+		const { calls } = await withMockFetch(
+			async () => Response.json({ images: [] }),
+			async () => {
+				await generate({ prompt: "test", model: "banana" });
+			},
+		);
+
+		const authHeader = calls[0].init?.headers as Record<string, string>;
+		expect(authHeader.Authorization).toBe("Key manual-key-priority");
+	});
+
+	it("falls back to FAL_KEY env var when setApiKey is cleared", async () => {
+		savedFalKey = process.env.FAL_KEY;
+		setApiKey("");
+		process.env.FAL_KEY = "env-var-key";
+
+		const { calls } = await withMockFetch(
+			async () => Response.json({ images: [] }),
+			async () => {
+				await generate({ prompt: "test", model: "banana" });
+			},
+		);
+
+		const authHeader = calls[0].init?.headers as Record<string, string>;
+		expect(authHeader.Authorization).toBe("Key env-var-key");
+	});
+
+	it("falls back to config file apiKey when setApiKey and env var are cleared", async () => {
+		savedFalKey = process.env.FAL_KEY;
+		setApiKey("");
+		delete process.env.FAL_KEY;
+
+		// Write config file with apiKey to the isolated test HOME
+		const testHome = getTestHome();
+		process.env.HOME = testHome;
+		const falconDir = join(testHome, ".falcon");
+		mkdirSync(falconDir, { recursive: true });
+		writeFileSync(
+			join(falconDir, "config.json"),
+			JSON.stringify({ apiKey: "config-file-key" }),
+		);
+
+		// Re-import to pick up the fresh HOME/config
+		// loadConfig reads process.env.HOME at call time via FALCON_DIR
+		const { calls } = await withMockFetch(
+			async () => Response.json({ images: [] }),
+			async () => {
+				await generate({ prompt: "test", model: "banana" });
+			},
+		);
+
+		const authHeader = calls[0].init?.headers as Record<string, string>;
+		expect(authHeader.Authorization).toBe("Key config-file-key");
+	});
+
+	it("throws FAL_KEY not found when no key is available from any source", async () => {
+		savedFalKey = process.env.FAL_KEY;
+		setApiKey("");
+		delete process.env.FAL_KEY;
+
+		// Write config file without apiKey to the isolated test HOME
+		const testHome = getTestHome();
+		process.env.HOME = testHome;
+		const falconDir = join(testHome, ".falcon");
+		mkdirSync(falconDir, { recursive: true });
+		writeFileSync(
+			join(falconDir, "config.json"),
+			JSON.stringify({ defaultModel: "banana" }),
+		);
+
+		await expect(generate({ prompt: "test", model: "banana" })).rejects.toThrow(
+			"FAL_KEY not found",
 		);
 	});
 });
