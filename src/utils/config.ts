@@ -5,7 +5,9 @@ import { join } from "node:path";
 import type { AspectRatio, Resolution } from "../api/models";
 import type { CostMetadata } from "../types/pricing";
 
-const FALCON_DIR = join(homedir(), ".falcon");
+// Use HOME env var if available (allows test override), fallback to homedir()
+// Bun's homedir() ignores process.env.HOME changes, so we check it explicitly
+const FALCON_DIR = join(process.env.HOME || homedir(), ".falcon");
 const CONFIG_PATH = join(FALCON_DIR, "config.json");
 const HISTORY_PATH = join(FALCON_DIR, "history.json");
 const LOCAL_CONFIG_PATH = ".falconrc";
