@@ -302,4 +302,123 @@ describe("fal api", () => {
 		expect(body.num_images).toBe(2);
 		expect(body.output_format).toBe("webp");
 	});
+
+	it("sets num_images to provided value when explicit", async () => {
+		setApiKey("test-key");
+		const { calls } = await withMockFetch(
+			async () => Response.json({ images: [] }),
+			async () => {
+				await generate({
+					prompt: "test numImages",
+					model: "gemini3",
+					numImages: 3,
+				});
+			},
+		);
+
+		const body = JSON.parse(calls[0].init?.body as string) as Record<
+			string,
+			unknown
+		>;
+		expect(body.num_images).toBe(3);
+	});
+
+	it("defaults num_images to 1 when omitted", async () => {
+		setApiKey("test-key");
+		const { calls } = await withMockFetch(
+			async () => Response.json({ images: [] }),
+			async () => {
+				await generate({
+					prompt: "test default numImages",
+					model: "gemini3",
+				});
+			},
+		);
+
+		const body = JSON.parse(calls[0].init?.body as string) as Record<
+			string,
+			unknown
+		>;
+		expect(body.num_images).toBe(1);
+	});
+
+	it("includes output_format in payload for supporting model", async () => {
+		setApiKey("test-key");
+		const { calls } = await withMockFetch(
+			async () => Response.json({ images: [] }),
+			async () => {
+				await generate({
+					prompt: "test outputFormat",
+					model: "gemini3",
+					outputFormat: "webp",
+				});
+			},
+		);
+
+		const body = JSON.parse(calls[0].init?.body as string) as Record<
+			string,
+			unknown
+		>;
+		expect(body.output_format).toBe("webp");
+	});
+
+	it("omits output_format from payload for non-supporting model", async () => {
+		setApiKey("test-key");
+		const { calls } = await withMockFetch(
+			async () => Response.json({ images: [] }),
+			async () => {
+				await generate({
+					prompt: "test no outputFormat",
+					model: "banana",
+					outputFormat: "webp",
+				});
+			},
+		);
+
+		const body = JSON.parse(calls[0].init?.body as string) as Record<
+			string,
+			unknown
+		>;
+		expect(body.output_format).toBeUndefined();
+	});
+
+	it("includes resolution in payload for supporting model", async () => {
+		setApiKey("test-key");
+		const { calls } = await withMockFetch(
+			async () => Response.json({ images: [] }),
+			async () => {
+				await generate({
+					prompt: "test resolution",
+					model: "banana",
+					resolution: "4K",
+				});
+			},
+		);
+
+		const body = JSON.parse(calls[0].init?.body as string) as Record<
+			string,
+			unknown
+		>;
+		expect(body.resolution).toBe("4K");
+	});
+
+	it("omits resolution from payload for non-supporting model", async () => {
+		setApiKey("test-key");
+		const { calls } = await withMockFetch(
+			async () => Response.json({ images: [] }),
+			async () => {
+				await generate({
+					prompt: "test no resolution",
+					model: "gemini",
+					resolution: "4K",
+				});
+			},
+		);
+
+		const body = JSON.parse(calls[0].init?.body as string) as Record<
+			string,
+			unknown
+		>;
+		expect(body.resolution).toBeUndefined();
+	});
 });
