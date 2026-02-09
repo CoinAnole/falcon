@@ -41,6 +41,15 @@ async function launchStudio() {
 	const handleConfigChange = async (newConfig: Partial<FalconConfig>) => {
 		await saveConfig(newConfig);
 		config = { ...config, ...newConfig };
+		// Re-render to propagate updated config to App component
+		rerender(
+			React.createElement(App, {
+				config,
+				history,
+				onConfigChange: handleConfigChange,
+				onHistoryChange: handleHistoryChange,
+			}),
+		);
 	};
 
 	const handleHistoryChange = async () => {

@@ -119,9 +119,12 @@ export function SettingsScreen({
 			}
 		}
 
-		if (input === "s") {
+		if (input === "s" || input === "S") {
 			// Save settings
-			onSave(localConfig);
+			onSave(localConfig).catch(() => {
+				// Error handled by parent
+			});
+			return;
 		}
 	});
 
