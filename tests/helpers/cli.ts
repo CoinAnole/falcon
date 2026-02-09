@@ -81,11 +81,34 @@ export function getTestOutputPath(filename: string): string {
 	return join(testOutputDir, filename);
 }
 
+// Counter for unique output filenames
+let outputCounter = 0;
+
 export async function runCli(
 	args: string[],
 	envOverrides: Record<string, string> = {},
 ): Promise<CliResult> {
-	const proc = Bun.spawn(["bun", "src/index.ts", ...args], {
+	// If this is a generation command without explicit output, redirect to temp directory
+	const hasOutputFlag = args.includes("--output") || args.includes("-o");
+	const hasPrompt = args.length > 0 && !args[0].startsWith("-");
+	const isSubcommand = ["pricing"].includes(args[0]);
+	const isGeneration =
+		envOverrides.FALCON_DOWNLOAD_FIXTURE &&
+		hasPrompt &&
+		!isSubcommand &&
+		!hasOutputFlag &&
+		!args.includes("--up") &&
+		!args.includes("--rmbg") &&
+		!args.includes("--vary");
+
+	const testArgs = [...args];
+	if (isGeneration) {
+		outputCounter++;
+		const outputPath = join(testOutputDir, `test-gen-${outputCounter}.png`);
+		testArgs.push("--output", outputPath);
+	}
+
+	const proc = Bun.spawn(["bun", "src/index.ts", ...testArgs], {
 		cwd: process.cwd(),
 		stdout: "pipe",
 		stderr: "pipe",
