@@ -283,7 +283,21 @@ describe("edit screen", () => {
 			);
 			// Navigate down to Upscale (index 2: Edit=0, Variations=1, Upscale=2)
 			await writeInput(result, KEYS.down);
+			await waitUntil(
+				() => {
+					const frame = stripAnsi(result.lastFrame() ?? "");
+					return frame.includes("◆") && frame.includes("Variations");
+				},
+				{ timeoutMs: 3000 },
+			);
 			await writeInput(result, KEYS.down);
+			await waitUntil(
+				() => {
+					const frame = stripAnsi(result.lastFrame() ?? "");
+					return frame.includes("◆") && frame.includes("Upscale");
+				},
+				{ timeoutMs: 3000 },
+			);
 			await writeInput(result, KEYS.enter);
 			await waitUntil(
 				() =>
@@ -321,8 +335,29 @@ describe("edit screen", () => {
 			);
 			// Navigate down to Remove Background (index 3)
 			await writeInput(result, KEYS.down);
+			await waitUntil(
+				() => {
+					const frame = stripAnsi(result.lastFrame() ?? "");
+					return frame.includes("◆") && frame.includes("Variations");
+				},
+				{ timeoutMs: 3000 },
+			);
 			await writeInput(result, KEYS.down);
+			await waitUntil(
+				() => {
+					const frame = stripAnsi(result.lastFrame() ?? "");
+					return frame.includes("◆") && frame.includes("Upscale");
+				},
+				{ timeoutMs: 3000 },
+			);
 			await writeInput(result, KEYS.down);
+			await waitUntil(
+				() => {
+					const frame = stripAnsi(result.lastFrame() ?? "");
+					return frame.includes("◆") && frame.includes("Remove Background");
+				},
+				{ timeoutMs: 3000 },
+			);
 			await writeInput(result, KEYS.enter);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Ready to process"),
@@ -370,6 +405,589 @@ describe("edit screen", () => {
 			result.unmount();
 		}
 	});
+
+	// Task 1.2: Custom path input flow
+	it("custom path input: type path and submit transitions to operation", async () => {
+		const onBack = mock(() => {});
+		const onComplete = mock(() => {});
+		const onError = mock(() => {});
+		const result = render(
+			<EditScreen
+				config={baseConfig}
+				onBack={onBack}
+				onComplete={onComplete}
+				onError={onError}
+			/>,
+		);
+		try {
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
+				{ timeoutMs: 3000 },
+			);
+			// Tab to custom path input
+			await writeInput(result, KEYS.tab);
+			await waitUntil(
+				() =>
+					stripAnsi(result.lastFrame() ?? "").includes("Enter path or drag"),
+				{ timeoutMs: 3000 },
+			);
+			// Type a valid path and submit
+			await writeInput(result, "/tmp/test-image.png");
+			await writeInput(result, KEYS.enter);
+			await waitUntil(
+				() => {
+					const frame = stripAnsi(result.lastFrame() ?? "");
+					return frame.includes("Edit") && frame.includes("Variations");
+				},
+				{ timeoutMs: 3000 },
+			);
+			const output = stripAnsi(result.lastFrame() ?? "");
+			expect(output).toContain("Edit");
+			expect(output).toContain("Variations");
+			expect(output).toContain("Upscale");
+			expect(output).toContain("Remove Background");
+		} finally {
+			result.unmount();
+		}
+	});
+
+	// Task 1.3: Prompt input step
+	it("prompt input step: type prompt and submit transitions to confirm", async () => {
+		const onBack = mock(() => {});
+		const onComplete = mock(() => {});
+		const onError = mock(() => {});
+		const result = render(
+			<EditScreen
+				config={baseConfig}
+				onBack={onBack}
+				onComplete={onComplete}
+				onError={onError}
+			/>,
+		);
+		try {
+			// Select image
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
+				{ timeoutMs: 3000 },
+			);
+			await writeInput(result, KEYS.enter);
+			// Select Edit operation (first item)
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Variations"),
+				{ timeoutMs: 3000 },
+			);
+			await writeInput(result, KEYS.enter);
+			// Wait for model selection step
+			await waitUntil(
+				() =>
+					stripAnsi(result.lastFrame() ?? "").includes(
+						"Select model for editing",
+					),
+				{ timeoutMs: 3000 },
+			);
+			// Select first model
+			await writeInput(result, KEYS.enter);
+			// Wait for prompt step
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Describe the edit"),
+				{ timeoutMs: 3000 },
+			);
+			const promptFrame = stripAnsi(result.lastFrame() ?? "");
+			expect(promptFrame).toContain("Describe the edit");
+			// Type a prompt and submit
+			await writeInput(result, "make it blue");
+			await writeInput(result, KEYS.enter);
+			// Verify transition to confirm step
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Ready to process"),
+				{ timeoutMs: 3000 },
+			);
+			const output = stripAnsi(result.lastFrame() ?? "");
+			expect(output).toContain("Ready to process");
+			expect(output).toContain("make it blue");
+		} finally {
+			result.unmount();
+		}
+	});
+
+	// Task 1.4: Scale step adjustment
+	it("scale step: up arrow increases factor and enter confirms", async () => {
+		const onBack = mock(() => {});
+		const onComplete = mock(() => {});
+		const onError = mock(() => {});
+		const result = render(
+			<EditScreen
+				config={baseConfig}
+				onBack={onBack}
+				onComplete={onComplete}
+				onError={onError}
+			/>,
+		);
+		try {
+			// Select image
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
+				{ timeoutMs: 3000 },
+			);
+			await writeInput(result, KEYS.enter);
+			// Navigate to Upscale (index 2)
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Variations"),
+				{ timeoutMs: 3000 },
+			);
+			await writeInput(result, KEYS.down);
+			await waitUntil(
+				() => {
+					const frame = stripAnsi(result.lastFrame() ?? "");
+					return frame.includes("◆") && frame.includes("Variations");
+				},
+				{ timeoutMs: 3000 },
+			);
+			await writeInput(result, KEYS.down);
+			await waitUntil(
+				() => {
+					const frame = stripAnsi(result.lastFrame() ?? "");
+					return frame.includes("◆") && frame.includes("Upscale");
+				},
+				{ timeoutMs: 3000 },
+			);
+			await writeInput(result, KEYS.enter);
+			// Wait for scale step
+			await waitUntil(
+				() =>
+					stripAnsi(result.lastFrame() ?? "").includes("Select upscale factor"),
+				{ timeoutMs: 3000 },
+			);
+			// Default is 2x, press up to increase to 4x
+			let frame = stripAnsi(result.lastFrame() ?? "");
+			expect(frame).toContain("2x");
+			await writeInput(result, KEYS.up);
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("4x"),
+				{ timeoutMs: 3000 },
+			);
+			frame = stripAnsi(result.lastFrame() ?? "");
+			expect(frame).toContain("4x");
+			// Press enter to confirm
+			await writeInput(result, KEYS.enter);
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Ready to process"),
+				{ timeoutMs: 3000 },
+			);
+			const output = stripAnsi(result.lastFrame() ?? "");
+			expect(output).toContain("Ready to process");
+			expect(output).toContain("4x");
+		} finally {
+			result.unmount();
+		}
+	});
+
+	// Task 1.5: Confirm step y and n
+	it("confirm step n returns to operation selection", async () => {
+		const onBack = mock(() => {});
+		const onComplete = mock(() => {});
+		const onError = mock(() => {});
+		const result = render(
+			<EditScreen
+				config={baseConfig}
+				onBack={onBack}
+				onComplete={onComplete}
+				onError={onError}
+			/>,
+		);
+		try {
+			// Select image
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
+				{ timeoutMs: 3000 },
+			);
+			await writeInput(result, KEYS.enter);
+			// Navigate to Remove Background (index 3)
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Variations"),
+				{ timeoutMs: 3000 },
+			);
+			await writeInput(result, KEYS.down);
+			await waitUntil(
+				() => {
+					const frame = stripAnsi(result.lastFrame() ?? "");
+					return frame.includes("◆") && frame.includes("Variations");
+				},
+				{ timeoutMs: 3000 },
+			);
+			await writeInput(result, KEYS.down);
+			await waitUntil(
+				() => {
+					const frame = stripAnsi(result.lastFrame() ?? "");
+					return frame.includes("◆") && frame.includes("Upscale");
+				},
+				{ timeoutMs: 3000 },
+			);
+			await writeInput(result, KEYS.down);
+			await waitUntil(
+				() => {
+					const frame = stripAnsi(result.lastFrame() ?? "");
+					return frame.includes("◆") && frame.includes("Remove Background");
+				},
+				{ timeoutMs: 3000 },
+			);
+			await writeInput(result, KEYS.enter);
+			// Wait for confirm step
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Ready to process"),
+				{ timeoutMs: 3000 },
+			);
+			// Press n to cancel
+			await writeInput(result, "n");
+			await waitUntil(
+				() => {
+					const frame = stripAnsi(result.lastFrame() ?? "");
+					return (
+						frame.includes("Upscale") &&
+						frame.includes("Variations") &&
+						!frame.includes("Ready to process")
+					);
+				},
+				{ timeoutMs: 5000 },
+			);
+			const output = stripAnsi(result.lastFrame() ?? "");
+			expect(output).toContain("Upscale");
+			expect(output).toContain("Remove Background");
+		} finally {
+			result.unmount();
+		}
+	});
+
+	it("confirm step y starts processing", async () => {
+		const onBack = mock(() => {});
+		const onComplete = mock(() => {});
+		const onError = mock(() => {});
+
+		await withMockFetch(mockFetchImpl, async () => {
+			const result = render(
+				<EditScreen
+					config={baseConfig}
+					onBack={onBack}
+					onComplete={onComplete}
+					onError={onError}
+				/>,
+			);
+			try {
+				// Select image
+				await waitUntil(
+					() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
+					{ timeoutMs: 3000 },
+				);
+				await writeInput(result, KEYS.enter);
+				// Navigate to Remove Background (index 3)
+				await waitUntil(
+					() => stripAnsi(result.lastFrame() ?? "").includes("Variations"),
+					{ timeoutMs: 3000 },
+				);
+				await writeInput(result, KEYS.down);
+				await waitUntil(
+					() => {
+						const frame = stripAnsi(result.lastFrame() ?? "");
+						return frame.includes("◆") && frame.includes("Variations");
+					},
+					{ timeoutMs: 3000 },
+				);
+				await writeInput(result, KEYS.down);
+				await waitUntil(
+					() => {
+						const frame = stripAnsi(result.lastFrame() ?? "");
+						return frame.includes("◆") && frame.includes("Upscale");
+					},
+					{ timeoutMs: 3000 },
+				);
+				await writeInput(result, KEYS.down);
+				await waitUntil(
+					() => {
+						const frame = stripAnsi(result.lastFrame() ?? "");
+						return frame.includes("◆") && frame.includes("Remove Background");
+					},
+					{ timeoutMs: 3000 },
+				);
+				await writeInput(result, KEYS.enter);
+				// Wait for confirm step
+				await waitUntil(
+					() =>
+						stripAnsi(result.lastFrame() ?? "").includes("Ready to process"),
+					{ timeoutMs: 3000 },
+				);
+				// Press y to start processing
+				await writeInput(result, "y");
+				// Verify processing starts
+				await waitUntil(
+					() => {
+						const frame = stripAnsi(result.lastFrame() ?? "");
+						return (
+							frame.includes("Uploading") ||
+							frame.includes("Removing") ||
+							frame.includes("Complete")
+						);
+					},
+					{ timeoutMs: 5000 },
+				);
+			} finally {
+				result.unmount();
+			}
+		});
+	});
+
+	// Task 1.6: Done step enter
+	it("done step enter invokes onComplete", async () => {
+		const onBack = mock(() => {});
+		const onComplete = mock(() => {});
+		const onError = mock(() => {});
+
+		await withMockFetch(mockFetchImpl, async () => {
+			const result = render(
+				<EditScreen
+					config={baseConfig}
+					onBack={onBack}
+					onComplete={onComplete}
+					onError={onError}
+				/>,
+			);
+			try {
+				// Select image
+				await waitUntil(
+					() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
+					{ timeoutMs: 3000 },
+				);
+				await writeInput(result, KEYS.enter);
+				// Navigate to Remove Background (index 3)
+				await waitUntil(
+					() => stripAnsi(result.lastFrame() ?? "").includes("Variations"),
+					{ timeoutMs: 3000 },
+				);
+				await writeInput(result, KEYS.down);
+				await waitUntil(
+					() => {
+						const frame = stripAnsi(result.lastFrame() ?? "");
+						return frame.includes("◆") && frame.includes("Variations");
+					},
+					{ timeoutMs: 3000 },
+				);
+				await writeInput(result, KEYS.down);
+				await waitUntil(
+					() => {
+						const frame = stripAnsi(result.lastFrame() ?? "");
+						return frame.includes("◆") && frame.includes("Upscale");
+					},
+					{ timeoutMs: 3000 },
+				);
+				await writeInput(result, KEYS.down);
+				await waitUntil(
+					() => {
+						const frame = stripAnsi(result.lastFrame() ?? "");
+						return frame.includes("◆") && frame.includes("Remove Background");
+					},
+					{ timeoutMs: 3000 },
+				);
+				await writeInput(result, KEYS.enter);
+				// Wait for confirm step
+				await waitUntil(
+					() =>
+						stripAnsi(result.lastFrame() ?? "").includes("Ready to process"),
+					{ timeoutMs: 3000 },
+				);
+				// Press y to start processing
+				await writeInput(result, "y");
+				// Wait for done step
+				await waitUntil(
+					() => stripAnsi(result.lastFrame() ?? "").includes("Complete"),
+					{ timeoutMs: 5000 },
+				);
+				const output = stripAnsi(result.lastFrame() ?? "");
+				expect(output).toContain("Complete");
+				// Press enter to invoke onComplete
+				await writeInput(result, KEYS.enter);
+				expect(onComplete).toHaveBeenCalled();
+			} finally {
+				result.unmount();
+			}
+		});
+	});
+
+	// Task 1.7: Property test for upscale factor selection
+	// Feature: phase4-studio-ui-tests, Property 5: Upscale factor selection
+	// **Validates: Requirements 6.3**
+	it("property: upscale factor selection displays correct factor on confirm", async () => {
+		await fc.assert(
+			fc.asyncProperty(fc.constantFrom(2, 4, 6, 8), async (factor) => {
+				const onBack = mock(() => {});
+				const onComplete = mock(() => {});
+				const onError = mock(() => {});
+				const result = render(
+					<EditScreen
+						config={baseConfig}
+						onBack={onBack}
+						onComplete={onComplete}
+						onError={onError}
+					/>,
+				);
+				try {
+					// Select image
+					await waitUntil(
+						() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
+						{ timeoutMs: 3000 },
+					);
+					await writeInput(result, KEYS.enter);
+					// Navigate to Upscale (index 2)
+					await waitUntil(
+						() => stripAnsi(result.lastFrame() ?? "").includes("Variations"),
+						{ timeoutMs: 3000 },
+					);
+					await writeInput(result, KEYS.down);
+					await waitUntil(
+						() => {
+							const frame = stripAnsi(result.lastFrame() ?? "");
+							return frame.includes("◆") && frame.includes("Variations");
+						},
+						{ timeoutMs: 3000 },
+					);
+					await writeInput(result, KEYS.down);
+					await waitUntil(
+						() => {
+							const frame = stripAnsi(result.lastFrame() ?? "");
+							return frame.includes("◆") && frame.includes("Upscale");
+						},
+						{ timeoutMs: 3000 },
+					);
+					await writeInput(result, KEYS.enter);
+					// Wait for scale step
+					await waitUntil(
+						() =>
+							stripAnsi(result.lastFrame() ?? "").includes(
+								"Select upscale factor",
+							),
+						{ timeoutMs: 3000 },
+					);
+					// Default is 2x. Navigate up to reach the desired factor.
+					// UPSCALE_FACTORS = [2, 4, 6, 8], up arrow increases
+					const targetIndex = [2, 4, 6, 8].indexOf(factor);
+					for (let i = 0; i < targetIndex; i++) {
+						await writeInput(result, KEYS.up);
+						const expectedFactor = [2, 4, 6, 8][i + 1];
+						await waitUntil(
+							() =>
+								stripAnsi(result.lastFrame() ?? "").includes(
+									`${expectedFactor}x`,
+								),
+							{ timeoutMs: 3000 },
+						);
+					}
+					// Confirm
+					await writeInput(result, KEYS.enter);
+					await waitUntil(
+						() =>
+							stripAnsi(result.lastFrame() ?? "").includes("Ready to process"),
+						{ timeoutMs: 3000 },
+					);
+					const output = stripAnsi(result.lastFrame() ?? "");
+					expect(output).toContain(`${factor}x`);
+				} finally {
+					result.unmount();
+				}
+			}),
+			{ numRuns: 10 },
+		);
+	}, 60_000);
+
+	// Task 1.8: Property test for edit screen seed input
+	// Feature: phase4-studio-ui-tests, Property 6: Edit screen seed input
+	// **Validates: Requirements 7.3**
+	it("property: seed input on confirm step builds correct value", async () => {
+		await fc.assert(
+			fc.asyncProperty(
+				fc.array(fc.integer({ min: 0, max: 9 }), {
+					minLength: 1,
+					maxLength: 4,
+				}),
+				async (digits) => {
+					const onBack = mock(() => {});
+					const onComplete = mock(() => {});
+					const onError = mock(() => {});
+					const result = render(
+						<EditScreen
+							config={baseConfig}
+							onBack={onBack}
+							onComplete={onComplete}
+							onError={onError}
+						/>,
+					);
+					try {
+						// Select image
+						await waitUntil(
+							() =>
+								stripAnsi(result.lastFrame() ?? "").includes("Select image"),
+							{ timeoutMs: 3000 },
+						);
+						await writeInput(result, KEYS.enter);
+						// Navigate to Upscale (index 2)
+						await waitUntil(
+							() => stripAnsi(result.lastFrame() ?? "").includes("Variations"),
+							{ timeoutMs: 3000 },
+						);
+						await writeInput(result, KEYS.down);
+						await waitUntil(
+							() => {
+								const frame = stripAnsi(result.lastFrame() ?? "");
+								return frame.includes("◆") && frame.includes("Variations");
+							},
+							{ timeoutMs: 3000 },
+						);
+						await writeInput(result, KEYS.down);
+						await waitUntil(
+							() => {
+								const frame = stripAnsi(result.lastFrame() ?? "");
+								return frame.includes("◆") && frame.includes("Upscale");
+							},
+							{ timeoutMs: 3000 },
+						);
+						await writeInput(result, KEYS.enter);
+						// Wait for scale step
+						await waitUntil(
+							() =>
+								stripAnsi(result.lastFrame() ?? "").includes(
+									"Select upscale factor",
+								),
+							{ timeoutMs: 3000 },
+						);
+						// Confirm scale to get to confirm step
+						await writeInput(result, KEYS.enter);
+						await waitUntil(
+							() =>
+								stripAnsi(result.lastFrame() ?? "").includes(
+									"Ready to process",
+								),
+							{ timeoutMs: 3000 },
+						);
+						// Type each digit
+						for (const digit of digits) {
+							await writeInput(result, digit.toString());
+						}
+						// Seed is stored as Number, so "00" becomes 0, "01" becomes 1, etc.
+						const expectedSeed = String(Number(digits.join("")));
+						await waitUntil(
+							() => {
+								const frame = stripAnsi(result.lastFrame() ?? "");
+								return frame.includes(`Seed: ${expectedSeed}`);
+							},
+							{ timeoutMs: 3000 },
+						);
+						const output = stripAnsi(result.lastFrame() ?? "");
+						expect(output).toContain(`Seed: ${expectedSeed}`);
+					} finally {
+						result.unmount();
+					}
+				},
+			),
+			{ numRuns: 15 },
+		);
+	}, 60_000);
 
 	// Feature: studio-ui-tests, Property 5: Edit skipToOperation routes to correct step
 	// **Validates: Requirements 3.8**
