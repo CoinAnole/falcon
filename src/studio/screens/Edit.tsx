@@ -71,6 +71,7 @@ interface EditScreenProps {
 	onComplete: () => void;
 	onError: (err: Error) => void;
 	skipToOperation?: boolean;
+	initialOperation?: "edit" | "variations" | "upscale" | "rmbg";
 }
 
 export function EditScreen({
@@ -79,6 +80,7 @@ export function EditScreen({
 	onComplete,
 	onError,
 	skipToOperation = false,
+	initialOperation,
 }: EditScreenProps) {
 	const [step, setStep] = useState<Step>("select");
 	const [mode, setMode] = useState<Mode | null>(null);
@@ -133,12 +135,39 @@ export function EditScreen({
 				setGenerations([...history.generations].reverse());
 				setSelectedGen(latest);
 				if (skipToOperation) {
-					setStep("operation");
+					if (initialOperation) {
+						// Skip directly to the specific operation
+						setMode(initialOperation);
+						const opIndex = OPERATIONS.findIndex(
+							(op) => op.key === initialOperation,
+						);
+						setOperationIndex(opIndex >= 0 ? opIndex : 0);
+						// Set the appropriate step based on operation
+						if (initialOperation === "edit") {
+							// Initialize edit model selection
+							const preferredModel =
+								latest.model && MODELS[latest.model]?.supportsEdit
+									? latest.model
+									: "gpt";
+							setEditModel(preferredModel);
+							setEditModelIndex(EDIT_MODELS.indexOf(preferredModel));
+							setStep("edit-model");
+						} else if (initialOperation === "variations") {
+							setPrompt(latest.prompt);
+							setStep("confirm");
+						} else if (initialOperation === "upscale") {
+							setStep("scale");
+						} else if (initialOperation === "rmbg") {
+							setStep("confirm");
+						}
+					} else {
+						setStep("operation");
+					}
 				}
 			}
 		};
 		loadGenerations();
-	}, [skipToOperation]);
+	}, [skipToOperation, initialOperation, EDIT_MODELS]);
 
 	const proceedFromSelect = () => {
 		if (useCustomPath) {

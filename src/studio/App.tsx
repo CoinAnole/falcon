@@ -27,6 +27,9 @@ export function App({
 	const [screen, setScreen] = useState<Screen>("home");
 	const [error, setError] = useState<string | null>(null);
 	const [editFromGenerate, setEditFromGenerate] = useState(false);
+	const [editInitialOperation, setEditInitialOperation] = useState<
+		"edit" | "variations" | "upscale" | "rmbg" | undefined
+	>(undefined);
 
 	useInput((input, key) => {
 		if (input === "q" && screen === "home") {
@@ -56,10 +59,14 @@ export function App({
 					<GenerateScreen
 						config={config}
 						onBack={() => setScreen("home")}
-						onComplete={(nextScreen?: Screen) => {
+						onComplete={(
+							nextScreen?: Screen,
+							operation?: "edit" | "variations" | "upscale" | "rmbg",
+						) => {
 							onHistoryChange();
 							if (nextScreen === "edit") {
 								setEditFromGenerate(true);
+								setEditInitialOperation(operation);
 							}
 							setScreen(nextScreen || "home");
 						}}
@@ -72,15 +79,18 @@ export function App({
 						config={config}
 						onBack={() => {
 							setEditFromGenerate(false);
+							setEditInitialOperation(undefined);
 							setScreen("home");
 						}}
 						onComplete={() => {
 							setEditFromGenerate(false);
+							setEditInitialOperation(undefined);
 							onHistoryChange();
 							setScreen("home");
 						}}
 						onError={handleError}
 						skipToOperation={editFromGenerate}
+						initialOperation={editInitialOperation}
 					/>
 				);
 			case "gallery":

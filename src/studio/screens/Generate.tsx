@@ -113,7 +113,10 @@ const POST_ACTIONS: { key: PostAction; label: string; description: string }[] =
 interface GenerateScreenProps {
 	config: FalconConfig;
 	onBack: () => void;
-	onComplete: (nextScreen?: "home" | "edit" | "generate") => void;
+	onComplete: (
+		nextScreen?: "home" | "edit" | "generate",
+		operation?: "edit" | "variations" | "upscale" | "rmbg",
+	) => void;
 	onError: (err: Error) => void;
 }
 
@@ -385,7 +388,7 @@ export function GenerateScreen({
 					case "variations":
 					case "upscale":
 					case "rmbg":
-						onComplete("edit");
+						onComplete("edit", action);
 						break;
 					case "regenerate":
 						// Reset to model selection with same prompt
