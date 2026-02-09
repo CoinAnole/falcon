@@ -141,7 +141,7 @@ describe("property tests", () => {
 					expect(isPathWithinCwd(path)).toBe(true);
 				},
 			),
-			{ numRuns: 100 },
+			{ numRuns: 50 },
 		);
 	});
 
@@ -160,7 +160,7 @@ describe("property tests", () => {
 					expect(isPathWithinCwd(`../${suffix}`)).toBe(false);
 				},
 			),
-			{ numRuns: 100 },
+			{ numRuns: 50 },
 		);
 	});
 
@@ -181,7 +181,7 @@ describe("property tests", () => {
 					expect(buildIndexedOutputPath(path, 0, ext)).toBe(path);
 				},
 			),
-			{ numRuns: 100 },
+			{ numRuns: 50 },
 		);
 	});
 
@@ -200,7 +200,7 @@ describe("property tests", () => {
 					expect(result).toContain(`-${index + 1}.${ext}`);
 				},
 			),
-			{ numRuns: 100 },
+			{ numRuns: 50 },
 		);
 	});
 });

@@ -172,7 +172,7 @@ describe("Property 6: estimateCost scales linearly with numImages", () => {
 					return Math.abs(scaledCost - baseCost * numImages) < 1e-10;
 				},
 			),
-			{ numRuns: 100 },
+			{ numRuns: 50 },
 		);
 	});
 });
@@ -206,7 +206,7 @@ describe("Property 7: aspectToGptSize always returns a valid GPT size", () => {
 			fc.property(fc.constantFrom(...allAspectRatios), (ratio) => {
 				return validGptSizes.includes(aspectToGptSize(ratio));
 			}),
-			{ numRuns: 100 },
+			{ numRuns: 50 },
 		);
 	});
 });

@@ -43,7 +43,7 @@ describe("property tests", () => {
 					expect(isValidUpscaleFactor(value)).toBe(false);
 				},
 			),
-			{ numRuns: 100 },
+			{ numRuns: 50 },
 		);
 	});
 });

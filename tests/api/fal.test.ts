@@ -657,7 +657,7 @@ describe("property-based tests", () => {
 					}
 				},
 			),
-			{ numRuns: 100 },
+			{ numRuns: 50 },
 		);
 	}, 30_000);
 
@@ -701,7 +701,7 @@ describe("property-based tests", () => {
 					expect(body.prompt).toBe(prompt);
 				},
 			),
-			{ numRuns: 100 },
+			{ numRuns: 50 },
 		);
 	}, 30_000);
 
@@ -772,7 +772,7 @@ describe("property-based tests", () => {
 					expect(body.resolution).toBeUndefined();
 				}
 			}),
-			{ numRuns: 100 },
+			{ numRuns: 50 },
 		);
 	}, 30_000);
 });

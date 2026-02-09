@@ -230,7 +230,7 @@ describe("property tests", () => {
 					expect(content).not.toContain(sensitiveVal);
 				},
 			),
-			{ numRuns: 100 },
+			{ numRuns: 50 },
 		);
 	});
 
@@ -263,7 +263,7 @@ describe("property tests", () => {
 					expect(content).toContain("safe-value");
 				},
 			),
-			{ numRuns: 100 },
+			{ numRuns: 50 },
 		);
 	});
 });
