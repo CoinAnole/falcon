@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme {
+	--color-bg: #0a0a0a;
+	--color-surface: #141414;
+	--color-surface-2: #1e1e1e;
+	--color-border: #2a2a2a;
+	--color-text: #e5e5e5;
+	--color-text-muted: #737373;
+	--color-accent: #f97316;
+	--color-accent-hover: #fb923c;
+}
+
+body {
+	background-color: var(--color-bg);
+	color: var(--color-text);
+}
+
+/* Skeleton pulse animation */
+@keyframes skeleton-pulse {
+	0%,
+	100% {
+		opacity: 0.4;
+	}
+	50% {
+		opacity: 0.7;
+	}
+}
+
+.skeleton {
+	animation: skeleton-pulse 1.5s ease-in-out infinite;
+	background-color: var(--color-surface-2);
+}
