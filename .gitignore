@@ -8,6 +8,9 @@ dist/
 .vscode
 .kiro
 .kilocode
+# Test directories
+.falcon-test-*/
+.falcon-test-output-*/
 # Generated images
 falcon-*.png
 falcon-*.jpg
@@ -15,9 +18,36 @@ falcon-*.webp
 falcon-edit-*.png
 falcon-edit-*.jpg
 falcon-edit-*.webp
+falcon-upscale-*.png
+falcon-upscale-*.jpg
+falcon-upscale-*.webp
+falcon-nobg-*.png
+falcon-nobg-*.jpg
+falcon-nobg-*.webp
 fal-*.png
 fal-*.jpg
 fal-*.webp
 edit-*.png
 edit-*.jpg
 edit-*.webp
+test-out.png
+test-out.jpg
+test-out.webp
+test-output.png
+test-output.jpg
+test-output.webp
+*-up2x.png
+*-up4x.png
+*-up6x.png
+*-up8x.png
+*-nobg.png
+*-nobg.jpg
+*-nobg.webp
+*-up2x.jpg
+*-up4x.jpg
+*-up6x.jpg
+*-up8x.jpg
+*-up2x.webp
+*-up4x.webp
+*-up6x.webp
+*-up8x.webp

@@ -11,7 +11,7 @@ import {
 import { join } from "node:path";
 import fc from "fast-check";
 import type { Generation } from "../../src/utils/config";
-import { runCli } from "../helpers/cli";
+import { getTestOutputDir, runCli } from "../helpers/cli";
 import { getTestHome } from "../helpers/env";
 
 const PRESET_MAPPINGS = [
@@ -185,7 +185,7 @@ describe("cli", () => {
 	});
 
 	describe("output control", () => {
-		const outputFile = join(process.cwd(), "test-out.png");
+		const outputFile = join(getTestOutputDir(), "test-out.png");
 
 		afterAll(() => {
 			if (existsSync(outputFile)) {
@@ -205,7 +205,7 @@ describe("cli", () => {
 
 		it("--output saves to specified path", async () => {
 			const result = await runCli(
-				["a test prompt", "--output", "test-out.png", "--no-open"],
+				["a test prompt", "--output", outputFile, "--no-open"],
 				{
 					FAL_KEY: "test-key",
 					FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
