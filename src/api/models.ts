@@ -23,6 +23,7 @@ export interface ModelConfig {
 	supportsResolution: boolean;
 	supportsEdit: boolean;
 	supportsNumImages: boolean;
+	maxReferenceImages?: number;
 	defaultParams?: Record<string, unknown>;
 }
 
@@ -37,6 +38,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		supportsResolution: false,
 		supportsEdit: true,
 		supportsNumImages: true,
+		maxReferenceImages: 4,
 		defaultParams: { quality: "high" },
 	},
 	banana: {
@@ -48,6 +50,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		supportsResolution: true,
 		supportsEdit: true,
 		supportsNumImages: true,
+		maxReferenceImages: 14,
 	},
 	gemini: {
 		name: "Gemini 2.5 Flash",
@@ -58,6 +61,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		supportsResolution: false,
 		supportsEdit: true,
 		supportsNumImages: true,
+		maxReferenceImages: 4,
 	},
 	gemini3: {
 		name: "Gemini 3 Pro",
@@ -68,6 +72,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		supportsResolution: true,
 		supportsEdit: true,
 		supportsNumImages: true,
+		maxReferenceImages: 4,
 	},
 
 	// Utility models
@@ -160,10 +165,12 @@ export function aspectToGptSize(aspect: AspectRatio): string {
 export function estimateCost(
 	model: string,
 	resolution?: Resolution,
-	numImages: number = 1,
+	numImages = 1
 ): number {
 	const config = MODELS[model];
-	if (!config) return 0;
+	if (!config) {
+		return 0;
+	}
 
 	let baseCost = 0;
 	switch (model) {

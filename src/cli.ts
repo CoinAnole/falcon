@@ -5,6 +5,9 @@ import { Command } from "commander";
 import ora from "ora";
 
 import { generate, removeBackground, upscale } from "./api/fal";
+
+const IMAGE_EXT_REGEX = /\.(png|jpg|jpeg|webp)$/i;
+
 import {
 	ASPECT_RATIOS,
 	type AspectRatio,
@@ -24,22 +27,24 @@ import {
 	loadHistory,
 } from "./utils/config";
 import {
-	deleteTempFile,
 	downloadImage,
 	generateFilename,
 	getFileSize,
 	getImageDimensions,
 	imageToDataUrl,
 	openImage,
-	resizeImage,
 } from "./utils/image";
 
 /**
  * Get error message safely from unknown error type
  */
 function getErrorMessage(err: unknown): string {
-	if (err instanceof Error) return err.message;
-	if (typeof err === "string") return err;
+	if (err instanceof Error) {
+		return err.message;
+	}
+	if (typeof err === "string") {
+		return err;
+	}
 	return "Unknown error";
 }
 
@@ -54,7 +59,7 @@ function validateOutputPath(outputPath: string): string {
 	const rel = relative(cwd, resolved);
 	if (rel.startsWith("..") || isAbsolute(rel)) {
 		throw new Error(
-			`Output path must be within current directory: ${outputPath}`,
+			`Output path must be within current directory: ${outputPath}`
 		);
 	}
 
@@ -73,10 +78,12 @@ function validateEditPath(editPath: string): string {
 
 	const ext = resolved.toLowerCase();
 	if (
-		!ext.endsWith(".png") &&
-		!ext.endsWith(".jpg") &&
-		!ext.endsWith(".jpeg") &&
-		!ext.endsWith(".webp")
+		!(
+			ext.endsWith(".png") ||
+			ext.endsWith(".jpg") ||
+			ext.endsWith(".jpeg") ||
+			ext.endsWith(".webp")
+		)
 	) {
 		throw new Error(`Edit image must be PNG, JPG, or WebP: ${editPath}`);
 	}
@@ -86,7 +93,7 @@ function validateEditPath(editPath: string): string {
 
 interface CliOptions {
 	model?: string;
-	edit?: string;
+	edit?: string[];
 	aspect?: string;
 	resolution?: string;
 	output?: string;
@@ -108,6 +115,7 @@ interface CliOptions {
 	ultra?: boolean;
 	// Output options
 	transparent?: boolean;
+	loose?: boolean;
 	last?: boolean;
 	vary?: boolean;
 	up?: boolean;
@@ -126,12 +134,13 @@ export async function runCli(args: string[]): Promise<void> {
 		.argument("[prompt]", "Image generation prompt")
 		.option(
 			"-m, --model <model>",
-			`Model to use (${GENERATION_MODELS.join(", ")})`,
+			`Model to use (${GENERATION_MODELS.join(", ")})`
 		)
-		.option("-e, --edit <file>", "Edit an existing image")
+		.option("-e, --edit <files...>", "Reference image(s) for editing")
+		.option("--loose", "Use reference as loose inspiration (GPT only)")
 		.option(
 			"-a, --aspect <ratio>",
-			`Aspect ratio (${ASPECT_RATIOS.join(", ")})`,
+			`Aspect ratio (${ASPECT_RATIOS.join(", ")})`
 		)
 		.option("-r, --resolution <res>", `Resolution (${RESOLUTIONS.join(", ")})`)
 		.option("-o, --output <file>", "Output filename")
@@ -173,7 +182,11 @@ export async function runCli(args: string[]): Promise<void> {
 
 	// Validate API key for operations that need it
 	const requiresApiKey =
-		prompt || options.vary || options.up || options.rmbg || options.edit;
+		prompt ||
+		options.vary ||
+		options.up ||
+		options.rmbg ||
+		options.edit?.length;
 	if (requiresApiKey) {
 		try {
 			getApiKey(config);
@@ -221,10 +234,10 @@ async function showLastGeneration(): Promise<void> {
 
 	console.log(chalk.bold("\nLast Generation:"));
 	console.log(
-		`  Prompt: ${chalk.cyan(last.prompt.slice(0, 60))}${last.prompt.length > 60 ? "..." : ""}`,
+		`  Prompt: ${chalk.cyan(last.prompt.slice(0, 60))}${last.prompt.length > 60 ? "..." : ""}`
 	);
 	console.log(
-		`  Model:  ${chalk.green(MODELS[last.model]?.name || last.model)}`,
+		`  Model:  ${chalk.green(MODELS[last.model]?.name || last.model)}`
 	);
 	console.log(`  Aspect: ${last.aspect} | Resolution: ${last.resolution}`);
 	console.log(`  Output: ${chalk.dim(last.output)}`);
@@ -232,52 +245,156 @@ async function showLastGeneration(): Promise<void> {
 	console.log(`  Time:   ${new Date(last.timestamp).toLocaleString()}`);
 }
 
+/**
+ * Resolve aspect ratio and resolution from CLI preset flags
+ */
+function resolvePreset(
+	options: CliOptions,
+	defaultAspect: AspectRatio,
+	defaultResolution: Resolution
+): { aspect: AspectRatio; resolution: Resolution } {
+	if (options.cover) {
+		return { aspect: "2:3", resolution: "2K" };
+	}
+	if (options.story || options.reel) {
+		return { aspect: "9:16", resolution: defaultResolution };
+	}
+	if (options.feed) {
+		return { aspect: "4:5", resolution: defaultResolution };
+	}
+	if (options.og) {
+		return { aspect: "16:9", resolution: defaultResolution };
+	}
+	if (options.wallpaper) {
+		return { aspect: "9:16", resolution: "2K" };
+	}
+	if (options.ultra) {
+		return { aspect: "21:9", resolution: "2K" };
+	}
+	if (options.wide) {
+		return { aspect: "21:9", resolution: defaultResolution };
+	}
+	if (options.square) {
+		return { aspect: "1:1", resolution: defaultResolution };
+	}
+	if (options.landscape) {
+		return { aspect: "16:9", resolution: defaultResolution };
+	}
+	if (options.portrait) {
+		return { aspect: "2:3", resolution: defaultResolution };
+	}
+	return {
+		aspect: (options.aspect as AspectRatio) || defaultAspect,
+		resolution: (options.resolution as Resolution) || defaultResolution,
+	};
+}
+
+/**
+ * Validate edit/reference image paths from CLI options
+ */
+function resolveEditPaths(
+	editFiles: string[] | undefined,
+	modelConfig: { maxReferenceImages?: number; name: string }
+): string[] | undefined {
+	if (!editFiles?.length) {
+		return undefined;
+	}
+
+	const maxRef = modelConfig.maxReferenceImages || 1;
+	if (editFiles.length > maxRef) {
+		console.error(
+			chalk.red(
+				`${modelConfig.name} supports at most ${maxRef} reference images, got ${editFiles.length}`
+			)
+		);
+		process.exit(1);
+	}
+
+	try {
+		return editFiles.map((p) => validateEditPath(p));
+	} catch (err) {
+		console.error(chalk.red(getErrorMessage(err)));
+		process.exit(1);
+	}
+}
+
+/**
+ * Download generated images, log results, and record in history
+ */
+async function saveGeneratedImages(
+	images: { url: string }[],
+	outputPath: string,
+	numImages: number,
+	meta: {
+		prompt: string;
+		model: string;
+		aspect: AspectRatio;
+		resolution: Resolution;
+		editPaths?: string[];
+	},
+	config: Awaited<ReturnType<typeof loadConfig>>,
+	noOpen?: boolean
+): Promise<void> {
+	for (let i = 0; i < images.length; i++) {
+		const image = images[i];
+		const path =
+			numImages > 1 ? outputPath.replace(".png", `-${i + 1}.png`) : outputPath;
+
+		await downloadImage(image.url, path);
+
+		const dims = await getImageDimensions(path);
+		const size = await getFileSize(path);
+
+		console.log(
+			chalk.green(`✓ Saved: ${path}`) +
+				chalk.dim(` (${dims ? `${dims.width}x${dims.height}` : "?"}, ${size})`)
+		);
+
+		// Record generation
+		const generation: Generation = {
+			id: generateId(),
+			prompt: meta.prompt,
+			model: meta.model,
+			aspect: meta.aspect,
+			resolution: meta.resolution,
+			output: resolve(path),
+			cost: estimateCost(meta.model, meta.resolution, 1),
+			timestamp: new Date().toISOString(),
+			editedFrom: meta.editPaths?.[0] ? resolve(meta.editPaths[0]) : undefined,
+		};
+		await addGeneration(generation);
+
+		// Open first image
+		if (i === 0 && config.openAfterGenerate && !noOpen) {
+			await openImage(path);
+		}
+	}
+
+	// Show cost summary
+	const history = await loadHistory();
+	console.log(
+		chalk.dim(
+			`\nSession: $${history.totalCost.session.toFixed(2)} | Today: $${history.totalCost.today.toFixed(2)}`
+		)
+	);
+}
+
 async function generateImage(
 	prompt: string,
 	options: CliOptions,
-	config: Awaited<ReturnType<typeof loadConfig>>,
+	config: Awaited<ReturnType<typeof loadConfig>>
 ): Promise<void> {
-	// Apply presets
-	let aspect: AspectRatio =
-		(options.aspect as AspectRatio) || config.defaultAspect;
-	let resolution: Resolution =
-		(options.resolution as Resolution) || config.defaultResolution;
-
-	// Apply presets (in priority order)
-	if (options.cover) {
-		// Kindle/eBook cover: 1600×2560 recommended, 2:3 is closest (1600×2400)
-		aspect = "2:3";
-		resolution = "2K";
-	} else if (options.story || options.reel) {
-		// Instagram Story/Reel: 1080×1920 (9:16)
-		aspect = "9:16";
-	} else if (options.feed) {
-		// Instagram Feed portrait: 1080×1350 (4:5)
-		aspect = "4:5";
-	} else if (options.og) {
-		// Open Graph social share: 1200×630 (~1.91:1), 16:9 is closest
-		aspect = "16:9";
-	} else if (options.wallpaper) {
-		// iPhone wallpaper: 9:16 works for most models
-		aspect = "9:16";
-		resolution = "2K";
-	} else if (options.ultra) {
-		// Ultra-wide banner: 21:9, high res
-		aspect = "21:9";
-		resolution = "2K";
-	} else if (options.wide) {
-		// Cinematic wide: 21:9
-		aspect = "21:9";
-	} else if (options.square) {
-		aspect = "1:1";
-	} else if (options.landscape) {
-		aspect = "16:9";
-	} else if (options.portrait) {
-		aspect = "2:3";
-	}
+	const { aspect, resolution } = resolvePreset(
+		options,
+		config.defaultAspect,
+		config.defaultResolution
+	);
 
 	const model = options.model || config.defaultModel;
-	const numImages = Math.min(4, Math.max(1, parseInt(options.num || "1", 10)));
+	const numImages = Math.min(
+		4,
+		Math.max(1, Number.parseInt(options.num || "1", 10))
+	);
 
 	// Validate output path if specified
 	let outputPath: string;
@@ -301,35 +418,20 @@ async function generateImage(
 	console.log(chalk.bold(`\nModel: ${modelConfig.name}`));
 	if (modelConfig.supportsAspect) {
 		console.log(
-			`Aspect: ${aspect} | Resolution: ${modelConfig.supportsResolution ? resolution : "N/A"}`,
+			`Aspect: ${aspect} | Resolution: ${modelConfig.supportsResolution ? resolution : "N/A"}`
 		);
 	}
 	console.log(
-		`Prompt: ${chalk.dim(prompt.slice(0, 80))}${prompt.length > 80 ? "..." : ""}`,
+		`Prompt: ${chalk.dim(prompt.slice(0, 80))}${prompt.length > 80 ? "..." : ""}`
 	);
 	console.log(
-		`Est. cost: ${chalk.yellow(`$${estimateCost(model, resolution, numImages).toFixed(3)}`)}`,
+		`Est. cost: ${chalk.yellow(`$${estimateCost(model, resolution, numImages).toFixed(3)}`)}`
 	);
 
-	// Handle edit mode
-	let editImageData: string | undefined;
-	let editPath: string | undefined;
-	if (options.edit) {
-		try {
-			editPath = validateEditPath(options.edit);
-		} catch (err) {
-			console.error(chalk.red(getErrorMessage(err)));
-			process.exit(1);
-		}
-		console.log(`Editing: ${chalk.dim(editPath)}`);
-
-		const resized = await resizeImage(editPath, 1024);
-		editImageData = await imageToDataUrl(resized);
-
-		// Clean up temp file using safe utility
-		if (resized !== editPath) {
-			deleteTempFile(resized);
-		}
+	// Handle edit/reference mode — validate paths, upload happens in generate()
+	const editPaths = resolveEditPaths(options.edit, modelConfig);
+	if (editPaths) {
+		console.log(`References: ${chalk.dim(editPaths.join(", "))}`);
 	}
 
 	const spinner = ora("Generating...").start();
@@ -341,58 +443,20 @@ async function generateImage(
 			aspect,
 			resolution,
 			numImages,
-			editImage: editImageData,
+			editImages: editPaths,
 			transparent: options.transparent,
+			inputFidelity: options.loose ? "low" : undefined,
 		});
 
 		spinner.succeed("Generated!");
 
-		// Download all images
-		for (let i = 0; i < result.images.length; i++) {
-			const image = result.images[i];
-			const path =
-				numImages > 1
-					? outputPath.replace(".png", `-${i + 1}.png`)
-					: outputPath;
-
-			await downloadImage(image.url, path);
-
-			const dims = await getImageDimensions(path);
-			const size = await getFileSize(path);
-
-			console.log(
-				chalk.green(`✓ Saved: ${path}`) +
-					chalk.dim(
-						` (${dims ? `${dims.width}x${dims.height}` : "?"}, ${size})`,
-					),
-			);
-
-			// Record generation
-			const generation: Generation = {
-				id: generateId(),
-				prompt,
-				model,
-				aspect,
-				resolution,
-				output: resolve(path),
-				cost: estimateCost(model, resolution, 1),
-				timestamp: new Date().toISOString(),
-				editedFrom: options.edit ? resolve(options.edit) : undefined,
-			};
-			await addGeneration(generation);
-
-			// Open first image
-			if (i === 0 && config.openAfterGenerate && !options.noOpen) {
-				await openImage(path);
-			}
-		}
-
-		// Show cost summary
-		const history = await loadHistory();
-		console.log(
-			chalk.dim(
-				`\nSession: $${history.totalCost.session.toFixed(2)} | Today: $${history.totalCost.today.toFixed(2)}`,
-			),
+		await saveGeneratedImages(
+			result.images,
+			outputPath,
+			numImages,
+			{ prompt, model, aspect, resolution, editPaths },
+			config,
+			options.noOpen
 		);
 	} catch (err) {
 		spinner.fail("Generation failed");
@@ -404,7 +468,7 @@ async function generateImage(
 async function generateVariations(
 	customPrompt: string | undefined,
 	options: CliOptions,
-	config: Awaited<ReturnType<typeof loadConfig>>,
+	config: Awaited<ReturnType<typeof loadConfig>>
 ): Promise<void> {
 	const last = await getLastGeneration();
 	if (!last) {
@@ -414,7 +478,10 @@ async function generateVariations(
 
 	// Use the last prompt or a custom one
 	const prompt = customPrompt || last.prompt;
-	const numImages = Math.min(4, Math.max(1, parseInt(options.num || "4", 10)));
+	const numImages = Math.min(
+		4,
+		Math.max(1, Number.parseInt(options.num || "4", 10))
+	);
 
 	console.log(chalk.bold("\nGenerating variations..."));
 	console.log(`Base: ${chalk.dim(last.prompt.slice(0, 50))}...`);
@@ -429,14 +496,14 @@ async function generateVariations(
 			resolution: options.resolution || last.resolution,
 			num: String(numImages),
 		},
-		config,
+		config
 	);
 }
 
 async function upscaleLast(
 	imagePath: string | undefined,
 	options: CliOptions,
-	config: Awaited<ReturnType<typeof loadConfig>>,
+	config: Awaited<ReturnType<typeof loadConfig>>
 ): Promise<void> {
 	let sourceImagePath: string;
 	let sourcePrompt = "[upscale]";
@@ -464,9 +531,10 @@ async function upscaleLast(
 		sourceResolution = last.resolution;
 	}
 
-	const scaleFactor = parseInt(options.scale || "2", 10);
+	const scaleFactor = Number.parseInt(options.scale || "2", 10);
 	const outputPath =
-		options.output || sourceImagePath.replace(/\.(png|jpg|jpeg|webp)$/i, `-up${scaleFactor}x.png`);
+		options.output ||
+		sourceImagePath.replace(IMAGE_EXT_REGEX, `-up${scaleFactor}x.png`);
 
 	console.log(chalk.bold("\nUpscaling..."));
 	console.log(`Source: ${chalk.dim(sourceImagePath)}`);
@@ -493,7 +561,7 @@ async function upscaleLast(
 
 		console.log(
 			chalk.green(`✓ Saved: ${outputPath}`) +
-				chalk.dim(` (${dims ? `${dims.width}x${dims.height}` : "?"}, ${size})`),
+				chalk.dim(` (${dims ? `${dims.width}x${dims.height}` : "?"}, ${size})`)
 		);
 
 		// Record as generation
@@ -521,12 +589,12 @@ async function upscaleLast(
 
 async function removeBackgroundLast(
 	options: CliOptions,
-	config: Awaited<ReturnType<typeof loadConfig>>,
+	config: Awaited<ReturnType<typeof loadConfig>>
 ): Promise<void> {
 	const last = await getLastGeneration();
 	if (!last) {
 		console.error(
-			chalk.red("No previous generation to remove background from"),
+			chalk.red("No previous generation to remove background from")
 		);
 		process.exit(1);
 	}
@@ -556,7 +624,7 @@ async function removeBackgroundLast(
 
 		console.log(
 			chalk.green(`✓ Saved: ${outputPath}`) +
-				chalk.dim(` (${dims ? `${dims.width}x${dims.height}` : "?"}, ${size})`),
+				chalk.dim(` (${dims ? `${dims.width}x${dims.height}` : "?"}, ${size})`)
 		);
 
 		await addGeneration({
@@ -595,7 +663,8 @@ ${chalk.bold("Usage:")}
 
 ${chalk.bold("Options:")}
   -m, --model <model>      Model: gpt, banana, gemini, gemini3
-  -e, --edit <file>        Edit an existing image with prompt
+  -e, --edit <files...>    Reference image(s) for editing
+  --loose                  Use reference as loose inspiration (GPT only)
   -a, --aspect <ratio>     Aspect ratio (see below)
   -r, --resolution <res>   Resolution: 1K, 2K, 4K
   -o, --output <file>      Output filename
@@ -634,6 +703,8 @@ ${chalk.bold("Examples:")}
   falcon "a cat on a windowsill" -m gpt
   falcon "urban landscape" --landscape -r 4K
   falcon "add rain" -e photo.png
+  falcon "blend these" -e img1.png img2.png -m banana
+  falcon "a sunset" -e photo.png --loose -m gpt
   falcon --vary -n 4
   falcon --up --scale 4
   falcon --rmbg

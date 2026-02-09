@@ -104,7 +104,7 @@ export async function loadConfig(): Promise<FalconConfig> {
 			config = { ...config, ...globalConfig };
 		} catch (err) {
 			console.error(
-				`Warning: Failed to parse ${CONFIG_PATH}: ${(err as Error).message}`,
+				`Warning: Failed to parse ${CONFIG_PATH}: ${(err as Error).message}`
 			);
 			console.error("Using default configuration.");
 		}
@@ -118,7 +118,7 @@ export async function loadConfig(): Promise<FalconConfig> {
 			config = { ...config, ...localConfig };
 		} catch (err) {
 			console.error(
-				`Warning: Failed to parse ${LOCAL_CONFIG_PATH}: ${(err as Error).message}`,
+				`Warning: Failed to parse ${LOCAL_CONFIG_PATH}: ${(err as Error).message}`
 			);
 		}
 	}
@@ -165,7 +165,7 @@ export async function loadHistory(): Promise<History> {
 		return history;
 	} catch (err) {
 		console.error(
-			`Warning: Failed to load history from ${HISTORY_PATH}: ${(err as Error).message}`,
+			`Warning: Failed to load history from ${HISTORY_PATH}: ${(err as Error).message}`
 		);
 		console.error("Starting with empty history.");
 		return { ...DEFAULT_HISTORY };
@@ -199,19 +199,23 @@ export async function addGeneration(generation: Generation): Promise<void> {
 export async function getLastGeneration(): Promise<Generation | null> {
 	const history = await loadHistory();
 	// Generations are stored oldest-first, so last element is most recent
-	return history.generations[history.generations.length - 1] || null;
+	return history.generations.at(-1) || null;
 }
 
 export function getApiKey(config: FalconConfig): string {
 	// Environment variable takes precedence
 	const envKey = process.env.FAL_KEY;
-	if (envKey) return envKey;
+	if (envKey) {
+		return envKey;
+	}
 
 	// Fall back to config
-	if (config.apiKey) return config.apiKey;
+	if (config.apiKey) {
+		return config.apiKey;
+	}
 
 	throw new Error(
-		"FAL_KEY not found. Set FAL_KEY environment variable or add apiKey to ~/.falcon/config.json",
+		"FAL_KEY not found. Set FAL_KEY environment variable or add apiKey to ~/.falcon/config.json"
 	);
 }
 

@@ -6,6 +6,7 @@ import {
 } from "./models";
 
 const FAL_BASE_URL = "https://fal.run";
+const FAL_REST_URL = "https://rest.alpha.fal.ai";
 
 export interface GenerateOptions {
 	prompt: string;
@@ -13,8 +14,9 @@ export interface GenerateOptions {
 	aspect?: AspectRatio;
 	resolution?: Resolution;
 	numImages?: number;
-	editImage?: string; // base64 data URL for edit mode
+	editImages?: string[]; // file paths or CDN URLs for edit/reference mode
 	transparent?: boolean; // Generate with transparent background (GPT model only)
+	inputFidelity?: "low" | "high"; // GPT edit mode: low = loose inspiration, high = preserve composition
 }
 
 export interface UpscaleOptions {
@@ -54,14 +56,18 @@ function setApiKey(key: string): void {
 
 function getApiKey(): string {
 	// Check manually set key first
-	if (_apiKey) return _apiKey;
+	if (_apiKey) {
+		return _apiKey;
+	}
 
 	// Check environment variable
 	const envKey = process.env.FAL_KEY;
-	if (envKey) return envKey;
+	if (envKey) {
+		return envKey;
+	}
 
 	throw new Error(
-		"FAL_KEY not found. Set FAL_KEY environment variable or configure in ~/.falcon/config.json",
+		"FAL_KEY not found. Set FAL_KEY environment variable or configure in ~/.falcon/config.json"
 	);
 }
 
@@ -72,8 +78,9 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 		aspect = "9:16",
 		resolution = "2K",
 		numImages = 1,
-		editImage,
+		editImages,
 		transparent,
+		inputFidelity,
 	} = options;
 
 	const config = MODELS[model];
@@ -87,7 +94,10 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 	const body: Record<string, unknown> = { prompt };
 
 	if (model === "gpt") {
-		body.image_size = aspectToGptSize(aspect);
+		// Only set image_size for generation mode — edit mode preserves source dimensions
+		if (!editImages?.length) {
+			body.image_size = aspectToGptSize(aspect);
+		}
 		body.quality = "high";
 		// Transparency support for GPT model
 		if (transparent) {
@@ -107,13 +117,23 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 		body.num_images = numImages;
 	}
 
-	// Handle edit mode
-	if (editImage) {
+	// Handle edit/reference mode — upload files to fal CDN, then pass URLs
+	if (editImages?.length) {
 		if (!config.supportsEdit) {
 			throw new Error(`Model ${model} does not support image editing`);
 		}
 		endpoint = `${endpoint}/edit`;
-		body.image_urls = [editImage];
+
+		const imageUrls = await Promise.all(
+			editImages.map((img) =>
+				img.startsWith("http") ? Promise.resolve(img) : uploadFile(img)
+			)
+		);
+		body.image_urls = imageUrls;
+
+		if (model === "gpt" && inputFidelity) {
+			body.input_fidelity = inputFidelity;
+		}
 	}
 
 	const response = await fetch(endpoint, {
@@ -180,7 +200,7 @@ export async function upscale(options: UpscaleOptions): Promise<FalResponse> {
 }
 
 export async function removeBackground(
-	options: RemoveBackgroundOptions,
+	options: RemoveBackgroundOptions
 ): Promise<FalResponse> {
 	const { imageUrl, model = "rmbg" } = options;
 
@@ -210,6 +230,59 @@ export async function removeBackground(
 	}
 
 	return data as FalResponse;
+}
+
+/**
+ * Upload a local file to fal.ai CDN storage and return the public URL.
+ * Uses the two-step initiate + PUT flow.
+ */
+export async function uploadFile(filePath: string): Promise<string> {
+	const file = Bun.file(filePath);
+	const contentType = file.type || "application/octet-stream";
+	const fileName = filePath.split("/").pop() || "upload.bin";
+
+	// Step 1: Initiate upload to get presigned URL
+	const initiateResponse = await fetch(
+		`${FAL_REST_URL}/storage/upload/initiate?storage_type=fal-cdn-v3`,
+		{
+			method: "POST",
+			headers: {
+				Authorization: `Key ${getApiKey()}`,
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({
+				content_type: contentType,
+				file_name: fileName,
+			}),
+		}
+	);
+
+	if (!initiateResponse.ok) {
+		throw new Error(
+			`Upload initiate failed: ${initiateResponse.status} ${await initiateResponse.text()}`
+		);
+	}
+
+	const { file_url, upload_url } = (await initiateResponse.json()) as {
+		file_url: string;
+		upload_url: string;
+	};
+
+	// Step 2: PUT the file content to the presigned URL
+	const fileBuffer = await file.arrayBuffer();
+	const putResponse = await fetch(upload_url, {
+		method: "PUT",
+		headers: { "Content-Type": contentType },
+		body: fileBuffer,
+	});
+
+	if (!putResponse.ok) {
+		throw new Error(
+			`Upload PUT failed: ${putResponse.status} ${await putResponse.text()}`
+		);
+	}
+
+	return file_url;
 }
 
 // Re-export for convenience
