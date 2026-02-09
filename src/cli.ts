@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import chalk from "chalk";
 import { Command } from "commander";
@@ -745,6 +744,8 @@ async function upscaleLast(
 	try {
 		// Convert local file to data URL for upload
 		const imageData = await imageToDataUrl(sourceImagePath);
+
+		const seed = options.seed ? Number(options.seed) : undefined;
 
 		const result = await upscale({
 			imageUrl: imageData,

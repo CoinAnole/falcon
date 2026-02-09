@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { generate, removeBackground, upscale } from "../../api/fal";
 import {
 	type AspectRatio,
-	estimateCost,
 	GENERATION_MODELS,
 	MODELS,
 	type Resolution,
@@ -298,6 +297,7 @@ export function EditScreen({
 			let cost = 0;
 			let costDetails: PricingEstimate["costDetails"] | undefined;
 			let promptLabel = "";
+			let resultSeed: number | undefined;
 
 			if (mode === "edit") {
 				setStatus("Preparing image...");
@@ -311,6 +311,7 @@ export function EditScreen({
 					enablePromptExpansion: config.promptExpansion,
 					seed,
 				});
+				resultSeed = result.seed;
 
 				outputPath = validateOutputPath(generateFilename("falcon-edit"));
 				await downloadImage(result.images[0].url, outputPath);
@@ -333,6 +334,7 @@ export function EditScreen({
 					enablePromptExpansion: config.promptExpansion,
 					seed,
 				});
+				resultSeed = result.seed;
 
 				outputPath = validateOutputPath(generateFilename("falcon-edit"));
 				await downloadImage(result.images[0].url, outputPath);
@@ -360,6 +362,7 @@ export function EditScreen({
 					scaleFactor: scale,
 					seed,
 				});
+				resultSeed = result.seed;
 
 				const sourceInCwd = isPathWithinCwd(source.output);
 				outputPath = sourceInCwd
@@ -391,6 +394,7 @@ export function EditScreen({
 					imageUrl: imageData,
 					model: config.backgroundRemover,
 				});
+				resultSeed = result.seed;
 
 				const sourceInCwd = isPathWithinCwd(source.output);
 				outputPath = sourceInCwd
@@ -427,7 +431,7 @@ export function EditScreen({
 				cost,
 				costDetails,
 				timestamp: new Date().toISOString(),
-				seed: result.seed || seed,
+				seed: resultSeed || seed,
 				editedFrom: source.output,
 			});
 
