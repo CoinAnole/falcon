@@ -383,13 +383,13 @@ async function generateImage(
 		// iPhone wallpaper: 9:16 works for most models
 		aspect = "9:16";
 		resolution = "2K";
+	} else if (options.wide) {
+		// Cinematic wide: 21:9
+		aspect = "21:9";
 	} else if (options.ultra) {
 		// Ultra-wide banner: 21:9, high res
 		aspect = "21:9";
 		resolution = "2K";
-	} else if (options.wide) {
-		// Cinematic wide: 21:9
-		aspect = "21:9";
 	} else if (options.square) {
 		aspect = "1:1";
 	} else if (options.landscape) {
@@ -399,12 +399,27 @@ async function generateImage(
 	}
 
 	const model = options.model || config.defaultModel;
+
+	// Validate numImages first - exit immediately on error
 	let numImages: number;
 	try {
 		numImages = parseNumImages(options.num, 1);
 	} catch (err) {
 		console.error(chalk.red(getErrorMessage(err)));
+		await new Promise((resolve) => setTimeout(resolve, 10));
 		process.exit(1);
+		return;
+	}
+
+	// Validate seed early if provided
+	if (options.seed !== undefined) {
+		const seed = Number(options.seed);
+		if (!Number.isInteger(seed)) {
+			console.error(chalk.red("Invalid seed. Use --seed with an integer."));
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			process.exit(1);
+			return;
+		}
 	}
 
 	// Determine output format
