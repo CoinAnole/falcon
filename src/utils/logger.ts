@@ -69,7 +69,7 @@ function formatLogEntry(
 		}
 	}
 
-	return entry + "\n";
+	return `${entry}\n`;
 }
 
 // Sanitize metadata to remove sensitive information
