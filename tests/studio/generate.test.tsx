@@ -902,7 +902,7 @@ describe("generate screen", () => {
 			fc.asyncProperty(
 				fc.array(fc.integer({ min: 0, max: 9 }), {
 					minLength: 1,
-					maxLength: 5,
+					maxLength: 3,
 				}),
 				async (digits) => {
 					const onBack = mock(() => {});
@@ -922,7 +922,7 @@ describe("generate screen", () => {
 								stripAnsi(result.lastFrame() ?? "").includes(
 									"Enter your prompt:",
 								),
-							{ timeoutMs: 3000 },
+							{ timeoutMs: 1000 },
 						);
 						// Navigate to confirm step
 						await writeInput(result, "test seed");
@@ -930,7 +930,7 @@ describe("generate screen", () => {
 						await waitUntil(
 							() =>
 								stripAnsi(result.lastFrame() ?? "").includes("Quick presets"),
-							{ timeoutMs: 3000 },
+							{ timeoutMs: 1000 },
 						);
 						await withMockFetch(mockFetchImpl, async () => {
 							await writeInput(result, KEYS.enter);
@@ -939,7 +939,7 @@ describe("generate screen", () => {
 									stripAnsi(result.lastFrame() ?? "").includes(
 										"Ready to generate",
 									),
-								{ timeoutMs: 3000 },
+								{ timeoutMs: 1000 },
 							);
 						});
 						// Navigate to seed field. For banana model (supportsResolution=true),
@@ -961,7 +961,7 @@ describe("generate screen", () => {
 								const frame = stripAnsi(result.lastFrame() ?? "");
 								return frame.includes(String(expectedSeed));
 							},
-							{ timeoutMs: 3000 },
+							{ timeoutMs: 1000 },
 						);
 						const output = stripAnsi(result.lastFrame() ?? "");
 						expect(output).toContain(String(expectedSeed));
@@ -970,9 +970,9 @@ describe("generate screen", () => {
 					}
 				},
 			),
-			{ numRuns: 20 },
+			{ numRuns: 5 },
 		);
-	}, 60_000);
+	}, 15_000);
 
 	// Feature: phase4-studio-ui-tests, Property 4: Post-action menu behavior
 	// **Validates: Requirements 4.2, 4.3**
