@@ -184,4 +184,122 @@ describe("fal api", () => {
 		const body = JSON.parse(call.init?.body as string);
 		expect(body.seed).toBe(54321);
 	});
+
+	it("builds Banana payload with aspect_ratio, resolution, num_images and no output_format", async () => {
+		setApiKey("test-key");
+		const { calls } = await withMockFetch(
+			async () => {
+				return Response.json({ images: [] });
+			},
+			async () => {
+				await generate({
+					prompt: "test banana",
+					model: "banana",
+					aspect: "16:9",
+					resolution: "4K",
+					numImages: 2,
+					outputFormat: "webp",
+				});
+			},
+		);
+
+		const call = calls[0];
+		expect(call.input.toString()).toContain("fal-ai/nano-banana-pro");
+		const body = JSON.parse(call.init?.body as string) as Record<
+			string,
+			unknown
+		>;
+		expect(body.aspect_ratio).toBe("16:9");
+		expect(body.resolution).toBe("4K");
+		expect(body.num_images).toBe(2);
+		expect(body.output_format).toBeUndefined();
+	});
+
+	it("builds Gemini payload with aspect_ratio, num_images and no resolution", async () => {
+		setApiKey("test-key");
+		const { calls } = await withMockFetch(
+			async () => {
+				return Response.json({ images: [] });
+			},
+			async () => {
+				await generate({
+					prompt: "test gemini",
+					model: "gemini",
+					aspect: "4:3",
+					resolution: "4K",
+					numImages: 1,
+				});
+			},
+		);
+
+		const call = calls[0];
+		expect(call.input.toString()).toContain("fal-ai/gemini-25-flash-image");
+		const body = JSON.parse(call.init?.body as string) as Record<
+			string,
+			unknown
+		>;
+		expect(body.aspect_ratio).toBe("4:3");
+		expect(body.num_images).toBe(1);
+		expect(body.resolution).toBeUndefined();
+	});
+
+	it("builds Gemini3 payload with aspect_ratio, resolution, num_images, and output_format", async () => {
+		setApiKey("test-key");
+		const { calls } = await withMockFetch(
+			async () => {
+				return Response.json({ images: [] });
+			},
+			async () => {
+				await generate({
+					prompt: "test gemini3",
+					model: "gemini3",
+					aspect: "1:1",
+					resolution: "2K",
+					numImages: 3,
+					outputFormat: "png",
+				});
+			},
+		);
+
+		const call = calls[0];
+		expect(call.input.toString()).toContain(
+			"fal-ai/gemini-3-pro-image-preview",
+		);
+		const body = JSON.parse(call.init?.body as string) as Record<
+			string,
+			unknown
+		>;
+		expect(body.aspect_ratio).toBe("1:1");
+		expect(body.resolution).toBe("2K");
+		expect(body.num_images).toBe(3);
+		expect(body.output_format).toBe("png");
+	});
+
+	it("builds Imagine payload with aspect_ratio, num_images, output_format and correct endpoint", async () => {
+		setApiKey("test-key");
+		const { calls } = await withMockFetch(
+			async () => {
+				return Response.json({ images: [] });
+			},
+			async () => {
+				await generate({
+					prompt: "test imagine",
+					model: "imagine",
+					aspect: "16:9",
+					numImages: 2,
+					outputFormat: "webp",
+				});
+			},
+		);
+
+		const call = calls[0];
+		expect(call.input.toString()).toContain("xai/grok-imagine-image");
+		const body = JSON.parse(call.init?.body as string) as Record<
+			string,
+			unknown
+		>;
+		expect(body.aspect_ratio).toBe("16:9");
+		expect(body.num_images).toBe(2);
+		expect(body.output_format).toBe("webp");
+	});
 });
