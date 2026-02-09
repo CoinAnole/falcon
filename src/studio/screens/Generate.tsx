@@ -340,8 +340,14 @@ export function GenerateScreen({
 						// Remove last digit
 						setSeed((s) => {
 							const str = String(s ?? "");
-							return str.length > 1 ? Number(str.slice(0, -1)) : undefined;
+							return str.length > 0
+								? Number(str.slice(0, -1)) || undefined
+								: undefined;
 						});
+					} else if (key.return) {
+						// Confirm seed and exit editing mode
+						setConfirmField(null);
+						setSelectedIndex(0);
 					}
 				}
 			} else {
