@@ -167,7 +167,14 @@ describe("cli", () => {
 
 		it("accepts valid integer seed", async () => {
 			const result = await runCli(
-				["a test prompt", "--seed", "42", "--no-open"],
+				[
+					"a test prompt",
+					"--seed",
+					"42",
+					"--no-open",
+					"--output",
+					join(getTestOutputDir(), "seed-test.png"),
+				],
 				{
 					FAL_KEY: "test-key",
 					FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
@@ -199,12 +206,20 @@ describe("cli", () => {
 		});
 
 		it("--no-open prevents image opening", async () => {
-			const result = await runCli(["a test prompt", "--no-open"], {
-				FAL_KEY: "test-key",
-				FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
-				FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
-				FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
-			});
+			const result = await runCli(
+				[
+					"a test prompt",
+					"--no-open",
+					"--output",
+					join(getTestOutputDir(), "no-open-test.png"),
+				],
+				{
+					FAL_KEY: "test-key",
+					FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
+					FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
+					FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
+				},
+			);
 			expect(result.exitCode).toBe(0);
 		});
 
@@ -225,7 +240,12 @@ describe("cli", () => {
 		it("--output rejects path traversal", async () => {
 			const result = await runCli(
 				["a test prompt", "--output", "../escape.png"],
-				{ FAL_KEY: "test-key" },
+				{
+					FAL_KEY: "test-key",
+					FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
+					FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
+					FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
+				},
 			);
 			expect(result.exitCode).toBe(1);
 			expect(result.stderr).toContain(
@@ -242,6 +262,8 @@ describe("cli", () => {
 					"--model",
 					"gemini3",
 					"--no-open",
+					"--output",
+					join(getTestOutputDir(), "webp-test.png"),
 				],
 				{
 					FAL_KEY: "test-key",
@@ -291,6 +313,8 @@ describe("cli", () => {
 					"--model",
 					"banana",
 					"--no-open",
+					"--output",
+					join(getTestOutputDir(), "edit-test.png"),
 				],
 				{
 					FAL_KEY: "test-key",
@@ -307,7 +331,15 @@ describe("cli", () => {
 	describe("--transparent", () => {
 		it("accepts transparent flag with gpt model", async () => {
 			const result = await runCli(
-				["a test prompt", "--transparent", "--model", "gpt", "--no-open"],
+				[
+					"a test prompt",
+					"--transparent",
+					"--model",
+					"gpt",
+					"--no-open",
+					"--output",
+					join(getTestOutputDir(), "transparent-test.png"),
+				],
 				{
 					FAL_KEY: "test-key",
 					FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
@@ -473,7 +505,13 @@ describe("cli", () => {
 
 		it("--cover sets 2:3 aspect", async () => {
 			const result = await runCli(
-				["a test prompt", "--cover", "--no-open"],
+				[
+					"a test prompt",
+					"--cover",
+					"--no-open",
+					"--output",
+					join(getTestOutputDir(), "cover-test.png"),
+				],
 				fullFlowEnv,
 			);
 			expect(result.exitCode).toBe(0);
@@ -482,7 +520,13 @@ describe("cli", () => {
 
 		it("--story sets 9:16 aspect", async () => {
 			const result = await runCli(
-				["a test prompt", "--story", "--no-open"],
+				[
+					"a test prompt",
+					"--story",
+					"--no-open",
+					"--output",
+					join(getTestOutputDir(), "story-test.png"),
+				],
 				fullFlowEnv,
 			);
 			expect(result.exitCode).toBe(0);
@@ -491,7 +535,13 @@ describe("cli", () => {
 
 		it("--square sets 1:1 aspect", async () => {
 			const result = await runCli(
-				["a test prompt", "--square", "--no-open"],
+				[
+					"a test prompt",
+					"--square",
+					"--no-open",
+					"--output",
+					join(getTestOutputDir(), "square-test.png"),
+				],
 				fullFlowEnv,
 			);
 			expect(result.exitCode).toBe(0);
@@ -501,12 +551,24 @@ describe("cli", () => {
 		it("property: all presets produce correct aspect ratio", async () => {
 			// Feature: phase3-cli-e2e-tests, Property 1: Preset flag mapping produces correct aspect ratio
 			// **Validates: Requirements 1.1–1.12, 11.1**
+			let testIndex = 0;
 			await fc.assert(
 				fc.asyncProperty(
 					fc.constantFrom(...PRESET_MAPPINGS),
 					async (preset) => {
+						// Use unique output path for each test run to avoid conflicts
+						const outputPath = join(
+							getTestOutputDir(),
+							`preset-prop-${testIndex++}.png`,
+						);
 						const result = await runCli(
-							["a test prompt", preset.flag, "--no-open"],
+							[
+								"a test prompt",
+								preset.flag,
+								"--no-open",
+								"--output",
+								outputPath,
+							],
 							fullFlowEnv,
 						);
 						expect(result.exitCode).toBe(0);
