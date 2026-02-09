@@ -185,6 +185,10 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 		return data as FalResponse;
 	}
 
+	// Add timeout to prevent hanging
+	const controller = new AbortController();
+	const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout for generation
+
 	const response = await fetch(endpoint, {
 		method: "POST",
 		headers: {
@@ -192,7 +196,10 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 			"Content-Type": "application/json",
 		},
 		body: JSON.stringify(body),
+		signal: controller.signal,
 	});
+
+	clearTimeout(timeoutId);
 
 	if (!response.ok) {
 		const errorBody = await response.text();
@@ -266,6 +273,10 @@ export async function upscale(options: UpscaleOptions): Promise<FalResponse> {
 		return data as FalResponse;
 	}
 
+	// Add timeout to prevent hanging
+	const controller = new AbortController();
+	const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout for generation
+
 	const response = await fetch(endpoint, {
 		method: "POST",
 		headers: {
@@ -273,7 +284,10 @@ export async function upscale(options: UpscaleOptions): Promise<FalResponse> {
 			"Content-Type": "application/json",
 		},
 		body: JSON.stringify(body),
+		signal: controller.signal,
 	});
+
+	clearTimeout(timeoutId);
 
 	if (!response.ok) {
 		const errorBody = await response.text();
@@ -331,6 +345,10 @@ export async function removeBackground(
 		return data as FalResponse;
 	}
 
+	// Add timeout to prevent hanging
+	const controller = new AbortController();
+	const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
 	const response = await fetch(endpoint, {
 		method: "POST",
 		headers: {
@@ -338,7 +356,10 @@ export async function removeBackground(
 			"Content-Type": "application/json",
 		},
 		body: JSON.stringify({ image_url: imageUrl }),
+		signal: controller.signal,
 	});
+
+	clearTimeout(timeoutId);
 
 	if (!response.ok) {
 		const errorBody = await response.text();

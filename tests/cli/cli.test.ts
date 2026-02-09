@@ -272,7 +272,10 @@ describe("cli", () => {
 					"--model",
 					"clarity",
 				],
-				{ FAL_KEY: "test-key" },
+				{
+					FAL_KEY: "test-key",
+					FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
+				},
 			);
 			expect(result.exitCode).toBe(1);
 			expect(result.stderr).toContain("does not support image editing");

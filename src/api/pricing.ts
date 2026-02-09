@@ -147,50 +147,59 @@ async function fetchPricingForEndpoints(
 	const apiKey = await getApiKey();
 	const results: Record<string, PriceEntry> = {};
 
-	for (const batch of chunk(endpointIds, 50)) {
-		const params = new URLSearchParams();
-		for (const endpointId of batch) {
-			params.append("endpoint_id", endpointId);
-		}
+	// Add timeout to prevent hanging
+	const controller = new AbortController();
+	const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-		const response = await fetch(
-			`${PRICING_BASE_URL}/models/pricing?${params.toString()}`,
-			{
-				headers: {
-					Authorization: `Key ${apiKey}`,
+	try {
+		for (const batch of chunk(endpointIds, 50)) {
+			const params = new URLSearchParams();
+			for (const endpointId of batch) {
+				params.append("endpoint_id", endpointId);
+			}
+
+			const response = await fetch(
+				`${PRICING_BASE_URL}/models/pricing?${params.toString()}`,
+				{
+					headers: {
+						Authorization: `Key ${apiKey}`,
+					},
+					signal: controller.signal,
 				},
-			},
-		);
+			);
 
-		if (!response.ok) {
-			logger.error("Pricing API request failed", {
-				status: response.status,
-				statusText: response.statusText,
+			if (!response.ok) {
+				logger.error("Pricing API request failed", {
+					status: response.status,
+					statusText: response.statusText,
+				});
+				throw new Error(`Failed to fetch pricing: ${response.status}`);
+			}
+
+			logger.debug("Pricing data fetched successfully", {
+				endpointCount: endpointIds.length,
 			});
-			throw new Error(`Failed to fetch pricing: ${response.status}`);
-		}
 
-		logger.debug("Pricing data fetched successfully", {
-			endpointCount: endpointIds.length,
-		});
-
-		const data = (await response.json()) as {
-			prices: {
-				endpoint_id: string;
-				unit_price: number;
-				unit: string;
-				currency: string;
-			}[];
-		};
-
-		for (const price of data.prices) {
-			results[price.endpoint_id] = {
-				endpointId: price.endpoint_id,
-				unitPrice: price.unit_price,
-				unit: price.unit,
-				currency: price.currency,
+			const data = (await response.json()) as {
+				prices: {
+					endpoint_id: string;
+					unit_price: number;
+					unit: string;
+					currency: string;
+				}[];
 			};
+
+			for (const price of data.prices) {
+				results[price.endpoint_id] = {
+					endpointId: price.endpoint_id,
+					unitPrice: price.unit_price,
+					unit: price.unit,
+					currency: price.currency,
+				};
+			}
 		}
+	} finally {
+		clearTimeout(timeoutId);
 	}
 
 	return results;
@@ -228,41 +237,61 @@ async function estimateWithApi(
 	estimateType: EstimateType,
 	endpointId: string,
 	quantity: number,
+	unitPrice?: number,
+	currency?: string,
 ): Promise<{ cost: number; currency: string }> {
-	const apiKey = await getApiKey();
-	const response = await fetch(`${PRICING_BASE_URL}/models/pricing/estimate`, {
-		method: "POST",
-		headers: {
-			Authorization: `Key ${apiKey}`,
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify({
-			estimate_type: estimateType,
-			endpoints: {
-				[endpointId]:
-					estimateType === "unit_price"
-						? { unit_quantity: quantity }
-						: { call_quantity: Math.max(1, Math.round(quantity)) },
-			},
-		}),
-	});
-
-	if (!response.ok) {
-		logger.error("Pricing estimate API request failed", {
-			status: response.status,
-			statusText: response.statusText,
-			estimateType,
-			endpointId,
-		});
-		throw new Error(`Failed to estimate pricing: ${response.status}`);
+	// Skip API call in test mode with fixtures - use fixture pricing directly
+	if (process.env.FALCON_PRICING_FIXTURE && unitPrice !== undefined) {
+		return { cost: unitPrice * quantity, currency: currency || "USD" };
 	}
 
-	const data = (await response.json()) as {
-		total_cost: number;
-		currency: string;
-	};
+	const apiKey = await getApiKey();
 
-	return { cost: data.total_cost, currency: data.currency };
+	// Add timeout to prevent hanging
+	const controller = new AbortController();
+	const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+	try {
+		const response = await fetch(
+			`${PRICING_BASE_URL}/models/pricing/estimate`,
+			{
+				method: "POST",
+				headers: {
+					Authorization: `Key ${apiKey}`,
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					estimate_type: estimateType,
+					endpoints: {
+						[endpointId]:
+							estimateType === "unit_price"
+								? { unit_quantity: quantity }
+								: { call_quantity: Math.max(1, Math.round(quantity)) },
+					},
+				}),
+				signal: controller.signal,
+			},
+		);
+
+		if (!response.ok) {
+			logger.error("Pricing estimate API request failed", {
+				status: response.status,
+				statusText: response.statusText,
+				estimateType,
+				endpointId,
+			});
+			throw new Error(`Failed to estimate pricing: ${response.status}`);
+		}
+
+		const data = (await response.json()) as {
+			total_cost: number;
+			currency: string;
+		};
+
+		return { cost: data.total_cost, currency: data.currency };
+	} finally {
+		clearTimeout(timeoutId);
+	}
 }
 
 function fallbackEstimate(
@@ -338,6 +367,8 @@ export async function estimateGenerationCost(options: {
 			estimateType,
 			endpointId,
 			unitQuantity,
+			pricing?.unitPrice,
+			pricing?.currency,
 		);
 		logger.debug("Cost estimated from API", {
 			model,
@@ -427,6 +458,8 @@ export async function estimateUpscaleCost(options: {
 			estimateType,
 			endpointId,
 			unitQuantity,
+			pricing?.unitPrice,
+			pricing?.currency,
 		);
 		return {
 			cost: estimate.cost,
@@ -488,6 +521,8 @@ export async function estimateBackgroundRemovalCost(options: {
 			estimateType,
 			endpointId,
 			unitQuantity,
+			pricing?.unitPrice,
+			pricing?.currency,
 		);
 		return {
 			cost: estimate.cost,

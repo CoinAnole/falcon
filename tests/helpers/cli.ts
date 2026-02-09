@@ -118,6 +118,7 @@ export async function runCli(
 		env: {
 			...process.env,
 			HOME: getTestHome(),
+			FALCON_TEST_MODE: "1",
 			...envOverrides,
 		},
 	});
