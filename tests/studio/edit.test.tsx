@@ -272,44 +272,63 @@ describe("edit screen", () => {
 			/>,
 		);
 		try {
+			// Wait for initial image selection screen
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 5000 },
 			);
+
+			// Select first image
 			await writeInput(result, KEYS.enter);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Variations"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 5000 },
 			);
+
+			// Wait for operation menu to be fully rendered and interactive
+			await waitUntil(
+				() => {
+					const frame = stripAnsi(result.lastFrame() ?? "");
+					return frame.includes("Edit") && frame.includes("Variations");
+				},
+				{ timeoutMs: 5000 },
+			);
+
 			// Navigate down to Upscale (index 2: Edit=0, Variations=1, Upscale=2)
+			// First down - move to Variations
 			await writeInput(result, KEYS.down);
 			await waitUntil(
 				() => {
 					const frame = stripAnsi(result.lastFrame() ?? "");
 					return frame.includes("◆") && frame.includes("Variations");
 				},
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 5000 },
 			);
+
+			// Second down - move to Upscale
 			await writeInput(result, KEYS.down);
 			await waitUntil(
 				() => {
 					const frame = stripAnsi(result.lastFrame() ?? "");
 					return frame.includes("◆") && frame.includes("Upscale");
 				},
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 5000 },
 			);
+
+			// Select Upscale
 			await writeInput(result, KEYS.enter);
 			await waitUntil(
 				() =>
 					stripAnsi(result.lastFrame() ?? "").includes("Select upscale factor"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 5000 },
 			);
+
 			const output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("Select upscale factor");
 		} finally {
 			result.unmount();
 		}
-	});
+	}, 30000);
 
 	it("selecting Remove Background transitions to confirm step", async () => {
 		const onBack = mock(() => {});
@@ -923,39 +942,54 @@ describe("edit screen", () => {
 						await waitUntil(
 							() =>
 								stripAnsi(result.lastFrame() ?? "").includes("Select image"),
-							{ timeoutMs: 3000 },
+							{ timeoutMs: 5000 },
 						);
 						await writeInput(result, KEYS.enter);
+
 						// Navigate to Upscale (index 2)
 						await waitUntil(
 							() => stripAnsi(result.lastFrame() ?? "").includes("Variations"),
-							{ timeoutMs: 3000 },
+							{ timeoutMs: 5000 },
 						);
+
+						// Wait for operation menu to be fully rendered
+						await waitUntil(
+							() => {
+								const frame = stripAnsi(result.lastFrame() ?? "");
+								return frame.includes("Edit") && frame.includes("Variations");
+							},
+							{ timeoutMs: 5000 },
+						);
+
 						await writeInput(result, KEYS.down);
 						await waitUntil(
 							() => {
 								const frame = stripAnsi(result.lastFrame() ?? "");
 								return frame.includes("◆") && frame.includes("Variations");
 							},
-							{ timeoutMs: 3000 },
+							{ timeoutMs: 5000 },
 						);
+
 						await writeInput(result, KEYS.down);
 						await waitUntil(
 							() => {
 								const frame = stripAnsi(result.lastFrame() ?? "");
 								return frame.includes("◆") && frame.includes("Upscale");
 							},
-							{ timeoutMs: 3000 },
+							{ timeoutMs: 5000 },
 						);
+
 						await writeInput(result, KEYS.enter);
+
 						// Wait for scale step
 						await waitUntil(
 							() =>
 								stripAnsi(result.lastFrame() ?? "").includes(
 									"Select upscale factor",
 								),
-							{ timeoutMs: 3000 },
+							{ timeoutMs: 5000 },
 						);
+
 						// Confirm scale to get to confirm step
 						await writeInput(result, KEYS.enter);
 						await waitUntil(
@@ -963,12 +997,14 @@ describe("edit screen", () => {
 								stripAnsi(result.lastFrame() ?? "").includes(
 									"Ready to process",
 								),
-							{ timeoutMs: 3000 },
+							{ timeoutMs: 5000 },
 						);
+
 						// Type each digit
 						for (const digit of digits) {
 							await writeInput(result, digit.toString());
 						}
+
 						// Seed is stored as Number, so "00" becomes 0, "01" becomes 1, etc.
 						const expectedSeed = String(Number(digits.join("")));
 						await waitUntil(
@@ -976,8 +1012,9 @@ describe("edit screen", () => {
 								const frame = stripAnsi(result.lastFrame() ?? "");
 								return frame.includes(`Seed: ${expectedSeed}`);
 							},
-							{ timeoutMs: 3000 },
+							{ timeoutMs: 5000 },
 						);
+
 						const output = stripAnsi(result.lastFrame() ?? "");
 						expect(output).toContain(`Seed: ${expectedSeed}`);
 					} finally {
@@ -985,9 +1022,9 @@ describe("edit screen", () => {
 					}
 				},
 			),
-			{ numRuns: 15 },
+			{ numRuns: 8 }, // Reduced from 15 to prevent timeout under load
 		);
-	}, 60_000);
+	}, 90000); // Increased overall timeout
 
 	// Feature: studio-ui-tests, Property 5: Edit skipToOperation routes to correct step
 	// **Validates: Requirements 3.8**

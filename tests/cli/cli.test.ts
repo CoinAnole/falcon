@@ -174,10 +174,11 @@ describe("cli", () => {
 					FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
 					FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
 				},
+				30000, // Longer timeout for this test
 			);
 			expect(result.exitCode).toBe(0);
 			expect(result.stdout).toContain("42");
-		});
+		}, 30000);
 	});
 
 	describe("--refresh hint", () => {

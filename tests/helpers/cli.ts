@@ -87,9 +87,15 @@ export function getTestOutputPath(filename: string): string {
 // Counter for unique output filenames
 let outputCounter = 0;
 
+export interface RunCliOptions {
+	envOverrides?: Record<string, string>;
+	timeoutMs?: number;
+}
+
 export async function runCli(
 	args: string[],
 	envOverrides: Record<string, string> = {},
+	timeoutMs = 15000,
 ): Promise<CliResult> {
 	// If this is a generation command without explicit output, redirect to temp directory
 	const hasOutputFlag = args.includes("--output") || args.includes("-o");
@@ -123,10 +129,23 @@ export async function runCli(
 		},
 	});
 
-	const [stdout, stderr, exitCode] = await Promise.all([
+	// Create a timeout promise
+	const timeoutPromise = new Promise<never>((_, reject) => {
+		setTimeout(() => {
+			proc.kill();
+			reject(new Error(`CLI command timed out after ${timeoutMs}ms`));
+		}, timeoutMs);
+	});
+
+	const resultPromise = Promise.all([
 		new Response(proc.stdout as ReadableStream).text(),
 		new Response(proc.stderr as ReadableStream).text(),
 		proc.exited,
+	]);
+
+	const [stdout, stderr, exitCode] = await Promise.race([
+		resultPromise,
+		timeoutPromise,
 	]);
 
 	return { exitCode, stdout, stderr };
