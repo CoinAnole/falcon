@@ -523,13 +523,15 @@ export function EditScreen({
 							const isSelected = index === operationIndex;
 							return (
 								<Box key={op.key} marginLeft={1}>
-									<Text
-										color={isSelected ? "magenta" : undefined}
-										bold={isSelected}
-									>
-										{isSelected ? "◆ " : "  "}
-										{op.label.padEnd(18)}
-									</Text>
+									<Box width={20}>
+										<Text
+											color={isSelected ? "magenta" : undefined}
+											bold={isSelected}
+										>
+											{isSelected ? "◆ " : "  "}
+											{op.label}
+										</Text>
+									</Box>
 									<Text dimColor={!isSelected}>{op.description}</Text>
 								</Box>
 							);
@@ -552,13 +554,15 @@ export function EditScreen({
 					<Box marginTop={1} flexDirection="column">
 						{EDIT_MODELS.map((m, i) => (
 							<Box key={m}>
-								<Text
-									color={i === editModelIndex ? "magenta" : undefined}
-									bold={i === editModelIndex}
-								>
-									{i === editModelIndex ? "◆ " : "  "}
-									{MODELS[m].name.padEnd(20)}
-								</Text>
+								<Box width={22}>
+									<Text
+										color={i === editModelIndex ? "magenta" : undefined}
+										bold={i === editModelIndex}
+									>
+										{i === editModelIndex ? "◆ " : "  "}
+										{MODELS[m].name}
+									</Text>
+								</Box>
 								<Text dimColor>{MODELS[m].pricing}</Text>
 							</Box>
 						))}

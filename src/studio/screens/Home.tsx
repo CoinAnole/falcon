@@ -68,14 +68,16 @@ export function HomeScreen({ history, onNavigate }: HomeScreenProps) {
 
 				return (
 					<Box key={item.key} marginLeft={1}>
-						<Text
-							color={isDisabled ? "gray" : isSelected ? "magenta" : undefined}
-							bold={isSelected}
-							dimColor={isDisabled}
-						>
-							{isSelected ? "◆ " : "  "}
-							{item.label.padEnd(14)}
-						</Text>
+						<Box width={16}>
+							<Text
+								color={isDisabled ? "gray" : isSelected ? "magenta" : undefined}
+								bold={isSelected}
+								dimColor={isDisabled}
+							>
+								{isSelected ? "◆ " : "  "}
+								{item.label}
+							</Text>
+						</Box>
 						<Text dimColor={isDisabled || !isSelected}>{item.description}</Text>
 					</Box>
 				);

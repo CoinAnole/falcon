@@ -161,10 +161,15 @@ export function SettingsScreen({
 
 				return (
 					<Box key={setting.key} marginLeft={1}>
-						<Text color={isSelected ? "magenta" : undefined} bold={isSelected}>
-							{isSelected ? "◆ " : "  "}
-							{setting.label.padEnd(20)}
-						</Text>
+						<Box width={28}>
+							<Text
+								color={isSelected ? "magenta" : undefined}
+								bold={isSelected}
+							>
+								{isSelected ? "◆ " : "  "}
+								{setting.label}
+							</Text>
+						</Box>
 						{isEditing && setting.type === "text" ? (
 							<TextInput
 								value={editValue}
