@@ -240,6 +240,55 @@ Errors are passed to `handleError` which displays them for 5 seconds:
 onError(new Error("Something went wrong"));
 ```
 
+## Logging System
+
+Falcon includes a logging system that captures debug info and errors to `/tmp/falcon-debug.log`. Useful for debugging Studio mode errors that clear from the UI.
+
+### Logger Module (`src/utils/logger.ts`)
+
+- **Log levels**: `debug`, `info`, `warn`, `error`
+- **Output**: `/tmp/falcon-debug.log` (persists after app exit)
+- **Automatic sanitization**: API keys redacted from logs
+- **Write modes**: Synchronous for errors/warnings, async for debug/info
+
+### Enabling Logging
+
+```bash
+# Enable via environment variable
+FALCON_DEBUG=1 falcon "a cat"
+
+# With explicit log level
+FALCON_LOG_LEVEL=debug FALCON_DEBUG=1 falcon "a cat"
+```
+
+The `bun run dev` command automatically enables logging.
+
+### Using the Logger
+
+```typescript
+import { logger, errorWithStack } from "./utils/logger";
+
+// Log with metadata
+logger.info("Operation started", { model, aspect });
+
+// Log errors with stack traces
+errorWithStack("Generation failed", error, { prompt, model });
+```
+
+### Integration Points
+
+- **Studio errors**: All errors in `App.tsx`, `Generate.tsx`, and `Edit.tsx`
+- **API layer**: `fal.ts` logs API requests/responses
+- **Pricing**: `pricing.ts` logs cache operations
+- **CLI**: `cli.ts` logs command execution
+
+### Viewing Logs
+
+```bash
+tail -f /tmp/falcon-debug.log   # Watch in real-time
+cat /tmp/falcon-debug.log       # View last session
+```
+
 ## Cost Tracking
 
 Every generation is recorded with its cost and metadata:
