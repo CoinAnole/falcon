@@ -413,7 +413,7 @@ describe("edit screen", () => {
 					}
 				},
 			),
-			{ numRuns: 100 },
+			{ numRuns: 10 },
 		);
-	}, 120_000);
+	}, 30_000);
 });

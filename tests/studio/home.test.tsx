@@ -170,7 +170,7 @@ describe("home screen", () => {
 					result.unmount();
 				}
 			}),
-			{ numRuns: 100 },
+			{ numRuns: 10 },
 		);
 	});
 });

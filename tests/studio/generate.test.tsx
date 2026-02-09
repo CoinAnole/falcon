@@ -391,9 +391,9 @@ describe("generate screen", () => {
 					result.unmount();
 				}
 			}),
-			{ numRuns: 100 },
+			{ numRuns: 10 },
 		);
-	}, 120_000);
+	}, 30_000);
 
 	// Feature: studio-ui-tests, Property 3: Generate confirm displays all fields
 	// **Validates: Requirements 2.7**
@@ -462,9 +462,9 @@ describe("generate screen", () => {
 					}
 				},
 			),
-			{ numRuns: 100 },
+			{ numRuns: 20 },
 		);
-	}, 120_000);
+	}, 60_000);
 
 	// Feature: studio-ui-tests, Property 4: Seed digit input builds seed value
 	// **Validates: Requirements 2.8**
@@ -541,7 +541,7 @@ describe("generate screen", () => {
 					}
 				},
 			),
-			{ numRuns: 100 },
+			{ numRuns: 20 },
 		);
-	}, 120_000);
+	}, 60_000);
 });

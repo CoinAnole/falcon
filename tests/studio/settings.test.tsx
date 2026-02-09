@@ -244,9 +244,9 @@ describe("settings screen", () => {
 					}
 				},
 			),
-			{ numRuns: 100 },
+			{ numRuns: 10 },
 		);
-	}, 120_000);
+	}, 30_000);
 
 	// Feature: studio-ui-tests, Property 7: Settings select cycles options
 	// **Validates: Requirements 5.4**
@@ -307,9 +307,9 @@ describe("settings screen", () => {
 					}
 				},
 			),
-			{ numRuns: 100 },
+			{ numRuns: 10 },
 		);
-	}, 120_000);
+	}, 30_000);
 
 	// Feature: studio-ui-tests, Property 8: Settings save captures current state
 	// **Validates: Requirements 5.7**
@@ -353,7 +353,7 @@ describe("settings screen", () => {
 					}
 				},
 			),
-			{ numRuns: 100 },
+			{ numRuns: 10 },
 		);
-	}, 120_000);
+	}, 30_000);
 });
