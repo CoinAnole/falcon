@@ -135,7 +135,7 @@ interface CliOptions {
 	up?: boolean;
 	rmbg?: boolean;
 	scale?: string;
-	noOpen?: boolean;
+	open?: boolean; // Set to false when --no-open is passed (Commander.js behavior)
 	// Flux 2 specific options
 	guidanceScale?: string;
 	promptExpansion?: boolean;
@@ -617,7 +617,7 @@ async function generateImage(
 			await addGeneration(generation);
 
 			// Open first image
-			if (i === 0 && config.openAfterGenerate && !options.noOpen) {
+			if (i === 0 && config.openAfterGenerate && options.open !== false) {
 				await openImage(path);
 			}
 		}
@@ -808,7 +808,7 @@ async function upscaleLast(
 			editedFrom: sourceImagePath,
 		});
 
-		if (config.openAfterGenerate && !options.noOpen) {
+		if (config.openAfterGenerate && options.open !== false) {
 			await openImage(outputPath);
 		}
 	} catch (err) {
@@ -904,7 +904,7 @@ async function removeBackgroundLast(
 			editedFrom: last.output,
 		});
 
-		if (config.openAfterGenerate && !options.noOpen) {
+		if (config.openAfterGenerate && options.open !== false) {
 			await openImage(outputPath);
 		}
 	} catch (err) {
