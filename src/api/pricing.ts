@@ -9,6 +9,7 @@ import {
 import { join } from "node:path";
 import type { CostMetadata, EstimateType } from "../types/pricing";
 import { FALCON_DIR } from "../utils/config";
+import { logger } from "../utils/logger";
 import { getApiKey } from "./fal";
 import { estimateCost, MODELS, type Resolution } from "./models";
 
@@ -162,8 +163,16 @@ async function fetchPricingForEndpoints(
 		);
 
 		if (!response.ok) {
+			logger.error("Pricing API request failed", {
+				status: response.status,
+				statusText: response.statusText,
+			});
 			throw new Error(`Failed to fetch pricing: ${response.status}`);
 		}
+
+		logger.debug("Pricing data fetched successfully", {
+			endpointCount: endpointIds.length,
+		});
 
 		const data = (await response.json()) as {
 			prices: {
@@ -239,6 +248,12 @@ async function estimateWithApi(
 	});
 
 	if (!response.ok) {
+		logger.error("Pricing estimate API request failed", {
+			status: response.status,
+			statusText: response.statusText,
+			estimateType,
+			endpointId,
+		});
 		throw new Error(`Failed to estimate pricing: ${response.status}`);
 	}
 
@@ -274,11 +289,15 @@ export async function refreshPricingCache(
 	endpointIds: string[],
 ): Promise<void> {
 	if (endpointIds.length === 0) return;
+	logger.debug("Refreshing pricing cache", {
+		endpointCount: endpointIds.length,
+	});
 	const fetched = await fetchPricingForEndpoints(endpointIds);
 	await savePricingCache({
 		fetchedAt: new Date().toISOString(),
 		prices: fetched,
 	});
+	logger.debug("Pricing cache refreshed successfully");
 }
 
 export async function estimateGenerationCost(options: {
@@ -287,8 +306,11 @@ export async function estimateGenerationCost(options: {
 	numImages: number;
 }): Promise<PricingEstimate> {
 	const { model, resolution, numImages } = options;
+	logger.debug("Estimating generation cost", { model, resolution, numImages });
+
 	const endpointId = MODELS[model]?.endpoint;
 	if (!endpointId) {
+		logger.warn("No endpoint found for model, using fallback", { model });
 		return fallbackEstimate(model, resolution, numImages, model, "unit_price");
 	}
 
@@ -317,6 +339,11 @@ export async function estimateGenerationCost(options: {
 			endpointId,
 			unitQuantity,
 		);
+		logger.debug("Cost estimated from API", {
+			model,
+			cost: estimate.cost,
+			currency: estimate.currency,
+		});
 		return {
 			cost: estimate.cost,
 			costDetails: {
@@ -330,6 +357,10 @@ export async function estimateGenerationCost(options: {
 			},
 		};
 	} catch {
+		logger.debug("API estimate failed, using cached pricing or fallback", {
+			model,
+			endpointId,
+		});
 		if (pricing && estimateType === "unit_price") {
 			return {
 				cost: pricing.unitPrice * unitQuantity,
@@ -361,6 +392,13 @@ export async function estimateUpscaleCost(options: {
 	scaleFactor: number;
 }): Promise<PricingEstimate> {
 	const { model, inputWidth, inputHeight, scaleFactor } = options;
+	logger.debug("Estimating upscale cost", {
+		model,
+		inputWidth,
+		inputHeight,
+		scaleFactor,
+	});
+
 	const endpointId = MODELS[model]?.endpoint;
 	if (!endpointId) {
 		return fallbackEstimate(model, undefined, 1, model, "unit_price");
@@ -425,6 +463,8 @@ export async function estimateBackgroundRemovalCost(options: {
 	model: "rmbg" | "bria";
 }): Promise<PricingEstimate> {
 	const { model } = options;
+	logger.debug("Estimating background removal cost", { model });
+
 	const endpointId = MODELS[model]?.endpoint;
 	if (!endpointId) {
 		return fallbackEstimate(model, undefined, 1, model, "unit_price");

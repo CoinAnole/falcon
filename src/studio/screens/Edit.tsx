@@ -31,6 +31,7 @@ import {
 	imageToDataUrl,
 	openImage,
 } from "../../utils/image";
+import { logger } from "../../utils/logger";
 import {
 	isPathWithinCwd,
 	validateImagePath,
@@ -449,6 +450,13 @@ export function EditScreen({
 
 			setStep("done");
 		} catch (err) {
+			logger.errorWithStack("Edit operation failed", err as Error, {
+				mode,
+				sourcePath: source?.output,
+				editModel,
+				scale,
+				seed,
+			});
 			onError(err as Error);
 			onBack();
 		}

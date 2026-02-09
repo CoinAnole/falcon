@@ -11,8 +11,15 @@ import {
 	loadHistory,
 	saveConfig,
 } from "./utils/config";
+import { clearLog, logger } from "./utils/logger";
 
 async function main() {
+	// Initialize logging - clear log on fresh start
+	clearLog();
+	logger.info("Falcon starting", {
+		mode: process.argv.length > 2 ? "cli" : "studio",
+	});
+
 	// Load config and set API key
 	const config = await loadConfig();
 	try {

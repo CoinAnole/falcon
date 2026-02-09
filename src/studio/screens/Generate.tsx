@@ -27,6 +27,7 @@ import {
 	getImageDimensions,
 	openImage,
 } from "../../utils/image";
+import { logger } from "../../utils/logger";
 import { validateOutputPath } from "../../utils/paths";
 import { Spinner } from "../components/Spinner";
 
@@ -481,14 +482,23 @@ export function GenerateScreen({
 			setSelectedIndex(0);
 			setStep("done");
 		} catch (err) {
+			logger.errorWithStack("Generation failed in Studio", err as Error, {
+				prompt,
+				model,
+				aspect,
+				resolution,
+				seed,
+			});
 			onError(err as Error);
 			onBack();
 		}
 	};
 
 	const handlePromptSubmit = (value: string) => {
-		if (value.trim()) {
-			setPrompt(value.trim());
+		const trimmed = value.trim();
+		if (trimmed) {
+			logger.debug("Prompt submitted", { prompt: trimmed });
+			setPrompt(trimmed);
 			setSelectedIndex(0);
 			setStep("preset");
 		}

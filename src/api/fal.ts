@@ -1,4 +1,5 @@
 import { loadConfig } from "../utils/config";
+import { logger } from "../utils/logger";
 import {
 	type AspectRatio,
 	aspectToFlux2Size,
@@ -96,8 +97,17 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 		seed,
 	} = options;
 
+	logger.debug("Starting image generation", {
+		model,
+		aspect,
+		resolution,
+		numImages,
+		seed,
+	});
+
 	const config = MODELS[model];
 	if (!config) {
+		logger.error("Unknown model requested", { model });
 		throw new Error(`Unknown model: ${model}`);
 	}
 
@@ -165,6 +175,8 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 		body.image_urls = [editImage];
 	}
 
+	logger.debug("Sending API request", { endpoint, model, aspect });
+
 	const response = await fetch(endpoint, {
 		method: "POST",
 		headers: {
@@ -176,6 +188,12 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 
 	if (!response.ok) {
 		const errorBody = await response.text();
+		logger.error("API request failed", {
+			endpoint,
+			status: response.status,
+			statusText: response.statusText,
+			errorBody,
+		});
 		throw new Error(
 			`Failed to generate image: ${response.status} ${response.statusText}${errorBody ? ` - ${errorBody}` : ""}`,
 		);
@@ -184,8 +202,18 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 	const data = await response.json();
 
 	if ("detail" in data) {
+		logger.error("API returned error detail", {
+			endpoint,
+			detail: (data as FalError).detail,
+		});
 		throw new Error((data as FalError).detail);
 	}
+
+	logger.debug("Generation successful", {
+		endpoint,
+		imagesReturned: data.images?.length,
+		seed: data.seed,
+	});
 
 	return data as FalResponse;
 }
@@ -199,8 +227,11 @@ export async function upscale(options: UpscaleOptions): Promise<FalResponse> {
 		seed,
 	} = options;
 
+	logger.debug("Starting image upscale", { model, scaleFactor, seed });
+
 	const config = MODELS[model];
 	if (!config || config.type !== "utility") {
+		logger.error("Invalid upscale model", { model });
 		throw new Error(`Invalid upscale model: ${model}`);
 	}
 
@@ -217,7 +248,9 @@ export async function upscale(options: UpscaleOptions): Promise<FalResponse> {
 		body.seed = seed;
 	}
 
-	const response = await fetch(`${FAL_BASE_URL}/${config.endpoint}`, {
+	const endpoint = `${FAL_BASE_URL}/${config.endpoint}`;
+
+	const response = await fetch(endpoint, {
 		method: "POST",
 		headers: {
 			Authorization: `Key ${await getApiKey()}`,
@@ -228,6 +261,12 @@ export async function upscale(options: UpscaleOptions): Promise<FalResponse> {
 
 	if (!response.ok) {
 		const errorBody = await response.text();
+		logger.error("Upscale API request failed", {
+			endpoint,
+			status: response.status,
+			statusText: response.statusText,
+			errorBody,
+		});
 		throw new Error(
 			`Failed to upscale image: ${response.status} ${response.statusText}${errorBody ? ` - ${errorBody}` : ""}`,
 		);
@@ -236,8 +275,14 @@ export async function upscale(options: UpscaleOptions): Promise<FalResponse> {
 	const data = await response.json();
 
 	if ("detail" in data) {
+		logger.error("Upscale API returned error detail", {
+			endpoint,
+			detail: (data as FalError).detail,
+		});
 		throw new Error((data as FalError).detail);
 	}
+
+	logger.debug("Upscale successful", { endpoint, seed: data.seed });
 
 	// Normalize response - upscale APIs return { image: {...} } not { images: [...] }
 	if ("image" in data && !("images" in data)) {
@@ -252,12 +297,17 @@ export async function removeBackground(
 ): Promise<FalResponse> {
 	const { imageUrl, model = "rmbg" } = options;
 
+	logger.debug("Starting background removal", { model });
+
 	const config = MODELS[model];
 	if (!config) {
+		logger.error("Invalid background removal model", { model });
 		throw new Error(`Invalid background removal model: ${model}`);
 	}
 
-	const response = await fetch(`${FAL_BASE_URL}/${config.endpoint}`, {
+	const endpoint = `${FAL_BASE_URL}/${config.endpoint}`;
+
+	const response = await fetch(endpoint, {
 		method: "POST",
 		headers: {
 			Authorization: `Key ${await getApiKey()}`,
@@ -268,6 +318,12 @@ export async function removeBackground(
 
 	if (!response.ok) {
 		const errorBody = await response.text();
+		logger.error("Background removal API request failed", {
+			endpoint,
+			status: response.status,
+			statusText: response.statusText,
+			errorBody,
+		});
 		throw new Error(
 			`Failed to remove background: ${response.status} ${response.statusText}${errorBody ? ` - ${errorBody}` : ""}`,
 		);
@@ -276,8 +332,14 @@ export async function removeBackground(
 	const data = await response.json();
 
 	if ("detail" in data) {
+		logger.error("Background removal API returned error detail", {
+			endpoint,
+			detail: (data as FalError).detail,
+		});
 		throw new Error((data as FalError).detail);
 	}
+
+	logger.debug("Background removal successful", { endpoint });
 
 	// Normalize response - rmbg APIs return { image: {...} } not { images: [...] }
 	if ("image" in data && !("images" in data)) {

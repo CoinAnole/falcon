@@ -29,7 +29,7 @@
 	"author": "Daniel Howells",
 	"license": "MIT",
 	"scripts": {
-		"dev": "bun run src/index.ts",
+		"dev": "FALCON_DEBUG=1 bun run src/index.ts",
 		"build": "bun build src/index.ts --outdir dist --target node",
 		"link": "bun link",
 		"test": "bun test",

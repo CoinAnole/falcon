@@ -40,6 +40,7 @@ import {
 	openImage,
 	resizeImage,
 } from "./utils/image";
+import { logger } from "./utils/logger";
 import {
 	buildIndexedOutputPath,
 	isPathWithinCwd,
@@ -146,6 +147,8 @@ interface CliOptions {
 }
 
 export async function runCli(args: string[]): Promise<void> {
+	logger.debug("CLI started", { args: args.slice(2) }); // Skip node and script path
+
 	const config = await loadConfig();
 
 	const program = new Command()
@@ -234,9 +237,14 @@ export async function runCli(args: string[]): Promise<void> {
 			new Set(Object.values(MODELS).map((model) => model.endpoint)),
 		);
 		try {
+			logger.debug("Refreshing pricing cache via CLI", {
+				endpointCount: endpointIds.length,
+			});
 			await refreshPricingCache(endpointIds);
 			console.log(chalk.green("Pricing cache refreshed."));
+			logger.info("Pricing cache refreshed via CLI");
 		} catch (err) {
+			logger.errorWithStack("Failed to refresh pricing cache", err as Error);
 			console.error(chalk.red(getErrorMessage(err)));
 			process.exit(1);
 		}
@@ -538,6 +546,12 @@ async function generateImage(
 	}
 
 	const spinner = ora("Generating...").start();
+	logger.info("Starting image generation via CLI", {
+		model,
+		aspect,
+		resolution,
+		numImages,
+	});
 
 	try {
 		const result = await generate({
@@ -557,6 +571,11 @@ async function generateImage(
 		});
 
 		spinner.succeed("Generated!");
+		logger.info("Image generation successful", {
+			model,
+			imagesGenerated: result.images.length,
+			seed: result.seed,
+		});
 
 		// Download all images
 		for (let i = 0; i < result.images.length; i++) {
@@ -616,6 +635,10 @@ async function generateImage(
 		);
 	} catch (err) {
 		spinner.fail("Generation failed");
+		logger.errorWithStack("CLI generation failed", err as Error, {
+			model,
+			prompt,
+		});
 		console.error(chalk.red(getErrorMessage(err)));
 		process.exit(1);
 	}
@@ -740,6 +763,10 @@ async function upscaleLast(
 	);
 
 	const spinner = ora("Upscaling...").start();
+	logger.info("Starting image upscale via CLI", {
+		model: config.upscaler,
+		scaleFactor,
+	});
 
 	try {
 		// Convert local file to data URL for upload
@@ -786,6 +813,10 @@ async function upscaleLast(
 		}
 	} catch (err) {
 		spinner.fail("Upscale failed");
+		logger.errorWithStack("CLI upscale failed", err as Error, {
+			model: config.upscaler,
+			scaleFactor,
+		});
 		console.error(chalk.red(getErrorMessage(err)));
 		process.exit(1);
 	}
@@ -836,6 +867,9 @@ async function removeBackgroundLast(
 	);
 
 	const spinner = ora("Processing...").start();
+	logger.info("Starting background removal via CLI", {
+		model: config.backgroundRemover,
+	});
 
 	try {
 		const imageData = await imageToDataUrl(last.output);
@@ -875,6 +909,9 @@ async function removeBackgroundLast(
 		}
 	} catch (err) {
 		spinner.fail("Background removal failed");
+		logger.errorWithStack("CLI background removal failed", err as Error, {
+			model: config.backgroundRemover,
+		});
 		console.error(chalk.red(getErrorMessage(err)));
 		process.exit(1);
 	}

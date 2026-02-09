@@ -1,6 +1,7 @@
 import { Box, Text, useApp, useInput } from "ink";
 import { useState } from "react";
 import type { FalconConfig, History } from "../utils/config";
+import { logger } from "../utils/logger";
 import { EditScreen } from "./screens/Edit";
 import { GalleryScreen } from "./screens/Gallery";
 import { GenerateScreen } from "./screens/Generate";
@@ -37,6 +38,11 @@ export function App({
 	});
 
 	const handleError = (err: Error) => {
+		// Log error before displaying
+		logger.errorWithStack("Studio error occurred", err, {
+			screen,
+			editFromGenerate,
+		});
 		setError(err.message);
 		setTimeout(() => setError(null), 5000);
 	};
