@@ -34,6 +34,8 @@
 		"link": "bun link",
 		"test": "bun test",
 		"test:watch": "bun test --watch",
+		"test:flaky": "./scripts/flaky-test-detector.sh",
+		"test:flaky:bun": "bun run scripts/flaky-test-detector.ts",
 		"typecheck": "tsc --noEmit",
 		"lint": "biome check --write . && ultracite fix",
 		"prepare": "husky"

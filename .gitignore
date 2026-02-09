@@ -11,6 +11,7 @@ dist/
 # Test directories
 .falcon-test-*/
 .falcon-test-output-*/
+test-runs/
 # Generated images
 falcon-*.png
 falcon-*.jpg
