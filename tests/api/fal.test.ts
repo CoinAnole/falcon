@@ -1,3 +1,5 @@
+// Import env helper FIRST to set process.env.HOME before config.ts is loaded
+
 import { afterEach, describe, expect, it } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -7,7 +9,6 @@ import {
 	setApiKey,
 	upscale,
 } from "../../src/api/fal";
-// Import env helper FIRST to set process.env.HOME before config.ts is loaded
 import { getTestHome } from "../helpers/env";
 import { withMockFetch } from "../helpers/fetch";
 
@@ -426,6 +427,31 @@ describe("fal api", () => {
 		expect(body.resolution).toBeUndefined();
 	});
 
+	it("uses bria endpoint and normalizes single-image response for removeBackground with model bria", async () => {
+		setApiKey("test-key");
+		const { calls, result } = await withMockFetch(
+			async () => {
+				return Response.json({
+					image: { url: "https://example.com/bria-result.png" },
+				});
+			},
+			async () => {
+				return await removeBackground({
+					imageUrl: "data:image/png;base64,abc",
+					model: "bria",
+				});
+			},
+		);
+
+		// Requirement 7.1: Verify endpoint URL contains bria endpoint
+		const call = calls[0];
+		expect(call.input.toString()).toContain("fal-ai/bria/background/remove");
+
+		// Requirement 7.2: Verify response is normalized to images array format
+		expect(result.images).toHaveLength(1);
+		expect(result.images[0].url).toBe("https://example.com/bria-result.png");
+	});
+
 	it("throws error with status code, status text, and body on generate HTTP failure", async () => {
 		setApiKey("test-key");
 		await withMockFetch(
@@ -572,4 +598,181 @@ describe("getApiKey fallback chain", () => {
 			"FAL_KEY not found",
 		);
 	});
+});
+
+// --- Task 7.1: Property 1 — HTTP error propagation across all API functions ---
+// Feature: phase2-api-layer-tests, Property 1: HTTP error propagation across all API functions
+
+import fc from "fast-check";
+import { GENERATION_MODELS, MODELS } from "../../src/api/models";
+
+describe("property-based tests", () => {
+	// Feature: phase2-api-layer-tests, Property 1: HTTP error propagation across all API functions
+	/**
+	 * Validates: Requirements 5.1, 5.2, 5.3, 5.4
+	 *
+	 * For any API function and any HTTP status code in 400–599,
+	 * the thrown error contains the status code and body text.
+	 */
+	it("Property 1: HTTP error propagation across all API functions", async () => {
+		await fc.assert(
+			fc.asyncProperty(
+				// Pick one of the three API functions
+				fc.constantFrom("generate", "upscale", "removeBackground"),
+				// Random HTTP error status code in 400–599
+				fc.integer({ min: 400, max: 599 }),
+				// Random non-empty body string
+				fc.string({ minLength: 1, maxLength: 50 }),
+				async (fnName, statusCode, bodyText) => {
+					setApiKey("test-key");
+
+					try {
+						await withMockFetch(
+							async () =>
+								new Response(bodyText, {
+									status: statusCode,
+									statusText: "ErrorStatus",
+								}),
+							async () => {
+								if (fnName === "generate") {
+									await generate({ prompt: "test", model: "banana" });
+								} else if (fnName === "upscale") {
+									await upscale({ imageUrl: "https://example.com/img.png" });
+								} else {
+									await removeBackground({
+										imageUrl: "https://example.com/img.png",
+									});
+								}
+							},
+						);
+						// Should not reach here — the function must throw
+						return false;
+					} catch (err: unknown) {
+						const message = (err as Error).message;
+						// Error message must contain the numeric status code
+						const containsStatusCode = message.includes(String(statusCode));
+						// Error message must contain the body text
+						const containsBody = message.includes(bodyText);
+						return containsStatusCode && containsBody;
+					}
+				},
+			),
+			{ numRuns: 100 },
+		);
+	}, 30_000);
+
+	// Feature: phase2-api-layer-tests, Property 2: Endpoint and prompt invariant for all generation models
+	/**
+	 * Validates: Requirements 8.1, 8.4
+	 *
+	 * For any generation model key from GENERATION_MODELS, when generate is called
+	 * with that model and a prompt string, the captured request URL should contain
+	 * the model's configured endpoint from MODELS[model].endpoint, and the request
+	 * body should contain the prompt field set to the provided string.
+	 */
+	it("Property 2: Endpoint and prompt invariant for all generation models", async () => {
+		await fc.assert(
+			fc.asyncProperty(
+				fc.constantFrom(...GENERATION_MODELS),
+				fc.string({ minLength: 1 }),
+				async (model, prompt) => {
+					setApiKey("test-key");
+
+					const { calls } = await withMockFetch(
+						async () => Response.json({ images: [] }),
+						async () => {
+							await generate({ prompt, model });
+						},
+					);
+
+					const call = calls[0];
+					const url = call.input.toString();
+					const body = JSON.parse(call.init?.body as string) as Record<
+						string,
+						unknown
+					>;
+
+					const expectedEndpoint = MODELS[model].endpoint;
+
+					// Request URL must contain the model's configured endpoint
+					expect(url).toContain(expectedEndpoint);
+
+					// Request body must contain the prompt field matching the provided string
+					expect(body.prompt).toBe(prompt);
+				},
+			),
+			{ numRuns: 100 },
+		);
+	}, 30_000);
+
+	// Feature: phase2-api-layer-tests, Property 3: Capability flags control payload fields
+	/**
+	 * Validates: Requirements 8.2, 8.3, 8.5
+	 *
+	 * For any generation model key from GENERATION_MODELS (excluding GPT and Flux2
+	 * variants which use special payload logic), when generate is called with an
+	 * aspect ratio, resolution, numImages, and outputFormat, the payload fields
+	 * match the model's capability flags:
+	 * - supportsAspect → aspect_ratio present
+	 * - supportsNumImages → num_images present
+	 * - supportsOutputFormat → output_format present; otherwise absent
+	 * - supportsResolution → resolution present; otherwise absent
+	 */
+	it("Property 3: Capability flags control payload fields", async () => {
+		const eligibleModels = GENERATION_MODELS.filter(
+			(m) => m !== "gpt" && !m.startsWith("flux2"),
+		);
+
+		await fc.assert(
+			fc.asyncProperty(fc.constantFrom(...eligibleModels), async (model) => {
+				setApiKey("test-key");
+
+				const { calls } = await withMockFetch(
+					async () => Response.json({ images: [] }),
+					async () => {
+						await generate({
+							prompt: "test capability flags",
+							model,
+							aspect: "16:9",
+							resolution: "4K",
+							numImages: 2,
+							outputFormat: "webp",
+						});
+					},
+				);
+
+				const call = calls[0];
+				const body = JSON.parse(call.init?.body as string) as Record<
+					string,
+					unknown
+				>;
+				const config = MODELS[model];
+
+				// supportsAspect → aspect_ratio present
+				if (config.supportsAspect) {
+					expect(body.aspect_ratio).toBe("16:9");
+				}
+
+				// supportsNumImages → num_images present
+				if (config.supportsNumImages) {
+					expect(body.num_images).toBe(2);
+				}
+
+				// supportsOutputFormat → output_format present; otherwise absent
+				if (config.supportsOutputFormat) {
+					expect(body.output_format).toBe("webp");
+				} else {
+					expect(body.output_format).toBeUndefined();
+				}
+
+				// supportsResolution → resolution present; otherwise absent
+				if (config.supportsResolution) {
+					expect(body.resolution).toBe("4K");
+				} else {
+					expect(body.resolution).toBeUndefined();
+				}
+			}),
+			{ numRuns: 100 },
+		);
+	}, 30_000);
 });
