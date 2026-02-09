@@ -14,6 +14,7 @@ export const KEYS = {
 	enter: "\r",
 	escape: ESC,
 	tab: "\t",
+	backspace: "\x7f",
 } as const;
 
 export async function waitForRender(delayMs = 8): Promise<void> {
