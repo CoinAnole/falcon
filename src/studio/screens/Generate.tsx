@@ -332,7 +332,17 @@ export function GenerateScreen({
 						input,
 					);
 				} else if (confirmField === "seed") {
-					// Seed is edited via numeric input in handleInput
+					// Seed is edited via numeric input below
+					if (/^\d$/.test(input)) {
+						// Append digit to seed
+						setSeed((s) => Number(`${s ?? ""}${input}`));
+					} else if (key.backspace) {
+						// Remove last digit
+						setSeed((s) => {
+							const str = String(s ?? "");
+							return str.length > 1 ? Number(str.slice(0, -1)) : undefined;
+						});
+					}
 				}
 			} else {
 				// Navigating confirm fields
@@ -365,15 +375,6 @@ export function GenerateScreen({
 					runGeneration();
 				} else if (input === "n") {
 					onBack();
-				} else if (confirmField === "seed" && /^\d+$/.test(input)) {
-					// Append digit to seed
-					setSeed((s) => Number(`${s ?? ""}${input}`));
-				} else if (confirmField === "seed" && key.backspace) {
-					// Remove last digit
-					setSeed((s) => {
-						const str = String(s ?? "");
-						return str.length > 1 ? Number(str.slice(0, -1)) : undefined;
-					});
 				}
 			}
 		} else if (step === "done") {
