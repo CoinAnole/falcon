@@ -35,7 +35,7 @@
 		"test": "bun test",
 		"test:watch": "bun test --watch",
 		"typecheck": "tsc --noEmit",
-		"lint": "biome check --write . && ultracite",
+		"lint": "biome check --write . && ultracite fix",
 		"prepare": "husky"
 	},
 	"lint-staged": {

@@ -183,8 +183,8 @@ describe("pricing", () => {
 	});
 
 	it("uses cached pricing when estimate API fails", async () => {
-		const { result: estimate, calls } = await withMockFetch(
-			async (input, init) => {
+		const { result: estimate } = await withMockFetch(
+			async (input, _init) => {
 				const url = input.toString();
 				if (url.includes("/models/pricing?")) {
 					return Response.json({

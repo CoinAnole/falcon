@@ -6,7 +6,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
 	addGeneration,
-	CONFIG_PATH,
 	FALCON_DIR,
 	getApiKey,
 	loadConfig,
