@@ -30,12 +30,15 @@ if (!existingDir) {
 /**
  * Clean up all generated test files.
  * Call this in afterAll() to ensure test files don't accumulate.
+ * @param removeDir - If true, completely remove the output directory. If false (default), empty it but keep the directory.
  */
-export function cleanupTestFiles(): void {
+export function cleanupTestFiles(removeDir = false): void {
 	try {
 		// Clean up temp output directory
 		rmSync(testOutputDir, { recursive: true, force: true });
-		mkdirSync(testOutputDir, { recursive: true });
+		if (!removeDir) {
+			mkdirSync(testOutputDir, { recursive: true });
+		}
 
 		// Clean up any files in project root that match test patterns
 		const projectRoot = process.cwd();

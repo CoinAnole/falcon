@@ -11,7 +11,7 @@ import {
 import { join } from "node:path";
 import fc from "fast-check";
 import type { Generation } from "../../src/utils/config";
-import { getTestOutputDir, runCli } from "../helpers/cli";
+import { cleanupTestFiles, getTestOutputDir, runCli } from "../helpers/cli";
 import { getTestHome } from "../helpers/env";
 
 const PRESET_MAPPINGS = [
@@ -64,6 +64,10 @@ function setupHistory(overrides?: Partial<Generation>): string {
 }
 
 describe("cli", () => {
+	afterAll(() => {
+		cleanupTestFiles(true); // true = completely remove the output directory
+	});
+
 	it("prints help", async () => {
 		const result = await runCli(["--help"]);
 		expect(result.exitCode).toBe(0);
