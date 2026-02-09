@@ -10,6 +10,14 @@ export async function downloadImage(
 	url: string,
 	outputPath: string,
 ): Promise<void> {
+	// Support fixture-based testing: copy a local file instead of fetching from URL
+	const downloadFixture = process.env.FALCON_DOWNLOAD_FIXTURE;
+	if (downloadFixture) {
+		const { copyFileSync } = await import("node:fs");
+		copyFileSync(downloadFixture, outputPath);
+		return;
+	}
+
 	const response = await fetch(url);
 	if (!response.ok) {
 		throw new Error(`Failed to download image: ${response.statusText}`);

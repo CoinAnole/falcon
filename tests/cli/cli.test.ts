@@ -1,7 +1,67 @@
 import "../helpers/env";
 
-import { describe, expect, it } from "bun:test";
+import { afterAll, describe, expect, it } from "bun:test";
+import {
+	copyFileSync,
+	existsSync,
+	mkdirSync,
+	unlinkSync,
+	writeFileSync,
+} from "node:fs";
+import { join } from "node:path";
+import fc from "fast-check";
+import type { Generation } from "../../src/utils/config";
 import { runCli } from "../helpers/cli";
+import { getTestHome } from "../helpers/env";
+
+const PRESET_MAPPINGS = [
+	{ flag: "--cover", aspect: "2:3", resolution: "2K" },
+	{ flag: "--story", aspect: "9:16" },
+	{ flag: "--reel", aspect: "9:16" },
+	{ flag: "--feed", aspect: "4:5" },
+	{ flag: "--og", aspect: "16:9" },
+	{ flag: "--wallpaper", aspect: "9:16", resolution: "2K" },
+	{ flag: "--ultra", aspect: "21:9", resolution: "2K" },
+	{ flag: "--wide", aspect: "21:9" },
+	{ flag: "--square", aspect: "1:1" },
+	{ flag: "--landscape", aspect: "16:9" },
+	{ flag: "--portrait", aspect: "2:3" },
+];
+
+function setupHistory(overrides?: Partial<Generation>): string {
+	const home = getTestHome();
+	const falconDir = join(home, ".falcon");
+	mkdirSync(falconDir, { recursive: true });
+
+	// Copy tiny.png to a known location for output reference
+	const outputPath = join(falconDir, "test-output.png");
+	copyFileSync("tests/fixtures/tiny.png", outputPath);
+
+	const history = {
+		generations: [
+			{
+				id: "test-gen-id",
+				prompt: "a test image",
+				model: "banana",
+				aspect: "1:1",
+				resolution: "2K",
+				output: outputPath,
+				cost: 0.15,
+				timestamp: new Date().toISOString(),
+				...overrides,
+			},
+		],
+		totalCost: { USD: { session: 0.15, today: 0.15, allTime: 0.15 } },
+		lastSessionDate: new Date().toISOString().split("T")[0],
+	};
+
+	writeFileSync(
+		join(falconDir, "history.json"),
+		JSON.stringify(history, null, 2),
+	);
+
+	return outputPath;
+}
 
 describe("cli", () => {
 	it("prints help", async () => {
@@ -90,5 +150,363 @@ describe("cli", () => {
 		const result = await runCli(["--last"]);
 		expect(result.exitCode).toBe(0);
 		expect(result.stdout).toContain("No previous generations found");
+	});
+
+	describe("--seed", () => {
+		it("rejects non-integer seed", async () => {
+			const result = await runCli(["a test prompt", "--seed", "abc"], {
+				FAL_KEY: "test-key",
+			});
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr).toContain("Invalid seed");
+		});
+
+		it("accepts valid integer seed", async () => {
+			const result = await runCli(
+				["a test prompt", "--seed", "42", "--no-open"],
+				{
+					FAL_KEY: "test-key",
+					FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
+					FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
+					FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
+				},
+			);
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout).toContain("42");
+		});
+	});
+
+	describe("--refresh hint", () => {
+		it("shows hint without pricing subcommand", async () => {
+			const result = await runCli(["--refresh"]);
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout).toContain("Use 'falcon pricing --refresh'");
+		});
+	});
+
+	describe("output control", () => {
+		const outputFile = join(process.cwd(), "test-out.png");
+
+		afterAll(() => {
+			if (existsSync(outputFile)) {
+				unlinkSync(outputFile);
+			}
+		});
+
+		it("--no-open prevents image opening", async () => {
+			const result = await runCli(["a test prompt", "--no-open"], {
+				FAL_KEY: "test-key",
+				FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
+				FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
+				FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
+			});
+			expect(result.exitCode).toBe(0);
+		});
+
+		it("--output saves to specified path", async () => {
+			const result = await runCli(
+				["a test prompt", "--output", "test-out.png", "--no-open"],
+				{
+					FAL_KEY: "test-key",
+					FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
+					FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
+					FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
+				},
+			);
+			expect(result.exitCode).toBe(0);
+			expect(existsSync(outputFile)).toBe(true);
+		});
+
+		it("--output rejects path traversal", async () => {
+			const result = await runCli(
+				["a test prompt", "--output", "../escape.png"],
+				{ FAL_KEY: "test-key" },
+			);
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr).toContain(
+				"Output path must be within current directory",
+			);
+		});
+
+		it("--format webp on supported model", async () => {
+			const result = await runCli(
+				[
+					"a test prompt",
+					"--format",
+					"webp",
+					"--model",
+					"gemini3",
+					"--no-open",
+				],
+				{
+					FAL_KEY: "test-key",
+					FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
+					FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
+					FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
+				},
+			);
+			expect(result.exitCode).toBe(0);
+		});
+	});
+
+	describe("--edit", () => {
+		it("fails with nonexistent file", async () => {
+			const result = await runCli(
+				["a test prompt", "--edit", "nonexistent.png"],
+				{ FAL_KEY: "test-key" },
+			);
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr).toContain("Edit image not found");
+		});
+
+		it("fails with unsupported model", async () => {
+			const result = await runCli(
+				[
+					"a test prompt",
+					"--edit",
+					"tests/fixtures/tiny.png",
+					"--model",
+					"clarity",
+				],
+				{ FAL_KEY: "test-key" },
+			);
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr).toContain("does not support image editing");
+		});
+
+		it("edits an existing image with prompt", async () => {
+			const result = await runCli(
+				[
+					"a test prompt",
+					"--edit",
+					"tests/fixtures/tiny.png",
+					"--model",
+					"banana",
+					"--no-open",
+				],
+				{
+					FAL_KEY: "test-key",
+					FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
+					FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
+					FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
+				},
+			);
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout).toContain("Editing");
+		});
+	});
+
+	describe("--transparent", () => {
+		it("accepts transparent flag with gpt model", async () => {
+			const result = await runCli(
+				["a test prompt", "--transparent", "--model", "gpt", "--no-open"],
+				{
+					FAL_KEY: "test-key",
+					FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
+					FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
+					FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
+				},
+			);
+			expect(result.exitCode).toBe(0);
+		});
+	});
+
+	describe("--vary", () => {
+		it("fails with empty history", async () => {
+			// Clean up any history left by previous tests
+			const historyPath = join(getTestHome(), ".falcon", "history.json");
+			if (existsSync(historyPath)) {
+				unlinkSync(historyPath);
+			}
+			const result = await runCli(["--vary"], { FAL_KEY: "test-key" });
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr).toContain("No previous generation");
+		});
+
+		it("generates variations from last generation", async () => {
+			setupHistory();
+			try {
+				const result = await runCli(["--vary", "--no-open"], {
+					FAL_KEY: "test-key",
+					FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
+					FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
+					FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
+				});
+				expect(result.exitCode).toBe(0);
+				expect(result.stdout).toContain("Generating variations");
+			} finally {
+				// Clean up history to avoid polluting other tests
+				const historyPath = join(getTestHome(), ".falcon", "history.json");
+				if (existsSync(historyPath)) {
+					unlinkSync(historyPath);
+				}
+			}
+		});
+
+		it("uses custom prompt when provided with --vary", async () => {
+			setupHistory();
+			try {
+				const result = await runCli(
+					["my custom variation prompt", "--vary", "--no-open"],
+					{
+						FAL_KEY: "test-key",
+						FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
+						FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
+						FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
+					},
+				);
+				expect(result.exitCode).toBe(0);
+				expect(result.stdout).toContain("my custom variation prompt");
+			} finally {
+				// Clean up history to avoid polluting other tests
+				const historyPath = join(getTestHome(), ".falcon", "history.json");
+				if (existsSync(historyPath)) {
+					unlinkSync(historyPath);
+				}
+			}
+		});
+	});
+
+	describe("--up", () => {
+		it("fails with empty history", async () => {
+			// Clean up any history left by previous tests
+			const historyPath = join(getTestHome(), ".falcon", "history.json");
+			if (existsSync(historyPath)) {
+				unlinkSync(historyPath);
+			}
+			const result = await runCli(["--up"], { FAL_KEY: "test-key" });
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr).toContain("No previous generation");
+		});
+
+		it("upscales last generation", async () => {
+			setupHistory();
+			try {
+				const result = await runCli(["--up", "--no-open"], {
+					FAL_KEY: "test-key",
+					FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
+					FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
+					FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
+				});
+				expect(result.exitCode).toBe(0);
+				expect(result.stdout).toContain("Upscaling");
+			} finally {
+				// Clean up history to avoid polluting other tests
+				const historyPath = join(getTestHome(), ".falcon", "history.json");
+				if (existsSync(historyPath)) {
+					unlinkSync(historyPath);
+				}
+			}
+		});
+
+		it("upscales from provided path", async () => {
+			const result = await runCli(
+				["tests/fixtures/tiny.png", "--up", "--no-open"],
+				{
+					FAL_KEY: "test-key",
+					FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
+					FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
+					FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
+				},
+			);
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout).toContain("Upscaling");
+		});
+	});
+
+	describe("--rmbg", () => {
+		it("fails with empty history", async () => {
+			// Clean up any history left by previous tests
+			const historyPath = join(getTestHome(), ".falcon", "history.json");
+			if (existsSync(historyPath)) {
+				unlinkSync(historyPath);
+			}
+			const result = await runCli(["--rmbg"], { FAL_KEY: "test-key" });
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr).toContain("No previous generation");
+		});
+
+		it("removes background from last generation", async () => {
+			setupHistory();
+			try {
+				const result = await runCli(["--rmbg", "--no-open"], {
+					FAL_KEY: "test-key",
+					FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
+					FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
+					FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
+				});
+				expect(result.exitCode).toBe(0);
+				expect(result.stdout).toContain("Removing background");
+			} finally {
+				// Clean up history to avoid polluting other tests
+				const historyPath = join(getTestHome(), ".falcon", "history.json");
+				if (existsSync(historyPath)) {
+					unlinkSync(historyPath);
+				}
+			}
+		});
+	});
+
+	describe("missing API key", () => {
+		it("errors when no API key is set", async () => {
+			const result = await runCli(["a test prompt"], { FAL_KEY: "" });
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr).toContain("FAL_KEY not found");
+		});
+	});
+
+	describe("preset flags", () => {
+		const fullFlowEnv = {
+			FAL_KEY: "test-key",
+			FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
+			FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
+			FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
+		};
+
+		it("--cover sets 2:3 aspect", async () => {
+			const result = await runCli(
+				["a test prompt", "--cover", "--no-open"],
+				fullFlowEnv,
+			);
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout).toContain("2:3");
+		});
+
+		it("--story sets 9:16 aspect", async () => {
+			const result = await runCli(
+				["a test prompt", "--story", "--no-open"],
+				fullFlowEnv,
+			);
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout).toContain("9:16");
+		});
+
+		it("--square sets 1:1 aspect", async () => {
+			const result = await runCli(
+				["a test prompt", "--square", "--no-open"],
+				fullFlowEnv,
+			);
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout).toContain("1:1");
+		});
+
+		it("property: all presets produce correct aspect ratio", async () => {
+			// Feature: phase3-cli-e2e-tests, Property 1: Preset flag mapping produces correct aspect ratio
+			// **Validates: Requirements 1.1–1.12, 11.1**
+			await fc.assert(
+				fc.asyncProperty(
+					fc.constantFrom(...PRESET_MAPPINGS),
+					async (preset) => {
+						const result = await runCli(
+							["a test prompt", preset.flag, "--no-open"],
+							fullFlowEnv,
+						);
+						expect(result.exitCode).toBe(0);
+						expect(result.stdout).toContain(preset.aspect);
+					},
+				),
+				{ numRuns: 11 },
+			);
+		}, 30000);
 	});
 });

@@ -177,6 +177,14 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 
 	logger.debug("Sending API request", { endpoint, model, aspect });
 
+	// Support fixture-based testing: return canned response instead of making HTTP request
+	const apiFixturePath = process.env.FALCON_API_FIXTURE;
+	if (apiFixturePath) {
+		const file = Bun.file(apiFixturePath);
+		const data = await file.json();
+		return data as FalResponse;
+	}
+
 	const response = await fetch(endpoint, {
 		method: "POST",
 		headers: {
@@ -250,6 +258,14 @@ export async function upscale(options: UpscaleOptions): Promise<FalResponse> {
 
 	const endpoint = `${FAL_BASE_URL}/${config.endpoint}`;
 
+	// Support fixture-based testing: return canned response instead of making HTTP request
+	const apiFixturePath = process.env.FALCON_API_FIXTURE;
+	if (apiFixturePath) {
+		const file = Bun.file(apiFixturePath);
+		const data = await file.json();
+		return data as FalResponse;
+	}
+
 	const response = await fetch(endpoint, {
 		method: "POST",
 		headers: {
@@ -306,6 +322,14 @@ export async function removeBackground(
 	}
 
 	const endpoint = `${FAL_BASE_URL}/${config.endpoint}`;
+
+	// Support fixture-based testing: return canned response instead of making HTTP request
+	const apiFixturePath = process.env.FALCON_API_FIXTURE;
+	if (apiFixturePath) {
+		const file = Bun.file(apiFixturePath);
+		const data = await file.json();
+		return data as FalResponse;
+	}
 
 	const response = await fetch(endpoint, {
 		method: "POST",
