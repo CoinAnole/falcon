@@ -10,10 +10,14 @@ dist/
 .kilocode
 # Generated images
 falcon-*.png
-falcon-edit-*.png
-fal-*.png
-edit-*.png
+falcon-*.jpg
 falcon-*.webp
+falcon-edit-*.png
+falcon-edit-*.jpg
 falcon-edit-*.webp
+fal-*.png
+fal-*.jpg
 fal-*.webp
+edit-*.png
+edit-*.jpg
 edit-*.webp
