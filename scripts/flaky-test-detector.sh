@@ -5,9 +5,6 @@
 # capturing output of failing tests to files for analysis.
 #
 
-set -e
-set -o pipefail
-
 # Configuration
 MAX_RUNS=10
 OUTPUT_DIR="test-runs"
@@ -45,8 +42,12 @@ for ((i=1; i<=MAX_RUNS; i++)); do
     echo "Running: FALCON_DEBUG=1 bun test ..."
 
     # Run test and capture output, preserving exit code
+    # Use a subshell to prevent set -e from exiting on test failure
     EXIT_CODE=0
-    FALCON_DEBUG=1 bun test 2>&1 | tee "${RUN_LOG}" || EXIT_CODE=$?
+    (
+        set -o pipefail
+        FALCON_DEBUG=1 bun test 2>&1 | tee "${RUN_LOG}"
+    ) || EXIT_CODE=$?
 
     if [ $EXIT_CODE -eq 0 ]; then
         echo "✓ Run ${i} PASSED"
