@@ -6,6 +6,7 @@
 #
 
 set -e
+set -o pipefail
 
 # Configuration
 MAX_RUNS=10
@@ -36,19 +37,23 @@ for ((i=1; i<=MAX_RUNS; i++)); do
     echo "----------------------------------------"
     echo "Run ${i}/${MAX_RUNS}"
     echo "----------------------------------------"
-    
+
     RUN_LOG="${RUN_DIR}/run_${i}.log"
     FAIL_LOG="${RUN_DIR}/run_${i}_failures.log"
-    
+
     # Run tests with debug mode enabled, capture all output
     echo "Running: FALCON_DEBUG=1 bun test ..."
-    if FALCON_DEBUG=1 bun test 2>&1 | tee "${RUN_LOG}"; then
+
+    # Run test and capture output, preserving exit code
+    EXIT_CODE=0
+    FALCON_DEBUG=1 bun test 2>&1 | tee "${RUN_LOG}" || EXIT_CODE=$?
+
+    if [ $EXIT_CODE -eq 0 ]; then
         echo "✓ Run ${i} PASSED"
     else
-        EXIT_CODE=${PIPESTATUS[0]}
         echo "✗ Run ${i} FAILED (exit code: ${EXIT_CODE})"
         FAILED_RUNS+=($i)
-        
+
         # Extract failure details from the log
         echo "========================================" > "${FAIL_LOG}"
         echo "FAILURE DETAILS FOR RUN ${i}" >> "${FAIL_LOG}"
@@ -56,16 +61,16 @@ for ((i=1; i<=MAX_RUNS; i++)); do
         echo "Timestamp: $(date -Iseconds)" >> "${FAIL_LOG}"
         echo "========================================" >> "${FAIL_LOG}"
         echo "" >> "${FAIL_LOG}"
-        
+
         # Extract test failure sections (lines with fail, error, or stack traces)
-        grep -E "(✗|fail|error|Error|FAIL|Timed out|expect|assert|---|\bat\b|\/\/.*\.ts)" "${RUN_LOG}" >> "${FAIL_LOG}" 2>/dev/null || true
-        
+        grep -E "(✗|fail|error|Error|FAIL|Timed out|expect|assert|---|\\bat\\b|\\.test\\.ts|\\.test\\.tsx)" "${RUN_LOG}" >> "${FAIL_LOG}" 2>/dev/null || true
+
         FAILURE_LOGS+=("${FAIL_LOG}")
         ((FAIL_COUNT++))
-        
+
         echo "Failure details saved to: ${FAIL_LOG}"
     fi
-    
+
     echo ""
 done
 
@@ -97,14 +102,14 @@ if [ ${FAIL_COUNT} -gt 0 ]; then
     echo "========================================"
     echo "Some tests are failing intermittently."
     echo "Review the failure logs above to identify the flaky tests."
-    
+
     # Try to identify which tests failed
     echo ""
     echo "Potentially flaky test files:"
     for log in "${FAILURE_LOGS[@]}"; do
-        grep -oE "tests/[a-zA-Z0-9_/]+\.test\.tsx?" "${log}" 2>/dev/null | sort -u || true
+        grep -oE "tests/[a-zA-Z0-9_/-]+\\.test\\.tsx?" "${log}" 2>/dev/null | sort -u || true
     done | sort -u
-    
+
     exit 1
 else
     echo "========================================"
