@@ -49,6 +49,13 @@ import {
 	validateOutputPath,
 } from "./utils/paths";
 
+const cliDebugEnabled = process.env.FALCON_CLI_TEST_DEBUG === "1";
+const cliDebugLog = (message: string, meta?: Record<string, unknown>) => {
+	if (!cliDebugEnabled) return;
+	const payload = meta ? ` ${JSON.stringify(meta)}` : "";
+	console.error(`[cli] ${message}${payload}`);
+};
+
 /**
  * Get error message safely from unknown error type
  */
@@ -147,6 +154,7 @@ interface CliOptions {
 }
 
 export async function runCli(args: string[]): Promise<void> {
+	cliDebugLog("runCli:start", { args });
 	logger.debug("CLI started", { args: args.slice(2) }); // Skip node and script path
 
 	const config = await loadConfig();
@@ -221,6 +229,7 @@ export async function runCli(args: string[]): Promise<void> {
 	const prompt = program.args[0];
 
 	if (prompt === "pricing") {
+		cliDebugLog("pricing:command", { refresh: options.refresh });
 		if (!options.refresh) {
 			console.log("Use --refresh to update cached pricing data.");
 			return;
@@ -252,6 +261,7 @@ export async function runCli(args: string[]): Promise<void> {
 	}
 
 	if (options.refresh) {
+		cliDebugLog("pricing:hint");
 		console.log(
 			"Use 'falcon pricing --refresh' to update cached pricing data.",
 		);
@@ -260,6 +270,7 @@ export async function runCli(args: string[]): Promise<void> {
 
 	// Handle --last (doesn't need API key)
 	if (options.last) {
+		cliDebugLog("history:last");
 		await showLastGeneration();
 		return;
 	}
@@ -278,34 +289,44 @@ export async function runCli(args: string[]): Promise<void> {
 
 	// Handle --vary (variations of last image)
 	if (options.vary) {
+		cliDebugLog("vary:start", { prompt });
 		await generateVariations(prompt, options, config);
+		cliDebugLog("vary:complete");
 		return;
 	}
 
 	// Handle --up (upscale image - provided path or last)
 	if (options.up) {
+		cliDebugLog("upscale:start", { prompt });
 		await upscaleLast(prompt, options, config);
+		cliDebugLog("upscale:complete");
 		return;
 	}
 
 	// Handle --rmbg (remove background from last image)
 	if (options.rmbg) {
+		cliDebugLog("rmbg:start");
 		await removeBackgroundLast(options, config);
+		cliDebugLog("rmbg:complete");
 		return;
 	}
 
 	// Regular generation requires a prompt
 	if (!prompt) {
+		cliDebugLog("help:prompt-missing");
 		// No prompt and no special flags = show help or launch studio
 		// The entry point handles launching studio, so just show help here
 		program.help();
 		return;
 	}
 
+	cliDebugLog("generate:start", { prompt });
 	await generateImage(prompt, options, config);
+	cliDebugLog("generate:complete");
 }
 
 async function showLastGeneration(): Promise<void> {
+	cliDebugLog("history:last:load");
 	const last = await getLastGeneration();
 	if (!last) {
 		console.log(chalk.yellow("No previous generations found"));
@@ -359,6 +380,7 @@ async function generateImage(
 	options: CliOptions,
 	config: Awaited<ReturnType<typeof loadConfig>>,
 ): Promise<void> {
+	cliDebugLog("generate:prepare", { prompt, model: options.model });
 	// Apply presets
 	let aspect: AspectRatio =
 		(options.aspect as AspectRatio) || config.defaultAspect;
@@ -405,6 +427,7 @@ async function generateImage(
 	try {
 		numImages = parseNumImages(options.num, 1);
 	} catch (err) {
+		cliDebugLog("generate:error:numImages", { error: getErrorMessage(err) });
 		console.error(chalk.red(getErrorMessage(err)));
 		process.exit(1);
 	}
@@ -413,6 +436,7 @@ async function generateImage(
 	if (options.seed !== undefined) {
 		const seed = Number(options.seed);
 		if (!Number.isInteger(seed)) {
+			cliDebugLog("generate:error:seed");
 			console.error(chalk.red("Invalid seed. Use --seed with an integer."));
 			process.exit(1);
 		}
@@ -457,6 +481,7 @@ async function generateImage(
 
 	// Validate output path if specified
 	if (!modelConfig) {
+		cliDebugLog("generate:error:model", { model });
 		console.error(chalk.red(`Unknown model: ${model}`));
 		console.log(`Available models: ${GENERATION_MODELS.join(", ")}`);
 		await new Promise((resolve) => setTimeout(resolve, 10));
@@ -464,12 +489,14 @@ async function generateImage(
 	}
 
 	if (options.edit && !modelConfig.supportsEdit) {
+		cliDebugLog("generate:error:edit-unsupported", { model });
 		console.error(chalk.red(`Model ${model} does not support image editing.`));
 		process.exit(1);
 	}
 
 	const supportedRatios = getAspectRatiosForModel(model);
 	if (!supportedRatios.includes(aspect)) {
+		cliDebugLog("generate:error:aspect", { aspect, model });
 		console.error(
 			chalk.red(
 				`Aspect ratio ${aspect} is not supported for model ${model}. Supported ratios: ${supportedRatios.join(", ")}`,
@@ -486,12 +513,14 @@ async function generateImage(
 		numInferenceSteps = parseInferenceSteps(options.inferenceSteps);
 		acceleration = parseAcceleration(options.acceleration);
 	} catch (err) {
+		cliDebugLog("generate:error:flux-options", { error: getErrorMessage(err) });
 		console.error(chalk.red(getErrorMessage(err)));
 		process.exit(1);
 	}
 
 	const seed = options.seed ? Number(options.seed) : undefined;
 	if (seed !== undefined && !Number.isInteger(seed)) {
+		cliDebugLog("generate:error:seed-duplicate");
 		console.error(chalk.red("Invalid seed. Use --seed with an integer."));
 		process.exit(1);
 	}
@@ -502,14 +531,20 @@ async function generateImage(
 			? normalizeOutputPath(options.output, fileExt)
 			: generateFilename("falcon", fileExt);
 	} catch (err) {
+		cliDebugLog("generate:error:output", { error: getErrorMessage(err) });
 		console.error(chalk.red(getErrorMessage(err)));
 		process.exit(1);
 	}
+	cliDebugLog("generate:output", { outputPath, fileExt });
 
 	const estimate = await estimateGenerationCost({
 		model,
 		resolution,
 		numImages,
+	});
+	cliDebugLog("generate:estimate", {
+		cost: estimate.cost,
+		currency: estimate.costDetails.currency,
 	});
 	const perImageCost = estimate.cost / numImages;
 
@@ -543,6 +578,9 @@ async function generateImage(
 		try {
 			editPath = validateEditPath(options.edit);
 		} catch (err) {
+			cliDebugLog("generate:error:edit-path", {
+				error: getErrorMessage(err),
+			});
 			console.error(chalk.red(getErrorMessage(err)));
 			process.exit(1);
 		}
@@ -581,6 +619,10 @@ async function generateImage(
 			outputFormat: outputFormat as "jpeg" | "png" | "webp" | undefined,
 			seed,
 		});
+		cliDebugLog("generate:api-result", {
+			images: result.images.length,
+			seed: result.seed,
+		});
 
 		spinner.succeed("Generated!");
 		logger.info("Image generation successful", {
@@ -595,9 +637,15 @@ async function generateImage(
 			const path = buildIndexedOutputPath(outputPath, i, fileExt);
 
 			await downloadImage(image.url, path);
+			cliDebugLog("generate:downloaded", { path });
 
 			const dims = await getImageDimensions(path);
 			const size = await getFileSize(path);
+			cliDebugLog("generate:file-info", {
+				path,
+				dims,
+				size,
+			});
 
 			console.log(
 				chalk.green(`✓ Saved: ${path} `) +
@@ -627,6 +675,7 @@ async function generateImage(
 				editedFrom: options.edit ? resolve(options.edit) : undefined,
 			};
 			await addGeneration(generation);
+			cliDebugLog("generate:history:add", { id: generation.id });
 
 			// Open first image
 			if (i === 0 && config.openAfterGenerate && options.open !== false) {
@@ -636,6 +685,9 @@ async function generateImage(
 
 		// Show cost summary
 		const history = await loadHistory();
+		cliDebugLog("generate:history:loaded", {
+			count: history.generations.length,
+		});
 		const totals = getHistoryTotals(history);
 		const currencyLabel = totals.additionalCurrencies
 			? `${totals.currency} (+${totals.additionalCurrencies} more)`
@@ -646,6 +698,7 @@ async function generateImage(
 			),
 		);
 	} catch (err) {
+		cliDebugLog("generate:error", { error: getErrorMessage(err) });
 		spinner.fail("Generation failed");
 		logger.errorWithStack("CLI generation failed", err as Error, {
 			model,
@@ -661,6 +714,7 @@ async function generateVariations(
 	options: CliOptions,
 	config: Awaited<ReturnType<typeof loadConfig>>,
 ): Promise<void> {
+	cliDebugLog("vary:load-last");
 	const last = await getLastGeneration();
 	if (!last) {
 		console.error(chalk.red("No previous generation to create variations of"));
@@ -673,6 +727,7 @@ async function generateVariations(
 	try {
 		numImages = parseNumImages(options.num, 4);
 	} catch (err) {
+		cliDebugLog("vary:error:numImages", { error: getErrorMessage(err) });
 		console.error(chalk.red(getErrorMessage(err)));
 		process.exit(1);
 	}
@@ -692,6 +747,7 @@ async function generateVariations(
 		},
 		config,
 	);
+	cliDebugLog("vary:generated", { prompt, numImages });
 }
 
 async function upscaleLast(
@@ -699,6 +755,7 @@ async function upscaleLast(
 	options: CliOptions,
 	config: Awaited<ReturnType<typeof loadConfig>>,
 ): Promise<void> {
+	cliDebugLog("upscale:load-last", { imagePath });
 	let sourceImagePath: string;
 	let sourcePrompt = "[upscale]";
 	let sourceAspect: AspectRatio = "1:1";
@@ -709,6 +766,7 @@ async function upscaleLast(
 		try {
 			sourceImagePath = validateEditPath(imagePath);
 		} catch (err) {
+			cliDebugLog("upscale:error:edit-path", { error: getErrorMessage(err) });
 			console.error(chalk.red(getErrorMessage(err)));
 			process.exit(1);
 		}
@@ -716,6 +774,7 @@ async function upscaleLast(
 		// Fall back to last generation
 		const last = await getLastGeneration();
 		if (!last) {
+			cliDebugLog("upscale:error:no-history");
 			console.error(chalk.red("No previous generation to upscale"));
 			process.exit(1);
 		}
@@ -727,6 +786,7 @@ async function upscaleLast(
 
 	const scaleFactor = parseInt(options.scale || "2", 10);
 	if (Number.isNaN(scaleFactor) || !isValidUpscaleFactor(scaleFactor)) {
+		cliDebugLog("upscale:error:scale", { scaleFactor });
 		console.error(
 			chalk.red(
 				`Invalid scale factor.Use--scale with ${UPSCALE_FACTORS.join(", ")}.`,
@@ -749,9 +809,11 @@ async function upscaleLast(
 					)
 				: generateFilename("falcon-upscale", "png");
 	} catch (err) {
+		cliDebugLog("upscale:error:output", { error: getErrorMessage(err) });
 		console.error(chalk.red(getErrorMessage(err)));
 		process.exit(1);
 	}
+	cliDebugLog("upscale:output", { outputPath });
 
 	console.log(chalk.bold("\nUpscaling..."));
 	console.log(`Source: ${chalk.dim(sourceImagePath)} `);
@@ -763,6 +825,10 @@ async function upscaleLast(
 		inputWidth: inputDims?.width,
 		inputHeight: inputDims?.height,
 		scaleFactor,
+	});
+	cliDebugLog("upscale:estimate", {
+		cost: estimate.cost,
+		currency: estimate.costDetails.currency,
 	});
 	console.log(
 		`Est.cost: ${chalk.yellow(
@@ -783,6 +849,7 @@ async function upscaleLast(
 	try {
 		// Convert local file to data URL for upload
 		const imageData = await imageToDataUrl(sourceImagePath);
+		cliDebugLog("upscale:image-data", { size: imageData.length });
 
 		const seed = options.seed ? Number(options.seed) : undefined;
 
@@ -792,10 +859,15 @@ async function upscaleLast(
 			scaleFactor,
 			seed,
 		});
+		cliDebugLog("upscale:api-result", {
+			images: result.images.length,
+			seed: result.seed,
+		});
 
 		spinner.succeed("Upscaled!");
 
 		await downloadImage(result.images[0].url, outputPath);
+		cliDebugLog("upscale:downloaded", { outputPath });
 
 		const dims = await getImageDimensions(outputPath);
 		const size = await getFileSize(outputPath);
@@ -819,11 +891,13 @@ async function upscaleLast(
 			seed: result.seed || seed,
 			editedFrom: sourceImagePath,
 		});
+		cliDebugLog("upscale:history:add");
 
 		if (config.openAfterGenerate && options.open !== false) {
 			await openImage(outputPath);
 		}
 	} catch (err) {
+		cliDebugLog("upscale:error", { error: getErrorMessage(err) });
 		spinner.fail("Upscale failed");
 		logger.errorWithStack("CLI upscale failed", err as Error, {
 			model: config.upscaler,
@@ -838,8 +912,10 @@ async function removeBackgroundLast(
 	options: CliOptions,
 	config: Awaited<ReturnType<typeof loadConfig>>,
 ): Promise<void> {
+	cliDebugLog("rmbg:load-last");
 	const last = await getLastGeneration();
 	if (!last) {
+		cliDebugLog("rmbg:error:no-history");
 		console.error(
 			chalk.red("No previous generation to remove background from"),
 		);
@@ -857,9 +933,11 @@ async function removeBackgroundLast(
 					)
 				: generateFilename("falcon-nobg", "png");
 	} catch (err) {
+		cliDebugLog("rmbg:error:output", { error: getErrorMessage(err) });
 		console.error(chalk.red(getErrorMessage(err)));
 		process.exit(1);
 	}
+	cliDebugLog("rmbg:output", { outputPath });
 
 	console.log(chalk.bold("\nRemoving background..."));
 	console.log(`Source: ${chalk.dim(last.output)} `);
@@ -867,6 +945,10 @@ async function removeBackgroundLast(
 
 	const estimate = await estimateBackgroundRemovalCost({
 		model: config.backgroundRemover,
+	});
+	cliDebugLog("rmbg:estimate", {
+		cost: estimate.cost,
+		currency: estimate.costDetails.currency,
 	});
 	console.log(
 		`Est.cost: ${chalk.yellow(
@@ -885,15 +967,20 @@ async function removeBackgroundLast(
 
 	try {
 		const imageData = await imageToDataUrl(last.output);
+		cliDebugLog("rmbg:image-data", { size: imageData.length });
 
 		const result = await removeBackground({
 			imageUrl: imageData,
 			model: config.backgroundRemover,
 		});
+		cliDebugLog("rmbg:api-result", {
+			images: result.images.length,
+		});
 
 		spinner.succeed("Background removed!");
 
 		await downloadImage(result.images[0].url, outputPath);
+		cliDebugLog("rmbg:downloaded", { outputPath });
 
 		const dims = await getImageDimensions(outputPath);
 		const size = await getFileSize(outputPath);
@@ -915,11 +1002,13 @@ async function removeBackgroundLast(
 			timestamp: new Date().toISOString(),
 			editedFrom: last.output,
 		});
+		cliDebugLog("rmbg:history:add");
 
 		if (config.openAfterGenerate && options.open !== false) {
 			await openImage(outputPath);
 		}
 	} catch (err) {
+		cliDebugLog("rmbg:error", { error: getErrorMessage(err) });
 		spinner.fail("Background removal failed");
 		logger.errorWithStack("CLI background removal failed", err as Error, {
 			model: config.backgroundRemover,

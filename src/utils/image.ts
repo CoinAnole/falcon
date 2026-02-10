@@ -146,14 +146,22 @@ export async function openImage(imagePath: string): Promise<void> {
 	}
 
 	const absolutePath = resolve(imagePath);
+	const debugEnabled = process.env.FALCON_CLI_TEST_DEBUG === "1";
+	const debugLog = (message: string, meta?: Record<string, unknown>) => {
+		if (!debugEnabled) return;
+		const payload = meta ? ` ${JSON.stringify(meta)}` : "";
+		console.error(`[openImage] ${message}${payload}`);
+	};
 
 	// Skip opening in test environment to avoid dangling processes
 	if (process.env.FALCON_TEST_MODE) {
+		debugLog("skipped", { reason: "FALCON_TEST_MODE", absolutePath });
 		return;
 	}
 
 	if (process.platform === "darwin") {
 		// Use 'open' command - cleaner than qlmanage (no debug output)
+		debugLog("spawn", { platform: process.platform, command: "open" });
 		const proc = Bun.spawn(["open", absolutePath], {
 			stdout: "ignore",
 			stderr: "ignore",
@@ -161,6 +169,7 @@ export async function openImage(imagePath: string): Promise<void> {
 		// Don't await - let it run detached
 		proc.unref?.();
 	} else if (process.platform === "linux") {
+		debugLog("spawn", { platform: process.platform, command: "xdg-open" });
 		const proc = Bun.spawn(["xdg-open", absolutePath], {
 			stdout: "ignore",
 			stderr: "ignore",

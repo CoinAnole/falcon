@@ -95,8 +95,16 @@ export interface RunCliOptions {
 export async function runCli(
 	args: string[],
 	envOverrides: Record<string, string> = {},
-	timeoutMs = 15000,
+	timeoutMs = 4500,
 ): Promise<CliResult> {
+	const debugEnabled = process.env.FALCON_CLI_TEST_DEBUG === "1";
+	const debugLog = (message: string, meta?: Record<string, unknown>) => {
+		if (!debugEnabled) return;
+		const payload = meta ? ` ${JSON.stringify(meta)}` : "";
+		console.error(`[runCli] ${message}${payload}`);
+	};
+	const startTime = Date.now();
+	let timeoutFired = false;
 	// If this is a generation command without explicit output, redirect to temp directory
 	const hasOutputFlag = args.includes("--output") || args.includes("-o");
 	const hasPrompt = args.length > 0 && !args[0].startsWith("-");
@@ -117,46 +125,104 @@ export async function runCli(
 		testArgs.push("--output", outputPath);
 	}
 
+	debugLog("spawn", { args: testArgs, timeoutMs });
+	const childEnv: Record<string, string> = {
+		...process.env,
+		HOME: getTestHome(),
+		FALCON_TEST_MODE: "1",
+	} as Record<string, string>;
+	for (const [key, value] of Object.entries(envOverrides)) {
+		if (value === "") {
+			delete childEnv[key];
+		} else {
+			childEnv[key] = value;
+		}
+	}
+
 	const proc = Bun.spawn(["bun", "src/index.ts", ...testArgs], {
 		cwd: process.cwd(),
+		stdin: "ignore",
 		stdout: "pipe",
 		stderr: "pipe",
-		env: {
-			...process.env,
-			HOME: getTestHome(),
-			FALCON_TEST_MODE: "1",
-			...envOverrides,
-		},
+		env: childEnv,
 	});
 
 	// Read stdout and stderr using Bun's helper which handles process exit correctly
 	const stdoutPromise = Bun.readableStreamToText(proc.stdout);
 	const stderrPromise = Bun.readableStreamToText(proc.stderr);
 
-	// Wait for process to exit with timeout
-	const timeoutId = setTimeout(() => {
-		proc.kill();
-	}, timeoutMs);
-
 	try {
-		// Wait for process to exit
-		const exitCode = await proc.exited;
-		clearTimeout(timeoutId);
-
-		// After process exits, give streams a moment to complete
-		// But don't wait indefinitely - use Promise.race with a short timeout
-		const stdout = await Promise.race([
-			stdoutPromise,
-			new Promise<string>((resolve) => setTimeout(() => resolve(""), 100)),
-		]);
-		const stderr = await Promise.race([
-			stderrPromise,
-			new Promise<string>((resolve) => setTimeout(() => resolve(""), 100)),
-		]);
-
-		return { exitCode, stdout, stderr };
+		const { exitCode, timedOut } = await waitForExit(proc, timeoutMs, debugLog);
+		timeoutFired = timedOut;
+		debugLog("exit", {
+			exitCode,
+			timeoutFired,
+			durationMs: Date.now() - startTime,
+		});
+		return finalizeResult(exitCode, stdoutPromise, stderrPromise, debugLog);
 	} catch (error) {
-		clearTimeout(timeoutId);
 		throw error;
 	}
+}
+
+async function waitForExit(
+	proc: ReturnType<typeof Bun.spawn>,
+	timeoutMs: number,
+	debugLog: (message: string, meta?: Record<string, unknown>) => void,
+): Promise<{ exitCode: number; timedOut: boolean }> {
+	return await new Promise<{ exitCode: number; timedOut: boolean }>(
+		(resolve) => {
+			let resolved = false;
+			const timeoutId = setTimeout(() => {
+				if (resolved) return;
+				resolved = true;
+				debugLog("timeout", { timeoutMs });
+				proc.kill();
+				resolve({ exitCode: 143, timedOut: true });
+			}, timeoutMs);
+
+			void proc.exited.then((exitCode) => {
+				if (resolved) return;
+				resolved = true;
+				clearTimeout(timeoutId);
+				resolve({ exitCode, timedOut: false });
+			});
+		},
+	);
+}
+
+async function finalizeResult(
+	exitCode: number,
+	stdoutPromise: Promise<string>,
+	stderrPromise: Promise<string>,
+	debugLog: (message: string, meta?: Record<string, unknown>) => void,
+): Promise<CliResult> {
+	let stdoutTimedOut = false;
+	let stderrTimedOut = false;
+	const stdout = await Promise.race([
+		stdoutPromise,
+		new Promise<string>((resolve) =>
+			setTimeout(() => {
+				stdoutTimedOut = true;
+				resolve("");
+			}, 250),
+		),
+	]);
+	const stderr = await Promise.race([
+		stderrPromise,
+		new Promise<string>((resolve) =>
+			setTimeout(() => {
+				stderrTimedOut = true;
+				resolve("");
+			}, 250),
+		),
+	]);
+	debugLog("streams", {
+		stdoutTimedOut,
+		stderrTimedOut,
+		stdoutLength: stdout.length,
+		stderrLength: stderr.length,
+	});
+
+	return { exitCode, stdout, stderr };
 }
