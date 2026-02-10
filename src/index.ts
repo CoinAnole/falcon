@@ -34,8 +34,8 @@ async function main() {
 	// If there are arguments (prompt or flags), run CLI mode
 	if (args.length > 0) {
 		await runCli(["node", "falcon", ...args]);
-		// Explicitly exit to prevent hanging from any leftover handles
-		process.exit(0);
+		// Allow natural process exit - don't force exit to ensure streams are flushed
+		return;
 	}
 
 	// No arguments = launch Studio mode

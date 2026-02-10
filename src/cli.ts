@@ -406,9 +406,7 @@ async function generateImage(
 		numImages = parseNumImages(options.num, 1);
 	} catch (err) {
 		console.error(chalk.red(getErrorMessage(err)));
-		await new Promise((resolve) => setTimeout(resolve, 10));
 		process.exit(1);
-		return;
 	}
 
 	// Validate seed early if provided
@@ -416,9 +414,7 @@ async function generateImage(
 		const seed = Number(options.seed);
 		if (!Number.isInteger(seed)) {
 			console.error(chalk.red("Invalid seed. Use --seed with an integer."));
-			await new Promise((resolve) => setTimeout(resolve, 10));
 			process.exit(1);
-			return;
 		}
 	}
 

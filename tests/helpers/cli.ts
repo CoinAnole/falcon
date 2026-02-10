@@ -129,94 +129,34 @@ export async function runCli(
 		},
 	});
 
-	// Create a timeout promise that properly cancels stream reading
-	let timeoutId: ReturnType<typeof setTimeout> | null = null;
-	let timedOut = false;
+	// Read stdout and stderr using Bun's helper which handles process exit correctly
+	const stdoutPromise = Bun.readableStreamToText(proc.stdout);
+	const stderrPromise = Bun.readableStreamToText(proc.stderr);
 
-	const timeoutPromise = new Promise<never>((_, reject) => {
-		timeoutId = setTimeout(() => {
-			timedOut = true;
-			proc.kill();
-			reject(new Error(`CLI command timed out after ${timeoutMs}ms`));
-		}, timeoutMs);
-	});
-
-	// Helper to read stream with timeout awareness
-	async function readStream(
-		stream: ReadableStream<Uint8Array>,
-	): Promise<string> {
-		const reader = stream.getReader();
-		const chunks: Uint8Array[] = [];
-
-		try {
-			while (!timedOut) {
-				// Use a short timeout for each read to allow checking timedOut flag
-				const readPromise = reader.read();
-				const timeoutCheck = new Promise<{ done: true; value: undefined }>(
-					(resolve) => {
-						const check = () => {
-							if (timedOut) {
-								resolve({ done: true, value: undefined });
-							} else {
-								setTimeout(check, 10);
-							}
-						};
-						setTimeout(check, 10);
-					},
-				);
-
-				const result = await Promise.race([readPromise, timeoutCheck]);
-
-				if (result.done) {
-					break;
-				}
-
-				if (result.value) {
-					chunks.push(result.value);
-				}
-			}
-		} catch (err) {
-			// Stream error, likely due to process termination
-		} finally {
-			try {
-				reader.releaseLock();
-			} catch {
-				// Ignore release errors
-			}
-		}
-
-		// Concatenate chunks and decode
-		if (chunks.length === 0) return "";
-		const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-		const result = new Uint8Array(totalLength);
-		let offset = 0;
-		for (const chunk of chunks) {
-			result.set(chunk, offset);
-			offset += chunk.length;
-		}
-		return new TextDecoder().decode(result);
-	}
-
-	// Read streams using custom reader
-	const stdoutPromise = readStream(proc.stdout as ReadableStream<Uint8Array>);
-	const stderrPromise = readStream(proc.stderr as ReadableStream<Uint8Array>);
-
-	const resultPromise = Promise.all([
-		stdoutPromise,
-		stderrPromise,
-		proc.exited,
-	]);
+	// Wait for process to exit with timeout
+	const timeoutId = setTimeout(() => {
+		proc.kill();
+	}, timeoutMs);
 
 	try {
-		const [stdout, stderr, exitCode] = await Promise.race([
-			resultPromise,
-			timeoutPromise,
+		// Wait for process to exit
+		const exitCode = await proc.exited;
+		clearTimeout(timeoutId);
+
+		// After process exits, give streams a moment to complete
+		// But don't wait indefinitely - use Promise.race with a short timeout
+		const stdout = await Promise.race([
+			stdoutPromise,
+			new Promise<string>((resolve) => setTimeout(() => resolve(""), 100)),
+		]);
+		const stderr = await Promise.race([
+			stderrPromise,
+			new Promise<string>((resolve) => setTimeout(() => resolve(""), 100)),
 		]);
 
-		if (timeoutId) clearTimeout(timeoutId);
 		return { exitCode, stdout, stderr };
 	} catch (error) {
-		if (timeoutId) clearTimeout(timeoutId);
+		clearTimeout(timeoutId);
 		throw error;
 	}
 }
