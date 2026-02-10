@@ -142,14 +142,33 @@ async function main() {
 			console.log(`  - ${join(runDir, `run_${i}.log`)}`);
 		}
 
-		// Extract potentially flaky test files
+		// Extract potentially flaky test files - only those with actual failures
 		const testFiles = new Set<string>();
 		for (const run of failedRuns) {
-			const matches = run.logContent.match(
-				/tests\/[a-zA-Z0-9_/]+\.test\.tsx?/g,
-			);
-			if (matches) {
-				matches.forEach((m) => testFiles.add(m));
+			const lines = run.logContent.split("\n");
+			for (let i = 0; i < lines.length; i++) {
+				const line = lines[i];
+				// Look for test file headers (e.g., "tests/cli/cli.test.ts:")
+				const fileMatch = line.match(/^(tests\/[a-zA-Z0-9_/]+\.test\.tsx?):?$/);
+				if (fileMatch) {
+					// Check if this file has any failures in subsequent lines
+					// Look ahead for "(fail)" entries before the next test file or summary
+					for (let j = i + 1; j < lines.length; j++) {
+						const nextLine = lines[j];
+						// Stop if we hit another test file or summary line
+						if (
+							/^tests\/[a-zA-Z0-9_/]+\.test\.tsx?:?$/.test(nextLine) ||
+							/^\d+ tests? failed/.test(nextLine)
+						) {
+							break;
+						}
+						// If we find a failure for this file, add it
+						if (/^\(fail\)/.test(nextLine)) {
+							testFiles.add(fileMatch[1]);
+							break;
+						}
+					}
+				}
 			}
 		}
 

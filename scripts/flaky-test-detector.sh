@@ -104,11 +104,29 @@ if [ ${FAIL_COUNT} -gt 0 ]; then
     echo "Some tests are failing intermittently."
     echo "Review the failure logs above to identify the flaky tests."
 
-    # Try to identify which tests failed
+    # Try to identify which tests actually failed (not just appeared in output)
+    # Only report test files that have "(fail)" entries associated with them
     echo ""
     echo "Potentially flaky test files:"
     for log in "${FAILURE_LOGS[@]}"; do
-        grep -oE "tests/[a-zA-Z0-9_/-]+\\.test\\.tsx?" "${log}" 2>/dev/null | sort -u || true
+        # Extract test files that have failures by looking at context
+        # A test file is flaky if it appears before "(fail)" entries
+        awk '
+            /^tests\/[a-zA-Z0-9_\/]+\.test\.tsx?:?$/ {
+                current_file = $0
+                gsub(/:$/, "", current_file)
+                has_failure = 0
+            }
+            /^\(fail\)/ && current_file != "" {
+                has_failure = 1
+                failed_files[current_file] = 1
+            }
+            END {
+                for (file in failed_files) {
+                    print file
+                }
+            }
+        ' "${log}" 2>/dev/null || true
     done | sort -u
 
     exit 1
