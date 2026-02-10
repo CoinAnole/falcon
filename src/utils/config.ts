@@ -68,6 +68,16 @@ const DEFAULT_HISTORY: History = {
 	lastSessionDate: new Date().toISOString().split("T")[0],
 };
 
+const historyDebugEnabled = process.env.FALCON_CLI_TEST_DEBUG === "1";
+const historyDebug = (
+	message: string,
+	meta?: Record<string, unknown>,
+): void => {
+	if (!historyDebugEnabled) return;
+	const payload = meta ? ` ${JSON.stringify(meta)}` : "";
+	console.error(`[history] ${message}${payload}`);
+};
+
 function ensureFalconDir(): void {
 	if (!existsSync(FALCON_DIR)) {
 		mkdirSync(FALCON_DIR, { recursive: true, mode: 0o700 });
@@ -153,8 +163,13 @@ export async function saveConfig(config: Partial<FalconConfig>): Promise<void> {
 
 export async function loadHistory(): Promise<History> {
 	ensureFalconDir();
+	historyDebug("loadHistory:begin", {
+		path: HISTORY_PATH,
+		exists: existsSync(HISTORY_PATH),
+	});
 
 	if (!existsSync(HISTORY_PATH)) {
+		historyDebug("loadHistory:missing", { path: HISTORY_PATH });
 		return { ...DEFAULT_HISTORY };
 	}
 
@@ -192,8 +207,17 @@ export async function loadHistory(): Promise<History> {
 			history.lastSessionDate = today;
 		}
 
+		historyDebug("loadHistory:loaded", {
+			path: HISTORY_PATH,
+			generations: history.generations.length,
+			lastSessionDate: history.lastSessionDate,
+		});
 		return history;
 	} catch (err) {
+		historyDebug("loadHistory:error", {
+			path: HISTORY_PATH,
+			error: (err as Error).message,
+		});
 		console.error(
 			`Warning: Failed to load history from ${HISTORY_PATH}: ${(err as Error).message}`,
 		);
@@ -204,10 +228,19 @@ export async function loadHistory(): Promise<History> {
 
 export async function saveHistory(history: History): Promise<void> {
 	ensureFalconDir();
+	historyDebug("saveHistory", {
+		path: HISTORY_PATH,
+		generations: history.generations.length,
+	});
 	await atomicWrite(HISTORY_PATH, JSON.stringify(history, null, 2));
 }
 
 export async function addGeneration(generation: Generation): Promise<void> {
+	historyDebug("addGeneration", {
+		id: generation.id,
+		output: generation.output,
+		model: generation.model,
+	});
 	const history = await loadHistory();
 	const currency = generation.costDetails?.currency || "USD";
 
@@ -234,7 +267,12 @@ export async function addGeneration(generation: Generation): Promise<void> {
 export async function getLastGeneration(): Promise<Generation | null> {
 	const history = await loadHistory();
 	// Generations are stored oldest-first, so last element is most recent
-	return history.generations[history.generations.length - 1] || null;
+	const last = history.generations[history.generations.length - 1] || null;
+	historyDebug("getLastGeneration", {
+		found: Boolean(last),
+		generations: history.generations.length,
+	});
+	return last;
 }
 
 export function getApiKey(config: FalconConfig): string {

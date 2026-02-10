@@ -155,6 +155,7 @@ interface CliOptions {
 
 export async function runCli(args: string[]): Promise<void> {
 	cliDebugLog("runCli:start", { args });
+	cliDebugLog("runCli:cwd", { cwd: process.cwd() });
 	logger.debug("CLI started", { args: args.slice(2) }); // Skip node and script path
 
 	const config = await loadConfig();
@@ -265,6 +266,7 @@ export async function runCli(args: string[]): Promise<void> {
 		console.log(
 			"Use 'falcon pricing --refresh' to update cached pricing data.",
 		);
+		await new Promise((resolve) => setTimeout(resolve, 10));
 		return;
 	}
 
@@ -453,6 +455,7 @@ async function generateImage(
 					options.format as (typeof OUTPUT_FORMATS)[number],
 				)
 			) {
+				cliDebugLog("generate:error:format", { format: options.format });
 				console.error(
 					chalk.red(
 						`Invalid format: ${options.format}. Valid options: ${OUTPUT_FORMATS.join(", ")}`,
@@ -530,12 +533,17 @@ async function generateImage(
 		outputPath = options.output
 			? normalizeOutputPath(options.output, fileExt)
 			: generateFilename("falcon", fileExt);
+		cliDebugLog("generate:output", {
+			provided: options.output,
+			resolved: outputPath,
+			cwd: process.cwd(),
+			fileExt,
+		});
 	} catch (err) {
 		cliDebugLog("generate:error:output", { error: getErrorMessage(err) });
 		console.error(chalk.red(getErrorMessage(err)));
 		process.exit(1);
 	}
-	cliDebugLog("generate:output", { outputPath, fileExt });
 
 	const estimate = await estimateGenerationCost({
 		model,
@@ -595,6 +603,7 @@ async function generateImage(
 		}
 	}
 
+	cliDebugLog("generate:spinner:start");
 	const spinner = ora("Generating...").start();
 	logger.info("Starting image generation via CLI", {
 		model,
@@ -604,6 +613,12 @@ async function generateImage(
 	});
 
 	try {
+		cliDebugLog("generate:api:request", {
+			model,
+			aspect,
+			resolution,
+			numImages,
+		});
 		const result = await generate({
 			prompt,
 			model,
@@ -636,16 +651,28 @@ async function generateImage(
 			const image = result.images[i];
 			const path = buildIndexedOutputPath(outputPath, i, fileExt);
 
+			cliDebugLog("generate:download:start", { path, url: image.url });
 			await downloadImage(image.url, path);
-			cliDebugLog("generate:downloaded", { path });
+			cliDebugLog("generate:download:complete", { path });
 
-			const dims = await getImageDimensions(path);
-			const size = await getFileSize(path);
-			cliDebugLog("generate:file-info", {
-				path,
-				dims,
-				size,
-			});
+			let dims: Awaited<ReturnType<typeof getImageDimensions>> = null;
+			let size = "";
+			try {
+				cliDebugLog("generate:file-info:start", { path });
+				dims = await getImageDimensions(path);
+				size = await getFileSize(path);
+				cliDebugLog("generate:file-info", {
+					path,
+					dims,
+					size,
+				});
+			} catch (err) {
+				cliDebugLog("generate:file-info:error", {
+					error: getErrorMessage(err),
+					path,
+				});
+				throw err;
+			}
 
 			console.log(
 				chalk.green(`✓ Saved: ${path} `) +
@@ -674,8 +701,17 @@ async function generateImage(
 				seed: result.seed || seed,
 				editedFrom: options.edit ? resolve(options.edit) : undefined,
 			};
-			await addGeneration(generation);
-			cliDebugLog("generate:history:add", { id: generation.id });
+			try {
+				cliDebugLog("generate:history:add:start", { id: generation.id });
+				await addGeneration(generation);
+				cliDebugLog("generate:history:add:complete", { id: generation.id });
+			} catch (err) {
+				cliDebugLog("generate:history:add:error", {
+					error: getErrorMessage(err),
+					id: generation.id,
+				});
+				throw err;
+			}
 
 			// Open first image
 			if (i === 0 && config.openAfterGenerate && options.open !== false) {
@@ -684,6 +720,7 @@ async function generateImage(
 		}
 
 		// Show cost summary
+		cliDebugLog("generate:history:load:start");
 		const history = await loadHistory();
 		cliDebugLog("generate:history:loaded", {
 			count: history.generations.length,

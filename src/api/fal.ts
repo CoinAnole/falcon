@@ -180,6 +180,11 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 	// Support fixture-based testing: return canned response instead of making HTTP request
 	const apiFixturePath = process.env.FALCON_API_FIXTURE;
 	if (apiFixturePath) {
+		if (process.env.FALCON_CLI_TEST_DEBUG === "1") {
+			console.error(
+				`[fal] fixture:generate ${JSON.stringify({ path: apiFixturePath })}`,
+			);
+		}
 		const file = Bun.file(apiFixturePath);
 		const data = await file.json();
 		return data as FalResponse;
@@ -203,6 +208,15 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 
 	if (!response.ok) {
 		const errorBody = await response.text();
+		if (process.env.FALCON_CLI_TEST_DEBUG === "1") {
+			console.error(
+				`[fal] error:generate ${JSON.stringify({
+					status: response.status,
+					statusText: response.statusText,
+					body: errorBody,
+				})}`,
+			);
+		}
 		logger.error("API request failed", {
 			endpoint,
 			status: response.status,
@@ -268,6 +282,11 @@ export async function upscale(options: UpscaleOptions): Promise<FalResponse> {
 	// Support fixture-based testing: return canned response instead of making HTTP request
 	const apiFixturePath = process.env.FALCON_API_FIXTURE;
 	if (apiFixturePath) {
+		if (process.env.FALCON_CLI_TEST_DEBUG === "1") {
+			console.error(
+				`[fal] fixture:upscale ${JSON.stringify({ path: apiFixturePath })}`,
+			);
+		}
 		const file = Bun.file(apiFixturePath);
 		const data = await file.json();
 		return data as FalResponse;
@@ -291,6 +310,15 @@ export async function upscale(options: UpscaleOptions): Promise<FalResponse> {
 
 	if (!response.ok) {
 		const errorBody = await response.text();
+		if (process.env.FALCON_CLI_TEST_DEBUG === "1") {
+			console.error(
+				`[fal] error:upscale ${JSON.stringify({
+					status: response.status,
+					statusText: response.statusText,
+					body: errorBody,
+				})}`,
+			);
+		}
 		logger.error("Upscale API request failed", {
 			endpoint,
 			status: response.status,
@@ -340,6 +368,11 @@ export async function removeBackground(
 	// Support fixture-based testing: return canned response instead of making HTTP request
 	const apiFixturePath = process.env.FALCON_API_FIXTURE;
 	if (apiFixturePath) {
+		if (process.env.FALCON_CLI_TEST_DEBUG === "1") {
+			console.error(
+				`[fal] fixture:rmbg ${JSON.stringify({ path: apiFixturePath })}`,
+			);
+		}
 		const file = Bun.file(apiFixturePath);
 		const data = await file.json();
 		return data as FalResponse;
@@ -363,6 +396,15 @@ export async function removeBackground(
 
 	if (!response.ok) {
 		const errorBody = await response.text();
+		if (process.env.FALCON_CLI_TEST_DEBUG === "1") {
+			console.error(
+				`[fal] error:rmbg ${JSON.stringify({
+					status: response.status,
+					statusText: response.statusText,
+					body: errorBody,
+				})}`,
+			);
+		}
 		logger.error("Background removal API request failed", {
 			endpoint,
 			status: response.status,

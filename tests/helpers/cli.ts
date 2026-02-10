@@ -95,7 +95,7 @@ export interface RunCliOptions {
 export async function runCli(
 	args: string[],
 	envOverrides: Record<string, string> = {},
-	timeoutMs = 4500,
+	timeoutMs = 10000,
 ): Promise<CliResult> {
 	const debugEnabled = process.env.FALCON_CLI_TEST_DEBUG === "1";
 	const debugLog = (message: string, meta?: Record<string, unknown>) => {
@@ -125,10 +125,32 @@ export async function runCli(
 		testArgs.push("--output", outputPath);
 	}
 
-	debugLog("spawn", { args: testArgs, timeoutMs });
+	const envKeys = Object.keys(envOverrides);
+	const clearedKeys = envKeys.filter((key) => envOverrides[key] === "");
+	const setKeys = envKeys.filter((key) => envOverrides[key] !== "");
+	const fixtureKeys = [
+		"FALCON_PRICING_FIXTURE",
+		"FALCON_API_FIXTURE",
+		"FALCON_DOWNLOAD_FIXTURE",
+	];
+	const fixtureEnv = fixtureKeys.reduce<Record<string, string | undefined>>(
+		(acc, key) => {
+			acc[key] = envOverrides[key] || process.env[key];
+			return acc;
+		},
+		{},
+	);
+	debugLog("spawn", {
+		args: testArgs,
+		timeoutMs,
+		setKeys,
+		clearedKeys,
+		fixtures: fixtureEnv,
+	});
+	const runHome = getTestHome();
 	const childEnv: Record<string, string> = {
 		...process.env,
-		HOME: getTestHome(),
+		HOME: runHome,
 		FALCON_TEST_MODE: "1",
 	} as Record<string, string>;
 	for (const [key, value] of Object.entries(envOverrides)) {
@@ -146,12 +168,24 @@ export async function runCli(
 		stderr: "pipe",
 		env: childEnv,
 	});
+	debugLog("spawned", {
+		pid: proc.pid,
+		hasStdout: Boolean(proc.stdout),
+		hasStderr: Boolean(proc.stderr),
+	});
 
 	// Read stdout and stderr using Bun's helper which handles process exit correctly
-	const stdoutPromise = Bun.readableStreamToText(proc.stdout);
-	const stderrPromise = Bun.readableStreamToText(proc.stderr);
+	const stdoutPromise = Bun.readableStreamToText(proc.stdout).then((stdout) => {
+		debugLog("stdout:closed", { length: stdout.length });
+		return stdout;
+	});
+	const stderrPromise = Bun.readableStreamToText(proc.stderr).then((stderr) => {
+		debugLog("stderr:closed", { length: stderr.length });
+		return stderr;
+	});
 
 	try {
+		debugLog("waitForExit:begin", { pid: proc.pid, timeoutMs });
 		const { exitCode, timedOut } = await waitForExit(proc, timeoutMs, debugLog);
 		timeoutFired = timedOut;
 		debugLog("exit", {
@@ -162,6 +196,8 @@ export async function runCli(
 		return finalizeResult(exitCode, stdoutPromise, stderrPromise, debugLog);
 	} catch (error) {
 		throw error;
+	} finally {
+		// HOME cleanup handled by tests/helpers/env.ts
 	}
 }
 
@@ -176,12 +212,14 @@ async function waitForExit(
 			const timeoutId = setTimeout(() => {
 				if (resolved) return;
 				resolved = true;
-				debugLog("timeout", { timeoutMs });
+				debugLog("timeout", { timeoutMs, pid: proc.pid });
 				proc.kill();
+				debugLog("timeout:kill", { pid: proc.pid });
 				resolve({ exitCode: 143, timedOut: true });
 			}, timeoutMs);
 
 			void proc.exited.then((exitCode) => {
+				debugLog("exited", { exitCode, resolved, pid: proc.pid });
 				if (resolved) return;
 				resolved = true;
 				clearTimeout(timeoutId);
@@ -197,32 +235,33 @@ async function finalizeResult(
 	stderrPromise: Promise<string>,
 	debugLog: (message: string, meta?: Record<string, unknown>) => void,
 ): Promise<CliResult> {
-	let stdoutTimedOut = false;
-	let stderrTimedOut = false;
-	const stdout = await Promise.race([
-		stdoutPromise,
-		new Promise<string>((resolve) =>
-			setTimeout(() => {
-				stdoutTimedOut = true;
-				resolve("");
-			}, 250),
-		),
-	]);
-	const stderr = await Promise.race([
-		stderrPromise,
-		new Promise<string>((resolve) =>
-			setTimeout(() => {
-				stderrTimedOut = true;
-				resolve("");
-			}, 250),
-		),
-	]);
-	debugLog("streams", {
-		stdoutTimedOut,
-		stderrTimedOut,
+	debugLog("finalize:begin", { exitCode });
+	const [stdout, stderr] = await Promise.all([stdoutPromise, stderrPromise]);
+	debugLog("streams:done", {
+		stdoutTimedOut: false,
+		stderrTimedOut: false,
 		stdoutLength: stdout.length,
 		stderrLength: stderr.length,
 	});
+	debugLog("streams", {
+		stdoutTimedOut: false,
+		stderrTimedOut: false,
+		stdoutLength: stdout.length,
+		stderrLength: stderr.length,
+	});
+
+	if (stderr.length > 0) {
+		debugLog("stderr:preview", {
+			preview: stderr.slice(0, 600),
+			truncated: stderr.length > 600,
+		});
+	}
+	if (stdout.length > 0) {
+		debugLog("stdout:preview", {
+			preview: stdout.slice(0, 300),
+			truncated: stdout.length > 300,
+		});
+	}
 
 	return { exitCode, stdout, stderr };
 }

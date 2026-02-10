@@ -13,8 +13,29 @@ export async function downloadImage(
 	// Support fixture-based testing: copy a local file instead of fetching from URL
 	const downloadFixture = process.env.FALCON_DOWNLOAD_FIXTURE;
 	if (downloadFixture) {
-		const { copyFileSync } = await import("node:fs");
-		copyFileSync(downloadFixture, outputPath);
+		if (process.env.FALCON_CLI_TEST_DEBUG === "1") {
+			console.error(
+				`[image] fixture:download ${JSON.stringify({
+					from: downloadFixture,
+					to: outputPath,
+				})}`,
+			);
+		}
+		try {
+			const { copyFileSync } = await import("node:fs");
+			copyFileSync(downloadFixture, outputPath);
+		} catch (error) {
+			if (process.env.FALCON_CLI_TEST_DEBUG === "1") {
+				console.error(
+					`[image] fixture:download:error ${JSON.stringify({
+						error: error instanceof Error ? error.message : String(error),
+						from: downloadFixture,
+						to: outputPath,
+					})}`,
+				);
+			}
+			throw error;
+		}
 		return;
 	}
 

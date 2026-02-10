@@ -35,6 +35,7 @@ describe("property tests", () => {
 	 * Validates: Requirements 3.2
 	 */
 	it("Property 5: isValidUpscaleFactor rejects non-members", () => {
+		console.log("[constants.test] Property 5 start");
 		const validSet = new Set([2, 4, 6, 8]);
 		fc.assert(
 			fc.property(
@@ -45,5 +46,6 @@ describe("property tests", () => {
 			),
 			{ numRuns: 50 },
 		);
+		console.log("[constants.test] Property 5 end");
 	});
 });
