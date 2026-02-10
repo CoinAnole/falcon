@@ -27,7 +27,7 @@ async function runTests(runNumber: number, runDir: string): Promise<RunResult> {
 	console.log(`\n${"-".repeat(40)}`);
 	console.log(`Run ${runNumber}/${MAX_RUNS}`);
 	console.log("-".repeat(40));
-	console.log("Running: FALCON_DEBUG=1 bun test ...\n");
+	console.log("Running: FALCON_DEBUG=1 FALCON_CLI_TEST_DEBUG=1 bun test ...\n");
 
 	return new Promise((resolve) => {
 		let stdout = "";
@@ -35,7 +35,11 @@ async function runTests(runNumber: number, runDir: string): Promise<RunResult> {
 
 		const child = spawn("bun", ["test"], {
 			stdio: ["inherit", "pipe", "pipe"],
-			env: { ...process.env, FALCON_DEBUG: "1" },
+			env: {
+				...process.env,
+				FALCON_DEBUG: "1",
+				FALCON_CLI_TEST_DEBUG: "1",
+			},
 		});
 
 		child.stdout?.on("data", (data) => {

@@ -39,14 +39,14 @@ for ((i=1; i<=MAX_RUNS; i++)); do
     FAIL_LOG="${RUN_DIR}/run_${i}_failures.log"
 
     # Run tests with debug mode enabled, capture all output
-    echo "Running: FALCON_DEBUG=1 bun test ..."
+    echo "Running: FALCON_DEBUG=1 FALCON_CLI_TEST_DEBUG=1 bun test ..."
 
     # Run test and capture output, preserving exit code
     # Use a subshell to prevent set -e from exiting on test failure
     EXIT_CODE=0
     (
         set -o pipefail
-        FALCON_DEBUG=1 bun test 2>&1 | tee "${RUN_LOG}"
+        FALCON_DEBUG=1 FALCON_CLI_TEST_DEBUG=1 bun test 2>&1 | tee "${RUN_LOG}"
     ) || EXIT_CODE=$?
 
     if [ $EXIT_CODE -eq 0 ]; then
