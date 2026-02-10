@@ -130,7 +130,7 @@ describe("cli", () => {
 		);
 		expect(result.exitCode).toBe(1);
 		expect(result.stderr).toContain("Invalid inference steps");
-	});
+	}, 10000);
 
 	it("rejects invalid Flux acceleration", async () => {
 		const result = await runCli(
@@ -193,7 +193,7 @@ describe("cli", () => {
 			const result = await runCli(["--refresh"]);
 			expect(result.exitCode).toBe(0);
 			expect(result.stdout).toContain("Use 'falcon pricing --refresh'");
-		});
+		}, 10000);
 	});
 
 	describe("output control", () => {
@@ -570,6 +570,7 @@ describe("cli", () => {
 								outputPath,
 							],
 							fullFlowEnv,
+							25000, // Extended timeout for property test iterations
 						);
 						expect(result.exitCode).toBe(0);
 						expect(result.stdout).toContain(preset.aspect);

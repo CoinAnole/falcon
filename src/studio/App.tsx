@@ -1,5 +1,5 @@
 import { Box, Text, useApp, useInput } from "ink";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FalconConfig, History } from "../utils/config";
 import { logger } from "../utils/logger";
 import { EditScreen } from "./screens/Edit";
@@ -30,6 +30,16 @@ export function App({
 	const [editInitialOperation, setEditInitialOperation] = useState<
 		"edit" | "variations" | "upscale" | "rmbg" | undefined
 	>(undefined);
+	const errorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	// Clean up error timeout on unmount
+	useEffect(() => {
+		return () => {
+			if (errorTimeoutRef.current) {
+				clearTimeout(errorTimeoutRef.current);
+			}
+		};
+	}, []);
 
 	useInput((input, key) => {
 		if (input === "q" && screen === "home") {
@@ -41,13 +51,17 @@ export function App({
 	});
 
 	const handleError = (err: Error) => {
+		// Clear any existing timeout
+		if (errorTimeoutRef.current) {
+			clearTimeout(errorTimeoutRef.current);
+		}
 		// Log error before displaying
 		logger.errorWithStack("Studio error occurred", err, {
 			screen,
 			editFromGenerate,
 		});
 		setError(err.message);
-		setTimeout(() => setError(null), 5000);
+		errorTimeoutRef.current = setTimeout(() => setError(null), 5000);
 	};
 
 	const renderScreen = () => {
