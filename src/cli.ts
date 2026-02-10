@@ -266,7 +266,6 @@ export async function runCli(args: string[]): Promise<void> {
 		console.log(
 			"Use 'falcon pricing --refresh' to update cached pricing data.",
 		);
-		await new Promise((resolve) => setTimeout(resolve, 10));
 		return;
 	}
 

@@ -78,6 +78,26 @@ const historyDebug = (
 	console.error(`[history] ${message}${payload}`);
 };
 
+const configDebugEnabled = process.env.FALCON_CLI_TEST_DEBUG === "1";
+const configDebug = (message: string, meta?: Record<string, unknown>): void => {
+	if (!configDebugEnabled) return;
+	const payload = meta ? ` ${JSON.stringify(meta)}` : "";
+	console.error(`[config] ${message}${payload}`);
+};
+
+function summarizeConfig(config: FalconConfig): Record<string, unknown> {
+	return {
+		defaultModel: config.defaultModel,
+		defaultAspect: config.defaultAspect,
+		defaultResolution: config.defaultResolution,
+		openAfterGenerate: config.openAfterGenerate,
+		upscaler: config.upscaler,
+		backgroundRemover: config.backgroundRemover,
+		promptExpansion: config.promptExpansion,
+		hasApiKey: Boolean(config.apiKey || process.env.FAL_KEY),
+	};
+}
+
 function ensureFalconDir(): void {
 	if (!existsSync(FALCON_DIR)) {
 		mkdirSync(FALCON_DIR, { recursive: true, mode: 0o700 });
@@ -111,6 +131,14 @@ async function atomicWrite(filePath: string, data: string): Promise<void> {
 
 export async function loadConfig(): Promise<FalconConfig> {
 	ensureFalconDir();
+	configDebug("loadConfig:begin", {
+		configPath: CONFIG_PATH,
+		localConfigPath: LOCAL_CONFIG_PATH,
+		home: process.env.HOME || homedir(),
+		cwd: process.cwd(),
+		configExists: existsSync(CONFIG_PATH),
+		localConfigExists: existsSync(LOCAL_CONFIG_PATH),
+	});
 
 	let config = { ...DEFAULT_CONFIG };
 
@@ -121,6 +149,10 @@ export async function loadConfig(): Promise<FalconConfig> {
 			const globalConfig = await file.json();
 			config = { ...config, ...globalConfig };
 		} catch (err) {
+			configDebug("loadConfig:error:global", {
+				path: CONFIG_PATH,
+				error: (err as Error).message,
+			});
 			console.error(
 				`Warning: Failed to parse ${CONFIG_PATH}: ${(err as Error).message}`,
 			);
@@ -135,11 +167,17 @@ export async function loadConfig(): Promise<FalconConfig> {
 			const localConfig = await file.json();
 			config = { ...config, ...localConfig };
 		} catch (err) {
+			configDebug("loadConfig:error:local", {
+				path: LOCAL_CONFIG_PATH,
+				error: (err as Error).message,
+			});
 			console.error(
 				`Warning: Failed to parse ${LOCAL_CONFIG_PATH}: ${(err as Error).message}`,
 			);
 		}
 	}
+
+	configDebug("loadConfig:resolved", summarizeConfig(config));
 
 	return config;
 }

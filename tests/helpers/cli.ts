@@ -103,6 +103,17 @@ export async function runCli(
 		const payload = meta ? ` ${JSON.stringify(meta)}` : "";
 		console.error(`[runCli] ${message}${payload}`);
 	};
+	const defaultFixtureEnv: Record<string, string> = {
+		FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
+		FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
+		FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
+	};
+	const mergedOverrides: Record<string, string> = { ...envOverrides };
+	for (const [key, value] of Object.entries(defaultFixtureEnv)) {
+		if (mergedOverrides[key] === undefined && process.env[key] === undefined) {
+			mergedOverrides[key] = value;
+		}
+	}
 	const startTime = Date.now();
 	let timeoutFired = false;
 	// If this is a generation command without explicit output, redirect to temp directory
@@ -125,9 +136,9 @@ export async function runCli(
 		testArgs.push("--output", outputPath);
 	}
 
-	const envKeys = Object.keys(envOverrides);
-	const clearedKeys = envKeys.filter((key) => envOverrides[key] === "");
-	const setKeys = envKeys.filter((key) => envOverrides[key] !== "");
+	const envKeys = Object.keys(mergedOverrides);
+	const clearedKeys = envKeys.filter((key) => mergedOverrides[key] === "");
+	const setKeys = envKeys.filter((key) => mergedOverrides[key] !== "");
 	const fixtureKeys = [
 		"FALCON_PRICING_FIXTURE",
 		"FALCON_API_FIXTURE",
@@ -135,7 +146,7 @@ export async function runCli(
 	];
 	const fixtureEnv = fixtureKeys.reduce<Record<string, string | undefined>>(
 		(acc, key) => {
-			acc[key] = envOverrides[key] || process.env[key];
+			acc[key] = mergedOverrides[key] || process.env[key];
 			return acc;
 		},
 		{},
@@ -153,7 +164,7 @@ export async function runCli(
 		HOME: runHome,
 		FALCON_TEST_MODE: "1",
 	} as Record<string, string>;
-	for (const [key, value] of Object.entries(envOverrides)) {
+	for (const [key, value] of Object.entries(mergedOverrides)) {
 		if (value === "") {
 			delete childEnv[key];
 		} else {
@@ -193,7 +204,13 @@ export async function runCli(
 			timeoutFired,
 			durationMs: Date.now() - startTime,
 		});
-		return finalizeResult(exitCode, stdoutPromise, stderrPromise, debugLog);
+		return finalizeResult(
+			exitCode,
+			stdoutPromise,
+			stderrPromise,
+			debugLog,
+			timeoutFired,
+		);
 	} catch (error) {
 		throw error;
 	} finally {
@@ -234,26 +251,32 @@ async function finalizeResult(
 	stdoutPromise: Promise<string>,
 	stderrPromise: Promise<string>,
 	debugLog: (message: string, meta?: Record<string, unknown>) => void,
+	timedOut: boolean,
 ): Promise<CliResult> {
 	debugLog("finalize:begin", { exitCode });
 	const [stdout, stderr] = await Promise.all([stdoutPromise, stderrPromise]);
+	let finalStderr = stderr;
+	if (timedOut) {
+		const suffix = stderr.endsWith("\n") || stderr.length === 0 ? "" : "\n";
+		finalStderr = `${stderr}${suffix}[runCli] timeout exceeded\n`;
+	}
 	debugLog("streams:done", {
 		stdoutTimedOut: false,
 		stderrTimedOut: false,
 		stdoutLength: stdout.length,
-		stderrLength: stderr.length,
+		stderrLength: finalStderr.length,
 	});
 	debugLog("streams", {
 		stdoutTimedOut: false,
 		stderrTimedOut: false,
 		stdoutLength: stdout.length,
-		stderrLength: stderr.length,
+		stderrLength: finalStderr.length,
 	});
 
-	if (stderr.length > 0) {
+	if (finalStderr.length > 0) {
 		debugLog("stderr:preview", {
-			preview: stderr.slice(0, 600),
-			truncated: stderr.length > 600,
+			preview: finalStderr.slice(0, 600),
+			truncated: finalStderr.length > 600,
 		});
 	}
 	if (stdout.length > 0) {
@@ -263,5 +286,5 @@ async function finalizeResult(
 		});
 	}
 
-	return { exitCode, stdout, stderr };
+	return { exitCode, stdout, stderr: finalStderr };
 }
