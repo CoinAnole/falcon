@@ -463,6 +463,7 @@ async function generateImage(
 	if (!modelConfig) {
 		console.error(chalk.red(`Unknown model: ${model}`));
 		console.log(`Available models: ${GENERATION_MODELS.join(", ")}`);
+		await new Promise((resolve) => setTimeout(resolve, 10));
 		process.exit(1);
 	}
 

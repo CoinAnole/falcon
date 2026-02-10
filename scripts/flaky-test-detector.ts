@@ -128,7 +128,9 @@ async function main() {
 	console.log(`Failed: ${failCount}`);
 
 	if (failCount > 0) {
-		console.log(`\nFailed runs: ${failedRuns.map((r) => r.runNumber).join(", ")}`);
+		console.log(
+			`\nFailed runs: ${failedRuns.map((r) => r.runNumber).join(", ")}`,
+		);
 		console.log("\nFailure logs:");
 		for (const run of failedRuns) {
 			if (run.failLogPath) {
@@ -143,7 +145,9 @@ async function main() {
 		// Extract potentially flaky test files
 		const testFiles = new Set<string>();
 		for (const run of failedRuns) {
-			const matches = run.logContent.match(/tests\/[a-zA-Z0-9_\/]+\.test\.tsx?/g);
+			const matches = run.logContent.match(
+				/tests\/[a-zA-Z0-9_/]+\.test\.tsx?/g,
+			);
 			if (matches) {
 				matches.forEach((m) => testFiles.add(m));
 			}
