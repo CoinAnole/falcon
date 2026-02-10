@@ -1,7 +1,7 @@
 import { basename, resolve } from "node:path";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { generate, removeBackground, upscale } from "../../api/fal";
 import {
 	type AspectRatio,
@@ -126,8 +126,10 @@ export function EditScreen({
 	};
 
 	useEffect(() => {
+		let cancelled = false;
 		const loadGenerations = async () => {
 			const history = await loadHistory();
+			if (cancelled) return;
 			if (history.generations.length === 0) {
 				setUseCustomPath(true);
 			} else {
@@ -167,6 +169,9 @@ export function EditScreen({
 			}
 		};
 		loadGenerations();
+		return () => {
+			cancelled = true;
+		};
 	}, [skipToOperation, initialOperation]);
 
 	const proceedFromSelect = () => {

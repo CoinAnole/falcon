@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { generate } from "../../api/fal";
 import {
 	type AspectRatio,
