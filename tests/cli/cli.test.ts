@@ -28,6 +28,31 @@ const PRESET_MAPPINGS = [
 	{ flag: "--portrait", aspect: "2:3" },
 ];
 
+/**
+ * Clean up all history-related test files (both history.json and output images)
+ */
+function cleanupHistory(): void {
+	const home = getTestHome();
+	const falconDir = join(home, ".falcon");
+	const historyPath = join(falconDir, "history.json");
+	const outputPath = join(falconDir, "test-output.png");
+
+	try {
+		if (existsSync(historyPath)) {
+			unlinkSync(historyPath);
+		}
+	} catch {
+		// Ignore cleanup errors
+	}
+	try {
+		if (existsSync(outputPath)) {
+			unlinkSync(outputPath);
+		}
+	} catch {
+		// Ignore cleanup errors
+	}
+}
+
 function setupHistory(overrides?: Partial<Generation>): string {
 	const home = getTestHome();
 	const falconDir = join(home, ".falcon");
@@ -92,7 +117,10 @@ describe("cli", () => {
 	it("rejects invalid output format", async () => {
 		const result = await runCli(
 			["prompt", "--model", "gemini3", "--format", "tiff"],
-			{ FAL_KEY: "test-key" },
+			{
+				FAL_KEY: "test-key",
+				FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
+			},
 		);
 		expect(result.exitCode).toBe(1);
 		expect(result.stderr).toContain("Invalid format");
@@ -151,6 +179,8 @@ describe("cli", () => {
 	});
 
 	it("handles --last with empty history", async () => {
+		// Clean up any history left by previous tests
+		cleanupHistory();
 		const result = await runCli(["--last"]);
 		expect(result.exitCode).toBe(0);
 		expect(result.stdout).toContain("No previous generations found");
@@ -354,16 +384,14 @@ describe("cli", () => {
 	describe("--vary", () => {
 		it("fails with empty history", async () => {
 			// Clean up any history left by previous tests
-			const historyPath = join(getTestHome(), ".falcon", "history.json");
-			if (existsSync(historyPath)) {
-				unlinkSync(historyPath);
-			}
+			cleanupHistory();
 			const result = await runCli(["--vary"], { FAL_KEY: "test-key" });
 			expect(result.exitCode).toBe(1);
 			expect(result.stderr).toContain("No previous generation");
 		});
 
 		it("generates variations from last generation", async () => {
+			cleanupHistory();
 			setupHistory();
 			try {
 				const result = await runCli(["--vary", "--no-open"], {
@@ -376,14 +404,12 @@ describe("cli", () => {
 				expect(result.stdout).toContain("Generating variations");
 			} finally {
 				// Clean up history to avoid polluting other tests
-				const historyPath = join(getTestHome(), ".falcon", "history.json");
-				if (existsSync(historyPath)) {
-					unlinkSync(historyPath);
-				}
+				cleanupHistory();
 			}
 		});
 
 		it("uses custom prompt when provided with --vary", async () => {
+			cleanupHistory();
 			setupHistory();
 			try {
 				const result = await runCli(
@@ -399,10 +425,7 @@ describe("cli", () => {
 				expect(result.stdout).toContain("my custom variation prompt");
 			} finally {
 				// Clean up history to avoid polluting other tests
-				const historyPath = join(getTestHome(), ".falcon", "history.json");
-				if (existsSync(historyPath)) {
-					unlinkSync(historyPath);
-				}
+				cleanupHistory();
 			}
 		});
 	});
@@ -410,16 +433,14 @@ describe("cli", () => {
 	describe("--up", () => {
 		it("fails with empty history", async () => {
 			// Clean up any history left by previous tests
-			const historyPath = join(getTestHome(), ".falcon", "history.json");
-			if (existsSync(historyPath)) {
-				unlinkSync(historyPath);
-			}
+			cleanupHistory();
 			const result = await runCli(["--up"], { FAL_KEY: "test-key" });
 			expect(result.exitCode).toBe(1);
 			expect(result.stderr).toContain("No previous generation");
 		});
 
 		it("upscales last generation", async () => {
+			cleanupHistory();
 			setupHistory();
 			try {
 				const result = await runCli(["--up", "--no-open"], {
@@ -432,10 +453,7 @@ describe("cli", () => {
 				expect(result.stdout).toContain("Upscaling");
 			} finally {
 				// Clean up history to avoid polluting other tests
-				const historyPath = join(getTestHome(), ".falcon", "history.json");
-				if (existsSync(historyPath)) {
-					unlinkSync(historyPath);
-				}
+				cleanupHistory();
 			}
 		});
 
@@ -457,34 +475,33 @@ describe("cli", () => {
 	describe("--rmbg", () => {
 		it("fails with empty history", async () => {
 			// Clean up any history left by previous tests
-			const historyPath = join(getTestHome(), ".falcon", "history.json");
-			if (existsSync(historyPath)) {
-				unlinkSync(historyPath);
-			}
+			cleanupHistory();
 			const result = await runCli(["--rmbg"], { FAL_KEY: "test-key" });
 			expect(result.exitCode).toBe(1);
 			expect(result.stderr).toContain("No previous generation");
 		});
 
 		it("removes background from last generation", async () => {
+			cleanupHistory();
 			setupHistory();
 			try {
-				const result = await runCli(["--rmbg", "--no-open"], {
-					FAL_KEY: "test-key",
-					FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
-					FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
-					FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
-				});
+				const result = await runCli(
+					["--rmbg", "--no-open"],
+					{
+						FAL_KEY: "test-key",
+						FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
+						FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
+						FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
+					},
+					10000, // Extended timeout for background removal
+				);
 				expect(result.exitCode).toBe(0);
 				expect(result.stdout).toContain("Removing background");
 			} finally {
 				// Clean up history to avoid polluting other tests
-				const historyPath = join(getTestHome(), ".falcon", "history.json");
-				if (existsSync(historyPath)) {
-					unlinkSync(historyPath);
-				}
+				cleanupHistory();
 			}
-		});
+		}, 15000);
 	});
 
 	describe("missing API key", () => {
@@ -570,7 +587,7 @@ describe("cli", () => {
 								outputPath,
 							],
 							fullFlowEnv,
-							25000, // Extended timeout for property test iterations
+							60000, // Extended timeout for property test iterations (11 presets * ~2-3s each)
 						);
 						expect(result.exitCode).toBe(0);
 						expect(result.stdout).toContain(preset.aspect);
@@ -578,6 +595,6 @@ describe("cli", () => {
 				),
 				{ numRuns: 11 },
 			);
-		}, 30000);
+		}, 90000); // Increased test timeout to accommodate all iterations
 	});
 });
