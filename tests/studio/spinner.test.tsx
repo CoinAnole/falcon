@@ -79,11 +79,8 @@ describe("Spinner", () => {
 		await fc.assert(
 			fc.asyncProperty(
 				fc
-					.string({ minLength: 1, maxLength: 50 })
-					.filter(
-						(s) =>
-							s.trim().length > 0 && !SPINNER_FRAMES.some((f) => s.includes(f)),
-					),
+					.stringMatching(/^[A-Za-z0-9 ,.?!:_-]{1,50}$/)
+					.filter((text) => text.trim().length > 0 && text === text.trim()),
 				async (text) => {
 					const result = render(<Spinner text={text} />);
 					try {

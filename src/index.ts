@@ -1,9 +1,6 @@
 #!/usr/bin/env bun
-import { render } from "ink";
-import React from "react";
 import { setApiKey } from "./api/fal";
 import { runCli } from "./cli";
-import { App } from "./studio/App";
 import {
 	type FalconConfig,
 	getApiKey,
@@ -52,6 +49,12 @@ async function main() {
 }
 
 async function launchStudio() {
+	const [{ render }, { default: React }, { App }] = await Promise.all([
+		import("ink"),
+		import("react"),
+		import("./studio/App"),
+	]);
+
 	let config = await loadConfig();
 	let history = await loadHistory();
 
