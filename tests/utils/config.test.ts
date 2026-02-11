@@ -1,13 +1,17 @@
 import "../helpers/env";
 
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import fc from "fast-check";
 import {
 	addGeneration,
+	CONFIG_PATH,
 	FALCON_DIR,
+	generateId,
 	getApiKey,
+	HISTORY_PATH,
 	loadConfig,
 	loadHistory,
 	saveConfig,
@@ -146,5 +150,325 @@ describe("config", () => {
 			backgroundRemover: "rmbg",
 		});
 		expect(key).toBe("env-key");
+	});
+});
+
+describe("corrupted config files", () => {
+	it("falls back to defaults when global config contains invalid JSON", async () => {
+		mkdirSync(FALCON_DIR, { recursive: true });
+		writeFileSync(CONFIG_PATH, "{{not valid json!!");
+
+		const config = await loadConfig();
+		expect(config.defaultModel).toBe("banana");
+		expect(config.defaultAspect).toBe("1:1");
+		expect(config.defaultResolution).toBe("2K");
+		expect(config.openAfterGenerate).toBe(true);
+	});
+
+	it("ignores corrupted local .falconrc and uses global config", async () => {
+		await saveConfig({ defaultModel: "gpt" });
+
+		const tempDir = mkdtempSync(join(tmpdir(), "falcon-cwd-"));
+		writeFileSync(join(tempDir, ".falconrc"), "{{broken json!!");
+		process.chdir(tempDir);
+
+		try {
+			const config = await loadConfig();
+			expect(config.defaultModel).toBe("gpt");
+		} finally {
+			process.chdir(baseCwd);
+			rmSync(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	it("returns default history when history file contains invalid JSON", async () => {
+		mkdirSync(FALCON_DIR, { recursive: true });
+		writeFileSync(HISTORY_PATH, "not json at all");
+
+		const history = await loadHistory();
+		expect(history.generations).toEqual([]);
+		expect(history.totalCost.USD).toBeDefined();
+		expect(history.totalCost.USD.allTime).toBe(0);
+	});
+
+	it("saveConfig overwrites corrupted existing config with merged defaults", async () => {
+		mkdirSync(FALCON_DIR, { recursive: true });
+		writeFileSync(CONFIG_PATH, "{{corrupted!!");
+
+		await saveConfig({ defaultModel: "gemini" });
+
+		const config = await loadConfig();
+		expect(config.defaultModel).toBe("gemini");
+		expect(config.defaultAspect).toBe("1:1");
+		expect(config.defaultResolution).toBe("2K");
+	});
+});
+
+describe("legacy totalCost migration", () => {
+	it("converts flat totalCost to multi-currency format under USD", async () => {
+		mkdirSync(FALCON_DIR, { recursive: true });
+		// Write legacy format with flat totalCost — lastSessionDate is old so session/today reset
+		writeFileSync(
+			HISTORY_PATH,
+			JSON.stringify({
+				generations: [],
+				totalCost: { session: 5, today: 10, allTime: 50 },
+				lastSessionDate: "2000-01-01",
+			}),
+		);
+
+		const history = await loadHistory();
+		expect(history.totalCost.USD).toBeDefined();
+		expect(history.totalCost.USD.allTime).toBe(50);
+		// session and today reset because lastSessionDate is old
+		expect(history.totalCost.USD.session).toBe(0);
+		expect(history.totalCost.USD.today).toBe(0);
+	});
+
+	it("preserves zero values in legacy format under USD", async () => {
+		mkdirSync(FALCON_DIR, { recursive: true });
+		writeFileSync(
+			HISTORY_PATH,
+			JSON.stringify({
+				generations: [],
+				totalCost: { session: 0, today: 0, allTime: 0 },
+				lastSessionDate: "2000-01-01",
+			}),
+		);
+
+		const history = await loadHistory();
+		expect(history.totalCost.USD).toBeDefined();
+		expect(history.totalCost.USD.allTime).toBe(0);
+		expect(history.totalCost.USD.session).toBe(0);
+		expect(history.totalCost.USD.today).toBe(0);
+	});
+
+	// Feature: phase5-config-integration-tests, Property 1: Legacy cost migration preserves allTime under USD
+	// Validates: Requirements 2.1
+	it("property: legacy cost migration preserves allTime under USD", async () => {
+		await fc.assert(
+			fc.asyncProperty(
+				fc.float({ min: 0, max: 10000, noNaN: true }),
+				fc.float({ min: 0, max: 10000, noNaN: true }),
+				fc.float({ min: 0, max: 10000, noNaN: true }),
+				async (session, today, allTime) => {
+					resetFalconDir();
+					mkdirSync(FALCON_DIR, { recursive: true });
+					writeFileSync(
+						HISTORY_PATH,
+						JSON.stringify({
+							generations: [],
+							totalCost: { session, today, allTime },
+							lastSessionDate: "2000-01-01",
+						}),
+					);
+
+					const history = await loadHistory();
+					expect(history.totalCost.USD).toBeDefined();
+					expect(history.totalCost.USD.allTime).toBe(allTime || 0);
+				},
+			),
+			{ numRuns: 100 },
+		);
+	});
+});
+
+describe("multi-currency cost tracking", () => {
+	it("creates EUR entry when addGeneration uses EUR currency", async () => {
+		const today = new Date().toISOString().split("T")[0];
+		await saveHistory({
+			generations: [],
+			totalCost: { USD: { session: 0, today: 0, allTime: 0 } },
+			lastSessionDate: today,
+		});
+
+		await addGeneration({
+			id: "eur-1",
+			prompt: "test",
+			model: "banana",
+			aspect: "1:1",
+			resolution: "2K",
+			output: "out.png",
+			cost: 0.05,
+			costDetails: {
+				currency: "EUR",
+				estimateType: "unit_price",
+				estimateSource: "fallback",
+				endpointId: "fal-ai/nano-banana-pro",
+			},
+			timestamp: new Date().toISOString(),
+		});
+
+		const history = await loadHistory();
+		expect(history.totalCost.EUR).toBeDefined();
+		expect(history.totalCost.EUR.allTime).toBeCloseTo(0.05);
+	});
+
+	it("tracks USD and EUR costs independently", async () => {
+		const today = new Date().toISOString().split("T")[0];
+		await saveHistory({
+			generations: [],
+			totalCost: { USD: { session: 0, today: 0, allTime: 0 } },
+			lastSessionDate: today,
+		});
+
+		await addGeneration({
+			id: "usd-1",
+			prompt: "test",
+			model: "banana",
+			aspect: "1:1",
+			resolution: "2K",
+			output: "out1.png",
+			cost: 0.1,
+			costDetails: {
+				currency: "USD",
+				estimateType: "unit_price",
+				estimateSource: "fallback",
+				endpointId: "fal-ai/nano-banana-pro",
+			},
+			timestamp: new Date().toISOString(),
+		});
+
+		await addGeneration({
+			id: "eur-1",
+			prompt: "test",
+			model: "banana",
+			aspect: "1:1",
+			resolution: "2K",
+			output: "out2.png",
+			cost: 0.2,
+			costDetails: {
+				currency: "EUR",
+				estimateType: "unit_price",
+				estimateSource: "fallback",
+				endpointId: "fal-ai/nano-banana-pro",
+			},
+			timestamp: new Date().toISOString(),
+		});
+
+		const history = await loadHistory();
+		expect(history.totalCost.USD.allTime).toBeCloseTo(0.1);
+		expect(history.totalCost.EUR.allTime).toBeCloseTo(0.2);
+	});
+
+	it("defaults to USD when costDetails is missing", async () => {
+		const today = new Date().toISOString().split("T")[0];
+		await saveHistory({
+			generations: [],
+			totalCost: { USD: { session: 0, today: 0, allTime: 0 } },
+			lastSessionDate: today,
+		});
+
+		await addGeneration({
+			id: "no-cost-details",
+			prompt: "test",
+			model: "banana",
+			aspect: "1:1",
+			resolution: "2K",
+			output: "out.png",
+			cost: 0.15,
+			timestamp: new Date().toISOString(),
+		});
+
+		const history = await loadHistory();
+		expect(history.totalCost.USD.allTime).toBeCloseTo(0.15);
+	});
+
+	// Feature: phase5-config-integration-tests, Property 2: Multi-currency cost accumulation
+	// Validates: Requirements 3.1, 3.2
+	it("property: multi-currency cost accumulation", async () => {
+		const currencies = ["USD", "EUR", "GBP", "JPY"];
+
+		await fc.assert(
+			fc.asyncProperty(
+				fc.array(
+					fc.record({
+						currency: fc.constantFrom(...currencies),
+						cost: fc.float({
+							min: Math.fround(0.01),
+							max: Math.fround(100),
+							noNaN: true,
+						}),
+					}),
+					{ minLength: 1, maxLength: 10 },
+				),
+				async (generations) => {
+					resetFalconDir();
+					const today = new Date().toISOString().split("T")[0];
+					await saveHistory({
+						generations: [],
+						totalCost: { USD: { session: 0, today: 0, allTime: 0 } },
+						lastSessionDate: today,
+					});
+
+					// Expected totals per currency
+					const expected: Record<string, number> = {};
+					for (const gen of generations) {
+						expected[gen.currency] = (expected[gen.currency] || 0) + gen.cost;
+					}
+
+					// Add all generations
+					for (let i = 0; i < generations.length; i++) {
+						const gen = generations[i];
+						await addGeneration({
+							id: `gen-${i}`,
+							prompt: "test",
+							model: "banana",
+							aspect: "1:1",
+							resolution: "2K",
+							output: `out-${i}.png`,
+							cost: gen.cost,
+							costDetails: {
+								currency: gen.currency,
+								estimateType: "unit_price",
+								estimateSource: "fallback",
+								endpointId: "fal-ai/nano-banana-pro",
+							},
+							timestamp: new Date().toISOString(),
+						});
+					}
+
+					const history = await loadHistory();
+					for (const [currency, total] of Object.entries(expected)) {
+						expect(history.totalCost[currency]).toBeDefined();
+						expect(history.totalCost[currency].allTime).toBeCloseTo(total, 1);
+					}
+				},
+			),
+			{ numRuns: 50 },
+		);
+	});
+});
+
+const UUID_V4_REGEX =
+	/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+describe("generateId", () => {
+	it("returns unique values across multiple calls", () => {
+		const ids = Array.from({ length: 10 }, () => generateId());
+		const unique = new Set(ids);
+		expect(unique.size).toBe(10);
+	});
+
+	it("returns values matching UUID v4 format", () => {
+		for (let i = 0; i < 5; i++) {
+			expect(generateId()).toMatch(UUID_V4_REGEX);
+		}
+	});
+
+	// Feature: phase5-config-integration-tests, Property 3: generateId uniqueness and UUID format
+	// Validates: Requirements 4.1, 4.2
+	it("property: generateId uniqueness and UUID format", () => {
+		fc.assert(
+			fc.property(fc.integer({ min: 2, max: 50 }), (batchSize) => {
+				const ids = Array.from({ length: batchSize }, () => generateId());
+				const unique = new Set(ids);
+				expect(unique.size).toBe(batchSize);
+				for (const id of ids) {
+					expect(id).toMatch(UUID_V4_REGEX);
+				}
+			}),
+			{ numRuns: 100 },
+		);
 	});
 });
