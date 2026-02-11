@@ -193,6 +193,206 @@ describe("settings screen", () => {
 		}
 	});
 
+	it("Default Aspect cycling shows valid aspect ratio strings", async () => {
+		const onSave = mock(async () => {});
+		const onBack = mock(() => {});
+		const result = render(
+			<SettingsScreen config={baseConfig} onSave={onSave} onBack={onBack} />,
+		);
+		try {
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Default Model"),
+				{ timeoutMs: 3000 },
+			);
+
+			// Navigate to Default Aspect (index 1)
+			await writeInput(result, KEYS.down);
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Default Aspect"),
+				{ timeoutMs: 3000 },
+			);
+
+			// Initial value should be "1:1"
+			let output = stripAnsi(result.lastFrame() ?? "");
+			const selectedLine = output.split("\n").find((l) => l.includes("◆ Default Aspect"));
+			expect(selectedLine).toContain("1:1");
+
+			// Press enter to cycle to next aspect ratio
+			// ASPECT_RATIOS order: 1:1, 4:3, 3:4, 16:9, 9:16, 3:2, 2:3, 4:5, 5:4, 21:9
+			// 1:1 is at index 0, so next is 4:3
+			await writeInput(result, KEYS.enter);
+			await waitUntil(
+				() => {
+					const frame = stripAnsi(result.lastFrame() ?? "");
+					const line = frame.split("\n").find((l) => l.includes("◆ Default Aspect"));
+					return line?.includes("4:3") ?? false;
+				},
+				{ timeoutMs: 3000 },
+			);
+
+			output = stripAnsi(result.lastFrame() ?? "");
+			const updatedLine = output.split("\n").find((l) => l.includes("◆ Default Aspect"));
+			expect(updatedLine).toContain("4:3");
+		} finally {
+			result.unmount();
+		}
+	});
+
+	it("Default Resolution cycling shows valid resolution strings", async () => {
+		const onSave = mock(async () => {});
+		const onBack = mock(() => {});
+		const result = render(
+			<SettingsScreen config={baseConfig} onSave={onSave} onBack={onBack} />,
+		);
+		try {
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Default Model"),
+				{ timeoutMs: 3000 },
+			);
+
+			// Navigate to Default Resolution (index 2)
+			await writeInput(result, KEYS.down);
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Default Aspect"),
+				{ timeoutMs: 3000 },
+			);
+			await writeInput(result, KEYS.down);
+			await waitUntil(
+				() =>
+					stripAnsi(result.lastFrame() ?? "").includes("◆ Default Resolution"),
+				{ timeoutMs: 3000 },
+			);
+
+			// Initial value should be "2K"
+			let output = stripAnsi(result.lastFrame() ?? "");
+			const selectedLine = output.split("\n").find((l) => l.includes("◆ Default Resolution"));
+			expect(selectedLine).toContain("2K");
+
+			// Press enter to cycle to next resolution
+			// RESOLUTIONS order: 1K, 2K, 4K
+			// 2K is at index 1, so next is 4K
+			await writeInput(result, KEYS.enter);
+			await waitUntil(
+				() => {
+					const frame = stripAnsi(result.lastFrame() ?? "");
+					const line = frame.split("\n").find((l) => l.includes("◆ Default Resolution"));
+					return line?.includes("4K") ?? false;
+				},
+				{ timeoutMs: 3000 },
+			);
+
+			output = stripAnsi(result.lastFrame() ?? "");
+			const updatedLine = output.split("\n").find((l) => l.includes("◆ Default Resolution"));
+			expect(updatedLine).toContain("4K");
+		} finally {
+			result.unmount();
+		}
+	});
+
+	it("Default Model cycling shows display names not keys", async () => {
+		const onSave = mock(async () => {});
+		const onBack = mock(() => {});
+		const result = render(
+			<SettingsScreen config={baseConfig} onSave={onSave} onBack={onBack} />,
+		);
+		try {
+			// Wait for render with Default Model selected (index 0)
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Default Model"),
+				{ timeoutMs: 3000 },
+			);
+
+			// Initial value should show display name "Nano Banana Pro" (not "banana")
+			let output = stripAnsi(result.lastFrame() ?? "");
+			expect(output).toContain("Nano Banana Pro");
+			expect(output).not.toMatch(/◆ Default Model.*\bbanana\b/);
+
+			// Press enter to cycle to next model
+			await writeInput(result, KEYS.enter);
+
+			// After cycling, the value should change to the next model's display name
+			// GENERATION_MODELS order: gpt, banana, gemini, gemini3, flux2, flux2Flash, flux2Turbo, imagine
+			// banana is at index 1, so next is gemini → "Gemini 2.5 Flash"
+			await waitUntil(
+				() => {
+					const frame = stripAnsi(result.lastFrame() ?? "");
+					return frame.includes("Gemini 2.5 Flash");
+				},
+				{ timeoutMs: 3000 },
+			);
+
+			output = stripAnsi(result.lastFrame() ?? "");
+			// Verify it shows the display name, not the key
+			expect(output).toContain("Gemini 2.5 Flash");
+			expect(output).not.toMatch(/◆ Default Model.*\bgemini\b[^3]/);
+
+			// Press enter again to cycle to next model (gemini3 → "Gemini 3 Pro")
+			await writeInput(result, KEYS.enter);
+			await waitUntil(
+				() => {
+					const frame = stripAnsi(result.lastFrame() ?? "");
+					return frame.includes("Gemini 3 Pro");
+				},
+				{ timeoutMs: 3000 },
+			);
+
+			output = stripAnsi(result.lastFrame() ?? "");
+			expect(output).toContain("Gemini 3 Pro");
+		} finally {
+			result.unmount();
+		}
+	});
+
+	it("API key text input submission saves new key", async () => {
+		const onSave = mock(async () => {});
+		const onBack = mock(() => {});
+		const result = render(
+			<SettingsScreen config={baseConfig} onSave={onSave} onBack={onBack} />,
+		);
+		try {
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Default Model"),
+				{ timeoutMs: 3000 },
+			);
+			// Navigate to API Key (index 7)
+			for (let i = 0; i < 7; i++) {
+				await writeInput(result, KEYS.down);
+			}
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("◆ API Key"),
+				{ timeoutMs: 3000 },
+			);
+			// Press enter to enter edit mode
+			await writeInput(result, KEYS.enter);
+			await waitUntil(
+				() => !stripAnsi(result.lastFrame() ?? "").includes("Not set"),
+				{ timeoutMs: 3000 },
+			);
+			// Type a key value
+			const testKey = "fal-key-abc123";
+			for (const char of testKey) {
+				await writeInput(result, char);
+			}
+			// Press enter to submit the text input
+			await writeInput(result, KEYS.enter);
+			// Wait for edit mode to exit (masked value should appear)
+			await waitUntil(
+				() => {
+					const frame = stripAnsi(result.lastFrame() ?? "");
+					return frame.includes("fal-key-...c123");
+				},
+				{ timeoutMs: 3000 },
+			);
+			// Press 's' to save
+			await writeInput(result, "s");
+			expect(onSave).toHaveBeenCalledTimes(1);
+			const savedConfig = onSave.mock.calls[0][0] as FalconConfig;
+			expect(savedConfig.apiKey).toBe(testKey);
+		} finally {
+			result.unmount();
+		}
+	});
+
 	// Feature: studio-ui-tests, Property 6: Settings toggle flips value
 	// **Validates: Requirements 5.3**
 	it("property: toggle flips value", async () => {
