@@ -10,11 +10,14 @@
   },
   "dependencies": {
     "@howells/stow-server": "latest",
+    "@neondatabase/serverless": "^1.0.2",
     "@tanstack/react-query": "^5.62.0",
     "@trpc/client": "^11.0.0-rc.682",
     "@trpc/next": "^11.0.0-rc.682",
     "@trpc/react-query": "^11.0.0-rc.682",
     "@trpc/server": "^11.0.0-rc.682",
+    "drizzle-orm": "^0.45.1",
+    "geist": "^1.7.0",
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -27,6 +30,8 @@
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "dotenv": "^17.2.4",
+    "drizzle-kit": "^0.31.9",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.0"
   }

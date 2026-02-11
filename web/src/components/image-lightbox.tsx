@@ -77,21 +77,21 @@ export function ImageLightbox({
 			/>
 
 			{/* Content */}
-			<div className="relative z-10 flex max-h-[90vh] max-w-[90vw] gap-6">
+			<div className="relative z-10 flex max-h-[90vh] max-w-[90vw] gap-4">
 				{/* Image */}
 				<div className="relative flex items-center">
 					{hasPrev && (
 						<button
-							className="absolute -left-12 rounded-full bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+							className="absolute -left-10 rounded-full bg-white/10 p-1.5 text-white transition-colors hover:bg-white/20"
 							onClick={() => onNavigate(currentIndex - 1)}
 							type="button"
 						>
 							<svg
 								fill="none"
-								height="20"
+								height="16"
 								role="img"
 								viewBox="0 0 20 20"
-								width="20"
+								width="16"
 							>
 								<title>Previous image</title>
 								<path
@@ -118,16 +118,16 @@ export function ImageLightbox({
 
 					{hasNext && (
 						<button
-							className="absolute -right-12 rounded-full bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+							className="absolute -right-10 rounded-full bg-white/10 p-1.5 text-white transition-colors hover:bg-white/20"
 							onClick={() => onNavigate(currentIndex + 1)}
 							type="button"
 						>
 							<svg
 								fill="none"
-								height="20"
+								height="16"
 								role="img"
 								viewBox="0 0 20 20"
-								width="20"
+								width="16"
 							>
 								<title>Next image</title>
 								<path
@@ -143,19 +143,19 @@ export function ImageLightbox({
 				</div>
 
 				{/* Metadata panel */}
-				<div className="flex w-72 shrink-0 flex-col gap-4 overflow-y-auto rounded-lg border border-border bg-surface p-5">
+				<div className="flex w-64 shrink-0 flex-col gap-3 overflow-y-auto rounded-lg bg-surface p-4">
 					{/* Close button */}
 					<button
-						className="absolute top-2 right-2 rounded-md p-1 text-text-muted transition-colors hover:text-text"
+						className="absolute top-2 right-2 rounded-md p-1 text-text-tertiary transition-colors hover:text-text-secondary"
 						onClick={onClose}
 						type="button"
 					>
 						<svg
 							fill="none"
-							height="20"
+							height="16"
 							role="img"
 							viewBox="0 0 20 20"
-							width="20"
+							width="16"
 						>
 							<title>Close</title>
 							<path
@@ -170,12 +170,14 @@ export function ImageLightbox({
 					{/* Prompt */}
 					{meta.prompt && (
 						<div>
-							<span className="font-medium text-text-muted text-xs uppercase tracking-wider">
+							<p className="font-medium text-[11px] text-text-tertiary">
 								Prompt
-							</span>
-							<p className="mt-1 text-sm leading-relaxed">{meta.prompt}</p>
+							</p>
+							<p className="mt-1 text-[13px] text-text-secondary leading-relaxed">
+								{meta.prompt}
+							</p>
 							<button
-								className="mt-1 text-accent text-xs hover:text-accent-hover"
+								className="mt-1 text-[11px] text-accent hover:text-accent-hover"
 								onClick={() => navigator.clipboard.writeText(meta.prompt)}
 								type="button"
 							>
@@ -185,53 +187,59 @@ export function ImageLightbox({
 					)}
 
 					{/* Details */}
-					<div className="grid grid-cols-2 gap-3 text-sm">
+					<div className="grid grid-cols-2 gap-2">
 						{meta.model && (
 							<div>
-								<span className="text-text-muted text-xs">Model</span>
-								<p>{meta.model}</p>
+								<p className="text-[10px] text-text-tertiary">Model</p>
+								<p className="text-[12px] text-text-secondary">{meta.model}</p>
 							</div>
 						)}
 						{meta.aspect && (
 							<div>
-								<span className="text-text-muted text-xs">Aspect</span>
-								<p>{meta.aspect}</p>
+								<p className="text-[10px] text-text-tertiary">Aspect</p>
+								<p className="text-[12px] text-text-secondary">{meta.aspect}</p>
 							</div>
 						)}
 						{meta.resolution && (
 							<div>
-								<span className="text-text-muted text-xs">Resolution</span>
-								<p>{meta.resolution}</p>
+								<p className="text-[10px] text-text-tertiary">Resolution</p>
+								<p className="text-[12px] text-text-secondary">
+									{meta.resolution}
+								</p>
 							</div>
 						)}
 						{meta.cost && (
 							<div>
-								<span className="text-text-muted text-xs">Cost</span>
-								<p>${meta.cost}</p>
+								<p className="text-[10px] text-text-tertiary">Cost</p>
+								<p className="font-mono text-[12px] text-text-secondary">
+									${meta.cost}
+								</p>
 							</div>
 						)}
 						{meta.timestamp && (
 							<div className="col-span-2">
-								<span className="text-text-muted text-xs">Created</span>
-								<p>{new Date(meta.timestamp).toLocaleString()}</p>
+								<p className="text-[10px] text-text-tertiary">Created</p>
+								<p className="text-[12px] text-text-secondary">
+									{new Date(meta.timestamp).toLocaleString()}
+								</p>
 							</div>
 						)}
 					</div>
 
 					{/* Actions */}
-					<div className="mt-auto flex flex-col gap-2">
+					<div className="mt-auto flex flex-col gap-1.5">
 						<a
-							className="rounded-md border border-border bg-surface-2 px-3 py-2 text-center text-sm text-text transition-colors hover:bg-border"
+							className="rounded-md bg-surface-2 px-3 py-1.5 text-center text-[12px] text-text-secondary transition-colors hover:text-text"
 							download
 							href={image.url}
 							rel="noopener noreferrer"
 							target="_blank"
 						>
-							Download Original
+							Download
 						</a>
 						{onUpscale && (
 							<button
-								className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text transition-colors hover:bg-border"
+								className="rounded-md bg-surface-2 px-3 py-1.5 text-[12px] text-text-secondary transition-colors hover:text-text"
 								onClick={() => onUpscale(image)}
 								type="button"
 							>
@@ -240,7 +248,7 @@ export function ImageLightbox({
 						)}
 						{onRemoveBg && (
 							<button
-								className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text transition-colors hover:bg-border"
+								className="rounded-md bg-surface-2 px-3 py-1.5 text-[12px] text-text-secondary transition-colors hover:text-text"
 								onClick={() => onRemoveBg(image)}
 								type="button"
 							>
@@ -249,11 +257,11 @@ export function ImageLightbox({
 						)}
 						{onVary && (
 							<button
-								className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text transition-colors hover:bg-border"
+								className="rounded-md bg-surface-2 px-3 py-1.5 text-[12px] text-text-secondary transition-colors hover:text-text"
 								onClick={() => onVary(image)}
 								type="button"
 							>
-								Generate Variations
+								Variations
 							</button>
 						)}
 					</div>

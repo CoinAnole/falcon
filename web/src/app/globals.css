@@ -1,14 +1,33 @@
 @import "tailwindcss";
 
 @theme {
-	--color-bg: #0a0a0a;
-	--color-surface: #141414;
-	--color-surface-2: #1e1e1e;
-	--color-border: #2a2a2a;
-	--color-text: #e5e5e5;
-	--color-text-muted: #737373;
-	--color-accent: #f97316;
-	--color-accent-hover: #fb923c;
+	/* Backgrounds — light zinc */
+	--color-bg: #fafafa;
+	--color-surface: #f4f4f5;
+	--color-surface-2: #e4e4e7;
+
+	/* Borders */
+	--color-border: #d4d4d8;
+	--color-border-subtle: #e4e4e7;
+
+	/* Text */
+	--color-text: #09090b;
+	--color-text-secondary: #3f3f46;
+	--color-text-tertiary: #a1a1aa;
+
+	/* Accent — zinc (monochrome) */
+	--color-accent: #18181b;
+	--color-accent-hover: #27272a;
+	--color-accent-muted: #e4e4e7;
+
+	/* Semantic */
+	--color-danger: #ef4444;
+	--color-warning: #eab308;
+	--color-success: #22c55e;
+
+	/* Fonts */
+	--font-sans: var(--font-geist-sans);
+	--font-mono: var(--font-geist-mono);
 }
 
 body {
@@ -20,10 +39,10 @@ body {
 @keyframes skeleton-pulse {
 	0%,
 	100% {
-		opacity: 0.4;
+		opacity: 0.3;
 	}
 	50% {
-		opacity: 0.7;
+		opacity: 0.6;
 	}
 }
 

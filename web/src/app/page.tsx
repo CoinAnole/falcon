@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useEffect, useState } from "react";
 import {
 	GenerateForm,
 	type GenerateSettings,
 } from "@/components/generate-form";
+import { GenerationStatus } from "@/components/generation-status";
+import { HistorySidebar } from "@/components/history-sidebar";
 import { type GeneratedImage, ImageGrid } from "@/components/image-grid";
 import { ImageLightbox } from "@/components/image-lightbox";
 import { trpc } from "@/lib/trpc";
@@ -13,92 +15,136 @@ export default function GeneratePage() {
 	const [images, setImages] = useState<GeneratedImage[]>([]);
 	const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 	const [error, setError] = useState<string | null>(null);
-	const [persistError, setPersistError] = useState<string | null>(null);
 	const [lastSettings, setLastSettings] = useState<GenerateSettings | null>(
 		null
 	);
 
-	const persistGeneration = trpc.generate.persist.useMutation();
-	const persistProcess = trpc.process.persist.useMutation();
+	// Queue-based generation state
+	const [activeJobId, setActiveJobId] = useState<string | null>(null);
 
-	/** Swap a fal URL for a Stow URL in the images array by matching on falUrl */
-	const swapUrl = useCallback(
-		(falUrl: string, stowKey: string, stowUrl: string | null) => {
-			setImages((prev) =>
-				prev.map((img) =>
-					img.url === falUrl
-						? { ...img, key: stowKey, url: stowUrl || img.url }
-						: img
-				)
-			);
+	const persistProcess = trpc.process.persist.useMutation();
+	const utils = trpc.useUtils();
+
+	// Submit generation to queue
+	const submitMutation = trpc.generate.submit.useMutation({
+		onSuccess: (data) => {
+			setActiveJobId(data.jobId);
+			setImages([]);
+			setError(null);
 		},
-		[]
+		onError: (err) => setError(err.message),
+	});
+
+	// Submit variation to queue
+	const submitVaryMutation = trpc.generate.submitVary.useMutation({
+		onSuccess: (data) => {
+			setActiveJobId(data.jobId);
+			setImages([]);
+			setError(null);
+		},
+		onError: (err) => setError(err.message),
+	});
+
+	// Poll job status
+	const statusQuery = trpc.generate.status.useQuery(
+		{ jobId: activeJobId ?? "" },
+		{
+			enabled: !!activeJobId,
+			refetchInterval: (query) => {
+				const status = query.state.data?.status;
+				if (!status) {
+					return 1000;
+				}
+				if (status === "completed" || status === "failed") {
+					return false;
+				}
+				return 1000;
+			},
+			refetchIntervalInBackground: true,
+		}
 	);
 
-	const generateMutation = trpc.generate.create.useMutation({
+	// Complete job (persist to Stow)
+	const completeMutation = trpc.generate.complete.useMutation({
 		onSuccess: (data) => {
-			const timestamp = new Date().toISOString();
-			const cost = data.cost;
-
-			// Show fal.ai URLs immediately
 			setImages(
 				data.images.map((img) => ({
-					key: `fal-${img.index}`,
-					url: img.falUrl,
+					key: img.stowKey,
+					url: img.url,
 					width: img.width,
 					height: img.height,
 					metadata: {
-						prompt: data.prompt,
-						model: data.model,
-						cost: (cost / data.images.length).toFixed(3),
-						aspect: lastSettings?.aspect || "1:1",
-						resolution: lastSettings?.resolution || "2K",
-						timestamp,
+						prompt: img.prompt || "",
+						model: img.model || "",
+						aspect: img.aspect || "",
+						resolution: img.resolution || "",
+						cost: img.cost || "",
 					},
 				}))
 			);
-			setError(null);
-
-			// Persist to Stow in background — swap URLs as they complete
-			persistGeneration.mutate(
-				{
-					images: data.images.map((img) => ({
-						falUrl: img.falUrl,
-						index: img.index,
-					})),
-					prompt: data.prompt,
-					model: data.model,
-					aspect: lastSettings?.aspect || "1:1",
-					resolution: lastSettings?.resolution || "2K",
-					cost,
-					editedFrom: lastSettings?.editImageUrls?.[0],
-				},
-				{
-					onSuccess: (persisted) => {
-						setPersistError(null);
-						for (const img of persisted.images) {
-							const falUrl = data.images[img.index]?.falUrl;
-							if (falUrl && img.url) {
-								swapUrl(falUrl, img.key, img.url);
-							}
-						}
-					},
-					onError: () => {
-						setPersistError(
-							"Images generated but failed to save permanently. They may expire."
-						);
-					},
-				}
-			);
+			setActiveJobId(null);
+			utils.gallery.list.invalidate();
 		},
 		onError: (err) => {
+			// Retry after delay if completion is in progress
+			if (
+				err.message.includes("being completed") ||
+				err.message.includes("retrying")
+			) {
+				setTimeout(() => {
+					if (activeJobId) {
+						completeMutation.mutate({ jobId: activeJobId });
+					}
+				}, 2000);
+				return;
+			}
 			setError(err.message);
+			setActiveJobId(null);
 		},
 	});
 
+	// React to status changes
+	useEffect(() => {
+		if (!(statusQuery.data && activeJobId)) {
+			return;
+		}
+
+		const { status } = statusQuery.data;
+
+		if (status === "ready_to_complete" && !completeMutation.isPending) {
+			completeMutation.mutate({ jobId: activeJobId });
+		}
+
+		if (status === "completed" && "images" in statusQuery.data) {
+			// Already completed (e.g. page refresh) — load images directly
+			setImages(
+				statusQuery.data.images.map((img) => ({
+					key: img.stowKey,
+					url: img.url,
+					width: img.width,
+					height: img.height,
+					metadata: {
+						prompt: img.prompt || "",
+						model: img.model || "",
+						aspect: img.aspect || "",
+						resolution: img.resolution || "",
+						cost: img.cost || "",
+					},
+				}))
+			);
+			setActiveJobId(null);
+			utils.gallery.list.invalidate();
+		}
+
+		if (status === "failed" && "error" in statusQuery.data) {
+			setError(statusQuery.data.error);
+			setActiveJobId(null);
+		}
+	}, [statusQuery.data, activeJobId, completeMutation, utils.gallery.list]);
+
+	// Process operations (stay synchronous)
 	const upscaleMutation = trpc.process.upscale.useMutation({
 		onSuccess: (data) => {
-			// Show fal URL immediately
 			setImages((prev) => [
 				{
 					key: `fal-upscale-${Date.now()}`,
@@ -114,7 +160,6 @@ export default function GeneratePage() {
 				...prev,
 			]);
 
-			// Persist to Stow in background
 			persistProcess.mutate(
 				{
 					falUrl: data.falUrl,
@@ -126,13 +171,18 @@ export default function GeneratePage() {
 				},
 				{
 					onSuccess: (persisted) => {
-						setPersistError(null);
-						swapUrl(data.falUrl, persisted.key, persisted.url);
-					},
-					onError: () => {
-						setPersistError(
-							"Upscaled image failed to save permanently. It may expire."
+						setImages((prev) =>
+							prev.map((img) =>
+								img.url === data.falUrl
+									? {
+											...img,
+											key: persisted.key,
+											url: persisted.url || img.url,
+										}
+									: img
+							)
 						);
+						utils.gallery.list.invalidate();
 					},
 				}
 			);
@@ -142,7 +192,6 @@ export default function GeneratePage() {
 
 	const removeBgMutation = trpc.process.removeBackground.useMutation({
 		onSuccess: (data) => {
-			// Show fal URL immediately
 			setImages((prev) => [
 				{
 					key: `fal-rmbg-${Date.now()}`,
@@ -158,7 +207,6 @@ export default function GeneratePage() {
 				...prev,
 			]);
 
-			// Persist to Stow in background
 			persistProcess.mutate(
 				{
 					falUrl: data.falUrl,
@@ -169,13 +217,18 @@ export default function GeneratePage() {
 				},
 				{
 					onSuccess: (persisted) => {
-						setPersistError(null);
-						swapUrl(data.falUrl, persisted.key, persisted.url);
-					},
-					onError: () => {
-						setPersistError(
-							"Processed image failed to save permanently. It may expire."
+						setImages((prev) =>
+							prev.map((img) =>
+								img.url === data.falUrl
+									? {
+											...img,
+											key: persisted.key,
+											url: persisted.url || img.url,
+										}
+									: img
+							)
 						);
+						utils.gallery.list.invalidate();
 					},
 				}
 			);
@@ -183,70 +236,12 @@ export default function GeneratePage() {
 		onError: (err) => setError(err.message),
 	});
 
-	const varyMutation = trpc.generate.vary.useMutation({
-		onSuccess: (data) => {
-			const timestamp = new Date().toISOString();
-
-			// Show fal.ai URLs immediately
-			setImages(
-				data.images.map((img) => ({
-					key: `fal-vary-${img.index}`,
-					url: img.falUrl,
-					width: img.width,
-					height: img.height,
-					metadata: {
-						type: "variation",
-						prompt: data.prompt,
-						cost: (data.cost / data.images.length).toFixed(3),
-						timestamp,
-					},
-				}))
-			);
-
-			// Persist to Stow in background
-			persistGeneration.mutate(
-				{
-					images: data.images.map((img) => ({
-						falUrl: img.falUrl,
-						index: img.index,
-					})),
-					prompt: data.prompt,
-					model: data.model,
-					aspect: data.aspect,
-					resolution: data.resolution,
-					cost: data.cost,
-					editedFrom: data.parentUrl,
-				},
-				{
-					onSuccess: (persisted) => {
-						setPersistError(null);
-						for (const img of persisted.images) {
-							const falUrl = data.images[img.index]?.falUrl;
-							if (falUrl && img.url) {
-								swapUrl(falUrl, img.key, img.url);
-							}
-						}
-					},
-					onError: () => {
-						setPersistError(
-							"Variations failed to save permanently. They may expire."
-						);
-					},
-				}
-			);
-		},
-		onError: (err) => setError(err.message),
-	});
-
-	const isProcessing =
-		upscaleMutation.isPending ||
-		removeBgMutation.isPending ||
-		varyMutation.isPending;
+	const isProcessing = upscaleMutation.isPending || removeBgMutation.isPending;
 
 	const handleGenerate = (settings: GenerateSettings) => {
 		setLastSettings(settings);
 		setError(null);
-		generateMutation.mutate({
+		submitMutation.mutate({
 			prompt: settings.prompt,
 			model: settings.model as "gpt" | "banana" | "gemini" | "gemini3",
 			aspect: settings.aspect,
@@ -280,7 +275,7 @@ export default function GeneratePage() {
 		}
 		setError(null);
 		setLightboxIndex(null);
-		varyMutation.mutate({
+		submitVaryMutation.mutate({
 			imageUrl: image.url,
 			prompt: image.metadata?.prompt,
 			model: (lastSettings?.model || "banana") as
@@ -293,60 +288,186 @@ export default function GeneratePage() {
 		});
 	};
 
+	const handleHistorySelect = (item: {
+		key: string;
+		url: string | null;
+		metadata?: Record<string, string>;
+	}) => {
+		if (!item.url) {
+			return;
+		}
+		setImages([
+			{
+				key: item.key,
+				url: item.url,
+				metadata: item.metadata,
+			},
+		]);
+	};
+
+	const activeImageKey = images[0]?.key;
+	const isGenerating = !!activeJobId;
+	const jobStatus = statusQuery.data;
+
+	const getGenerationStatus = ():
+		| "queued"
+		| "processing"
+		| "completing"
+		| "ready_to_complete"
+		| null => {
+		if (isGenerating && jobStatus) {
+			const s = jobStatus.status;
+			if (
+				s === "queued" ||
+				s === "processing" ||
+				s === "completing" ||
+				s === "ready_to_complete"
+			) {
+				return s;
+			}
+		}
+		if (
+			submitMutation.isPending ||
+			submitVaryMutation.isPending ||
+			(isGenerating && !jobStatus)
+		) {
+			return "queued";
+		}
+		return null;
+	};
+
+	const generationStatus = getGenerationStatus();
+
+	const renderCanvas = () => {
+		if (generationStatus) {
+			return (
+				<GenerationStatus
+					logs={jobStatus && "logs" in jobStatus ? jobStatus.logs : undefined}
+					queuePosition={
+						jobStatus && "queuePosition" in jobStatus
+							? jobStatus.queuePosition
+							: undefined
+					}
+					startedAt={
+						jobStatus && "startedAt" in jobStatus
+							? jobStatus.startedAt
+							: undefined
+					}
+					status={generationStatus}
+				/>
+			);
+		}
+
+		if (isProcessing) {
+			return (
+				<div className="flex flex-col items-center gap-3">
+					<span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-accent/30 border-t-accent" />
+					<p className="text-sm text-text-tertiary">Processing...</p>
+				</div>
+			);
+		}
+
+		if (images.length > 0) {
+			return (
+				<div className="w-full max-w-3xl">
+					<ImageGrid
+						images={images}
+						onImageClick={(_, index) => setLightboxIndex(index)}
+						onRemoveBg={handleRemoveBg}
+						onUpscale={handleUpscale}
+						onVary={handleVary}
+					/>
+				</div>
+			);
+		}
+
+		return (
+			<div className="flex flex-col items-center gap-2 text-center">
+				<p className="text-sm text-text-tertiary">
+					Describe what you want to see
+				</p>
+				<p className="text-text-tertiary text-xs">and press Generate</p>
+			</div>
+		);
+	};
+
 	return (
-		<div className="mx-auto max-w-2xl space-y-8">
-			<GenerateForm
-				isGenerating={generateMutation.isPending}
-				onGenerate={handleGenerate}
-			/>
-
-			{/* Error */}
-			{error && (
-				<div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-400 text-sm">
-					{error}
-					<button
-						className="ml-2 text-red-300 hover:text-red-200"
-						onClick={() => setError(null)}
-						type="button"
+		<div className="flex h-screen flex-col">
+			{/* Nav */}
+			<nav className="flex shrink-0 items-center justify-between border-border-subtle border-b px-4 py-2.5">
+				<a
+					className="font-medium text-[15px] text-text tracking-tight"
+					href="/"
+				>
+					<span className="mr-1.5 text-accent">&#9670;</span>
+					falcon
+				</a>
+				<div className="flex items-center gap-4">
+					<a
+						className="text-text-tertiary text-xs transition-colors hover:text-text-secondary"
+						href="/gallery"
 					>
-						Dismiss
-					</button>
+						Gallery
+					</a>
 				</div>
-			)}
+			</nav>
 
-			{/* Persist warning */}
-			{persistError && (
-				<div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-400">
-					{persistError}
-					<button
-						className="ml-2 text-yellow-300 hover:text-yellow-200"
-						onClick={() => setPersistError(null)}
-						type="button"
-					>
-						Dismiss
-					</button>
-				</div>
-			)}
+			{/* Main 3-column layout */}
+			<div className="flex min-h-0 flex-1">
+				{/* Left sidebar — controls */}
+				<aside className="flex w-[280px] shrink-0 flex-col border-border-subtle border-r bg-surface">
+					<div className="flex-1 overflow-y-auto p-4">
+						<GenerateForm
+							isGenerating={submitMutation.isPending || isGenerating}
+							onGenerate={handleGenerate}
+						/>
+					</div>
+				</aside>
 
-			{/* Processing indicator */}
-			{isProcessing && (
-				<div className="flex items-center gap-2 text-sm text-text-muted">
-					<span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-text-muted/30 border-t-text-muted" />
-					Processing...
-				</div>
-			)}
+				{/* Center canvas */}
+				<main className="flex min-w-0 flex-1 flex-col">
+					{/* Error messages */}
+					{error && (
+						<div className="mx-4 mt-4 rounded-lg border border-danger/30 bg-danger/10 px-4 py-2.5 text-danger text-sm">
+							{error}
+							<button
+								className="ml-2 text-danger/70 hover:text-danger"
+								onClick={() => setError(null)}
+								type="button"
+							>
+								Dismiss
+							</button>
+						</div>
+					)}
 
-			{/* Results */}
-			<ImageGrid
-				images={images}
-				isLoading={generateMutation.isPending}
-				loadingAspect={lastSettings?.aspect}
-				loadingCount={lastSettings?.count || 1}
-				onImageClick={(_, index) => setLightboxIndex(index)}
-				onRemoveBg={handleRemoveBg}
-				onUpscale={handleUpscale}
-				onVary={handleVary}
-			/>
+					{/* Canvas content */}
+					<div className="flex flex-1 items-start justify-center overflow-y-auto p-6 pt-[20vh]">
+						{renderCanvas()}
+					</div>
+
+					{/* Footer shortcuts */}
+					<div className="shrink-0 border-border-subtle border-t px-4 py-2">
+						<p className="text-[11px] text-text-tertiary">
+							{"\u2318"}+Enter generate &middot; Esc close
+						</p>
+					</div>
+				</main>
+
+				{/* Right sidebar — history */}
+				<aside className="flex w-[240px] shrink-0 flex-col border-border-subtle border-l bg-surface">
+					<div className="shrink-0 border-border-subtle border-b px-4 py-2.5">
+						<p className="font-medium text-[10px] text-text-tertiary uppercase tracking-widest">
+							History
+						</p>
+					</div>
+					<div className="flex-1 overflow-y-auto">
+						<HistorySidebar
+							activeKey={activeImageKey}
+							onSelect={handleHistorySelect}
+						/>
+					</div>
+				</aside>
+			</div>
 
 			{/* Lightbox */}
 			{lightboxIndex !== null && images[lightboxIndex] && (

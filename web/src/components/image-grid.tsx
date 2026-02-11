@@ -66,7 +66,7 @@ function ImageCard({
 	}
 
 	return (
-		<div className="group relative overflow-hidden rounded-lg border border-border bg-surface">
+		<div className="group relative overflow-hidden rounded-lg bg-surface">
 			<button
 				className="block w-full"
 				onClick={() => onImageClick?.(image, index)}
@@ -74,7 +74,7 @@ function ImageCard({
 			>
 				<Image
 					alt={image.metadata?.prompt || "Generated image"}
-					className="w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+					className="w-full object-cover"
 					height={1024}
 					sizes="(max-width: 640px) 100vw, 50vw"
 					src={image.url}
@@ -83,10 +83,9 @@ function ImageCard({
 			</button>
 
 			{/* Hover actions */}
-			<div className="absolute inset-x-0 bottom-0 flex items-center gap-1 bg-gradient-to-t from-black/80 to-transparent p-3 pt-8 opacity-0 transition-opacity group-hover:opacity-100">
-				{/* Download */}
+			<div className="absolute inset-x-0 bottom-0 flex items-center gap-1 bg-gradient-to-t from-black/70 to-transparent p-3 pt-8 opacity-0 transition-opacity group-hover:opacity-100">
 				<a
-					className="rounded-md bg-white/10 px-2.5 py-1.5 text-white text-xs backdrop-blur-sm transition-colors hover:bg-white/20"
+					className="rounded-md bg-white/10 px-2 py-1 text-[11px] text-white backdrop-blur-sm transition-colors hover:bg-white/20"
 					download
 					href={image.url}
 					onClick={(e) => e.stopPropagation()}
@@ -97,7 +96,7 @@ function ImageCard({
 				</a>
 				{onUpscale && (
 					<button
-						className="rounded-md bg-white/10 px-2.5 py-1.5 text-white text-xs backdrop-blur-sm transition-colors hover:bg-white/20"
+						className="rounded-md bg-white/10 px-2 py-1 text-[11px] text-white backdrop-blur-sm transition-colors hover:bg-white/20"
 						onClick={(e) => {
 							e.stopPropagation();
 							onUpscale(image);
@@ -109,7 +108,7 @@ function ImageCard({
 				)}
 				{onRemoveBg && (
 					<button
-						className="rounded-md bg-white/10 px-2.5 py-1.5 text-white text-xs backdrop-blur-sm transition-colors hover:bg-white/20"
+						className="rounded-md bg-white/10 px-2 py-1 text-[11px] text-white backdrop-blur-sm transition-colors hover:bg-white/20"
 						onClick={(e) => {
 							e.stopPropagation();
 							onRemoveBg(image);
@@ -121,14 +120,14 @@ function ImageCard({
 				)}
 				{onVary && (
 					<button
-						className="rounded-md bg-white/10 px-2.5 py-1.5 text-white text-xs backdrop-blur-sm transition-colors hover:bg-white/20"
+						className="rounded-md bg-white/10 px-2 py-1 text-[11px] text-white backdrop-blur-sm transition-colors hover:bg-white/20"
 						onClick={(e) => {
 							e.stopPropagation();
 							onVary(image);
 						}}
 						type="button"
 					>
-						Variations
+						Vary
 					</button>
 				)}
 			</div>
@@ -148,7 +147,7 @@ export function ImageGrid({
 }: ImageGridProps) {
 	if (isLoading && images.length === 0) {
 		return (
-			<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+			<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 				{SKELETON_KEYS.slice(0, loadingCount).map((key) => (
 					<div
 						className={`skeleton rounded-lg ${getAspectClass(loadingAspect)}`}
@@ -167,7 +166,7 @@ export function ImageGrid({
 		images.length === 1 ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2";
 
 	return (
-		<div className={`grid gap-4 ${cols}`}>
+		<div className={`grid gap-3 ${cols}`}>
 			{images.map((image, i) => (
 				<ImageCard
 					image={image}

@@ -21,3 +21,9 @@ export function stow(): StowServer {
 	}
 	return _stow;
 }
+
+/** Derive a public Stow CDN URL from a file key. */
+export function stowUrl(key: string): string {
+	const bucket = process.env.STOW_BUCKET || "falcon";
+	return `https://${bucket}.stow.sh/${key}`;
+}

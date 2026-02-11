@@ -6,6 +6,7 @@ import {
 } from "@/lib/models";
 
 const FAL_BASE_URL = "https://fal.run";
+const FAL_QUEUE_URL = "https://queue.fal.run";
 const FAL_REST_URL = "https://rest.alpha.fal.ai";
 
 export interface GenerateOptions {
@@ -186,6 +187,160 @@ export async function removeBackground(
 	}
 
 	// Normalize: rmbg APIs return { image: {...} } not { images: [...] }
+	if ("image" in data && !("images" in data)) {
+		return { images: [data.image] } as FalResponse;
+	}
+
+	return data as FalResponse;
+}
+
+// ---------------------------------------------------------------------------
+// Queue API — async generation with status polling
+// ---------------------------------------------------------------------------
+
+export interface QueueSubmitResult {
+	requestId: string;
+	responseUrl: string;
+}
+
+export interface QueueStatusResult {
+	status: "IN_QUEUE" | "IN_PROGRESS" | "COMPLETED";
+	queuePosition?: number;
+	logs?: { message: string; timestamp: string }[];
+}
+
+/**
+ * Build the fal.ai request body for a generation request.
+ * Shared between sync `generate()` and async `submitGenerateToQueue()`.
+ */
+export function buildGenerateBody(options: GenerateOptions): {
+	endpoint: string;
+	body: Record<string, unknown>;
+} {
+	const {
+		prompt,
+		model,
+		aspect = "1:1",
+		resolution = "2K",
+		numImages = 1,
+		editImageUrls,
+		transparent,
+		inputFidelity,
+	} = options;
+
+	const config = MODELS[model];
+	if (!config) {
+		throw new Error(`Unknown model: ${model}`);
+	}
+
+	let endpoint = config.endpoint;
+	const body: Record<string, unknown> = { prompt };
+
+	if (model === "gpt") {
+		if (!editImageUrls?.length) {
+			body.image_size = aspectToGptSize(aspect);
+		}
+		body.quality = "high";
+		if (transparent) {
+			body.background = "transparent";
+			body.output_format = "png";
+		}
+	} else {
+		if (config.supportsAspect) {
+			body.aspect_ratio = aspect;
+		}
+		if (config.supportsResolution) {
+			body.resolution = resolution;
+		}
+	}
+
+	if (config.supportsNumImages) {
+		body.num_images = numImages;
+	}
+
+	if (editImageUrls?.length) {
+		if (!config.supportsEdit) {
+			throw new Error(`Model ${model} does not support image editing`);
+		}
+		endpoint = `${endpoint}/edit`;
+		body.image_urls = editImageUrls;
+
+		if (model === "gpt" && inputFidelity) {
+			body.input_fidelity = inputFidelity;
+		}
+	}
+
+	return { endpoint, body };
+}
+
+/** Submit a generation request to the fal.ai queue (returns immediately). */
+export async function submitToQueue(
+	endpoint: string,
+	body: Record<string, unknown>
+): Promise<QueueSubmitResult> {
+	const response = await fetch(`${FAL_QUEUE_URL}/${endpoint}`, {
+		method: "POST",
+		headers: {
+			Authorization: `Key ${getApiKey()}`,
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify(body),
+	});
+
+	if (!response.ok) {
+		const text = await response.text();
+		throw new Error(`Queue submit failed: ${response.status} ${text}`);
+	}
+
+	const data = (await response.json()) as {
+		request_id: string;
+		response_url: string;
+	};
+	return {
+		requestId: data.request_id,
+		responseUrl: data.response_url,
+	};
+}
+
+/** Check the status of a queued request. */
+export async function getQueueStatus(
+	endpoint: string,
+	requestId: string
+): Promise<QueueStatusResult> {
+	const url = `${FAL_QUEUE_URL}/${endpoint}/requests/${requestId}/status?logs=1`;
+	const response = await fetch(url, {
+		headers: { Authorization: `Key ${getApiKey()}` },
+	});
+
+	if (!response.ok) {
+		throw new Error(`Queue status check failed: ${response.status}`);
+	}
+
+	return response.json() as Promise<QueueStatusResult>;
+}
+
+/** Fetch the completed result from the queue. */
+export async function getQueueResult(
+	endpoint: string,
+	requestId: string
+): Promise<FalResponse> {
+	const url = `${FAL_QUEUE_URL}/${endpoint}/requests/${requestId}`;
+	const response = await fetch(url, {
+		headers: { Authorization: `Key ${getApiKey()}` },
+	});
+
+	if (!response.ok) {
+		const text = await response.text();
+		throw new Error(`Queue result fetch failed: ${response.status} ${text}`);
+	}
+
+	const data = await response.json();
+
+	if ("detail" in data) {
+		throw new Error((data as { detail: string }).detail);
+	}
+
+	// Normalize: some APIs return { image: {...} } not { images: [...] }
 	if ("image" in data && !("images" in data)) {
 		return { images: [data.image] } as FalResponse;
 	}

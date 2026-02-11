@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { db } from "@/db";
+import { images } from "@/db/schema";
 import { removeBackground as falRemoveBg, upscale as falUpscale } from "../fal";
 import { stow } from "../stow";
 import { publicProcedure, router } from "../trpc";
@@ -77,7 +79,7 @@ export const processRouter = router({
 		.mutation(async ({ input }) => {
 			const { falUrl, type, parentUrl, cost, model, scaleFactor } = input;
 			const stowClient = stow();
-			const filename = `generated/falcon-${type}-${crypto.randomUUID()}.png`;
+			const filename = `falcon-${type}-${crypto.randomUUID()}.png`;
 
 			const uploaded = await stowClient.uploadFromUrl(falUrl, filename, {
 				metadata: {
@@ -89,6 +91,15 @@ export const processRouter = router({
 					...(model ? { [`${type}Model`]: model } : {}),
 					...(scaleFactor ? { scaleFactor: scaleFactor.toString() } : {}),
 				},
+			});
+
+			// Insert into images catalog
+			await db.insert(images).values({
+				stowKey: uploaded.key,
+				type: type === "upscale" ? "upscale" : "rmbg",
+				model: model || type,
+				cost,
+				parentImageId: parentUrl,
 			});
 
 			return {
