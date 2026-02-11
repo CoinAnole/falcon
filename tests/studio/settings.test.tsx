@@ -215,7 +215,9 @@ describe("settings screen", () => {
 
 			// Initial value should be "1:1"
 			let output = stripAnsi(result.lastFrame() ?? "");
-			const selectedLine = output.split("\n").find((l) => l.includes("◆ Default Aspect"));
+			const selectedLine = output
+				.split("\n")
+				.find((l) => l.includes("◆ Default Aspect"));
 			expect(selectedLine).toContain("1:1");
 
 			// Press enter to cycle to next aspect ratio
@@ -225,14 +227,18 @@ describe("settings screen", () => {
 			await waitUntil(
 				() => {
 					const frame = stripAnsi(result.lastFrame() ?? "");
-					const line = frame.split("\n").find((l) => l.includes("◆ Default Aspect"));
+					const line = frame
+						.split("\n")
+						.find((l) => l.includes("◆ Default Aspect"));
 					return line?.includes("4:3") ?? false;
 				},
 				{ timeoutMs: 3000 },
 			);
 
 			output = stripAnsi(result.lastFrame() ?? "");
-			const updatedLine = output.split("\n").find((l) => l.includes("◆ Default Aspect"));
+			const updatedLine = output
+				.split("\n")
+				.find((l) => l.includes("◆ Default Aspect"));
 			expect(updatedLine).toContain("4:3");
 		} finally {
 			result.unmount();
@@ -266,24 +272,30 @@ describe("settings screen", () => {
 
 			// Initial value should be "2K"
 			let output = stripAnsi(result.lastFrame() ?? "");
-			const selectedLine = output.split("\n").find((l) => l.includes("◆ Default Resolution"));
+			const selectedLine = output
+				.split("\n")
+				.find((l) => l.includes("◆ Default Resolution"));
 			expect(selectedLine).toContain("2K");
 
 			// Press enter to cycle to next resolution
-			// RESOLUTIONS order: 1K, 2K, 4K
+			// RESOLUTIONS order starts with: 1K, 2K, 4K
 			// 2K is at index 1, so next is 4K
 			await writeInput(result, KEYS.enter);
 			await waitUntil(
 				() => {
 					const frame = stripAnsi(result.lastFrame() ?? "");
-					const line = frame.split("\n").find((l) => l.includes("◆ Default Resolution"));
+					const line = frame
+						.split("\n")
+						.find((l) => l.includes("◆ Default Resolution"));
 					return line?.includes("4K") ?? false;
 				},
 				{ timeoutMs: 3000 },
 			);
 
 			output = stripAnsi(result.lastFrame() ?? "");
-			const updatedLine = output.split("\n").find((l) => l.includes("◆ Default Resolution"));
+			const updatedLine = output
+				.split("\n")
+				.find((l) => l.includes("◆ Default Resolution"));
 			expect(updatedLine).toContain("4K");
 		} finally {
 			result.unmount();
@@ -301,9 +313,9 @@ describe("settings screen", () => {
 				(key) => MODELS[key].name,
 			);
 			const selectedModelLine = () =>
-				(stripAnsi(result.lastFrame() ?? "")
+				stripAnsi(result.lastFrame() ?? "")
 					.split("\n")
-					.find((line) => line.includes("◆ Default Model")) ?? "");
+					.find((line) => line.includes("◆ Default Model")) ?? "";
 
 			// Wait for render with Default Model selected (index 0)
 			await waitUntil(
@@ -312,7 +324,9 @@ describe("settings screen", () => {
 			);
 
 			const initialLine = selectedModelLine();
-			const initialValue = initialLine.replace(/^.*◆ Default Model\s+/, "").trim();
+			const initialValue = initialLine
+				.replace(/^.*◆ Default Model\s+/, "")
+				.trim();
 			expect(initialValue).toBe(MODELS[baseConfig.defaultModel].name);
 			expect(GENERATION_MODELS).not.toContain(initialValue);
 			expect(validDisplayNames).toContain(initialValue);
@@ -321,10 +335,9 @@ describe("settings screen", () => {
 			await writeInput(result, KEYS.enter);
 
 			// After cycling, selected model value should change and still be a display name.
-			await waitUntil(
-				() => selectedModelLine() !== initialLine,
-				{ timeoutMs: 5000 },
-			);
+			await waitUntil(() => selectedModelLine() !== initialLine, {
+				timeoutMs: 5000,
+			});
 
 			const firstCycledLine = selectedModelLine();
 			const firstCycledValue = firstCycledLine
@@ -336,10 +349,9 @@ describe("settings screen", () => {
 
 			// Press enter again to cycle again.
 			await writeInput(result, KEYS.enter);
-			await waitUntil(
-				() => selectedModelLine() !== firstCycledLine,
-				{ timeoutMs: 5000 },
-			);
+			await waitUntil(() => selectedModelLine() !== firstCycledLine, {
+				timeoutMs: 5000,
+			});
 
 			const secondCycledLine = selectedModelLine();
 			const secondCycledValue = secondCycledLine

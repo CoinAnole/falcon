@@ -16,7 +16,7 @@ export type AspectRatio =
 	| "9:20"
 	| "1:2";
 
-export type Resolution = "1K" | "2K" | "4K";
+export type Resolution = "1K" | "2K" | "4K" | "512x512";
 
 export type ModelType = "generation" | "utility";
 
@@ -215,7 +215,7 @@ export const ASPECT_RATIOS: AspectRatio[] = [
 	"21:9", // Ultrawide
 ];
 
-export const RESOLUTIONS: Resolution[] = ["1K", "2K", "4K"];
+export const RESOLUTIONS: Resolution[] = ["1K", "2K", "4K", "512x512"];
 
 export const OUTPUT_FORMATS: OutputFormat[] = ["jpeg", "png", "webp"];
 

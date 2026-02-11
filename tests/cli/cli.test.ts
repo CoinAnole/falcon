@@ -137,6 +137,30 @@ describe("cli", () => {
 		expect(result.stderr).toContain("Invalid number of images");
 	});
 
+	itCli("accepts 512x512 resolution", async () => {
+		const outputFile = join(getTestOutputDir(), "resolution-512-test.png");
+		const result = await runCli(
+			[
+				"a test prompt",
+				"--resolution",
+				"512x512",
+				"--model",
+				"banana",
+				"--no-open",
+				"--output",
+				outputFile,
+			],
+			{
+				FAL_KEY: "test-key",
+				FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
+				FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
+				FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
+			},
+		);
+		expect(result.exitCode).toBe(0);
+		expect(result.stdout).toContain("512x512");
+	});
+
 	itCli("rejects invalid Flux guidance scale", async () => {
 		const result = await runCli(
 			["prompt", "--model", "flux2", "--guidance-scale", "25"],

@@ -158,7 +158,13 @@ describe("model arrays", () => {
 // **Validates: Requirements 4.9**
 describe("Property 6: estimateCost scales linearly with numImages", () => {
 	const knownModels = [...GENERATION_MODELS, ...UTILITY_MODELS];
-	const resolutions: (Resolution | undefined)[] = ["1K", "2K", "4K", undefined];
+	const resolutions: (Resolution | undefined)[] = [
+		"1K",
+		"2K",
+		"4K",
+		"512x512",
+		undefined,
+	];
 
 	it("cost(model, res, n) === cost(model, res, 1) * n", () => {
 		fc.assert(
