@@ -20,6 +20,7 @@ import {
 	estimateUpscaleCost,
 	refreshPricingCache,
 } from "./api/pricing";
+import { applyPresetOverrides } from "./cli-presets";
 import {
 	addGeneration,
 	type Generation,
@@ -387,39 +388,10 @@ async function generateImage(
 		(options.aspect as AspectRatio) || config.defaultAspect;
 	let resolution: Resolution =
 		(options.resolution as Resolution) || config.defaultResolution;
-
-	// Apply presets (in priority order)
-	if (options.cover) {
-		// Kindle/eBook cover: 1600×2560 recommended, 2:3 is closest (1600×2400)
-		aspect = "2:3";
-		resolution = "2K";
-	} else if (options.story || options.reel) {
-		// Instagram Story/Reel: 1080×1920 (9:16)
-		aspect = "9:16";
-	} else if (options.feed) {
-		// Instagram Feed portrait: 1080×1350 (4:5)
-		aspect = "4:5";
-	} else if (options.og) {
-		// Open Graph social share: 1200×630 (~1.91:1), 16:9 is closest
-		aspect = "16:9";
-	} else if (options.wallpaper) {
-		// iPhone wallpaper: 9:16 works for most models
-		aspect = "9:16";
-		resolution = "2K";
-	} else if (options.wide) {
-		// Cinematic wide: 21:9
-		aspect = "21:9";
-	} else if (options.ultra) {
-		// Ultra-wide banner: 21:9, high res
-		aspect = "21:9";
-		resolution = "2K";
-	} else if (options.square) {
-		aspect = "1:1";
-	} else if (options.landscape) {
-		aspect = "16:9";
-	} else if (options.portrait) {
-		aspect = "2:3";
-	}
+	({ aspect, resolution } = applyPresetOverrides(options, {
+		aspect,
+		resolution,
+	}));
 
 	const model = options.model || config.defaultModel;
 

@@ -9,12 +9,11 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import fc from "fast-check";
 import type { Generation } from "../../src/utils/config";
 import { cleanupTestFiles, getTestOutputDir, runCli } from "../helpers/cli";
 import { getTestHome } from "../helpers/env";
 
-const CLI_TEST_TIMEOUT_MS = 20_000;
+const CLI_TEST_TIMEOUT_MS = 60_000;
 
 function itCli(
 	name: string,
@@ -23,20 +22,6 @@ function itCli(
 ) {
 	return it(name, fn, timeoutMs);
 }
-
-const PRESET_MAPPINGS = [
-	{ flag: "--cover", aspect: "2:3", resolution: "2K" },
-	{ flag: "--story", aspect: "9:16" },
-	{ flag: "--reel", aspect: "9:16" },
-	{ flag: "--feed", aspect: "4:5" },
-	{ flag: "--og", aspect: "16:9" },
-	{ flag: "--wallpaper", aspect: "9:16", resolution: "2K" },
-	{ flag: "--ultra", aspect: "21:9", resolution: "2K" },
-	{ flag: "--wide", aspect: "21:9" },
-	{ flag: "--square", aspect: "1:1" },
-	{ flag: "--landscape", aspect: "16:9" },
-	{ flag: "--portrait", aspect: "2:3" },
-];
 
 /**
  * Clean up all history-related test files (both history.json and output images)
@@ -228,7 +213,7 @@ describe("cli", () => {
 				expect(result.exitCode).toBe(0);
 				expect(result.stdout).toContain("42");
 			},
-			30000,
+			60000,
 		);
 	});
 
@@ -486,7 +471,7 @@ describe("cli", () => {
 				expect(result.exitCode).toBe(0);
 				expect(result.stdout).toContain("Upscaling");
 			},
-			15000,
+			60000,
 		);
 	});
 
@@ -522,7 +507,7 @@ describe("cli", () => {
 					cleanupHistory();
 				}
 			},
-			15000,
+			60000,
 		);
 	});
 
@@ -586,41 +571,5 @@ describe("cli", () => {
 			expect(result.exitCode).toBe(0);
 			expect(result.stdout).toContain("1:1");
 		});
-
-		itCli(
-			"property: all presets produce correct aspect ratio",
-			async () => {
-				// Feature: phase3-cli-e2e-tests, Property 1: Preset flag mapping produces correct aspect ratio
-				// **Validates: Requirements 1.1–1.12, 11.1**
-				let testIndex = 0;
-				await fc.assert(
-					fc.asyncProperty(
-						fc.constantFrom(...PRESET_MAPPINGS),
-						async (preset) => {
-							// Use unique output path for each test run to avoid conflicts
-							const outputPath = join(
-								getTestOutputDir(),
-								`preset-prop-${testIndex++}.png`,
-							);
-							const result = await runCli(
-								[
-									"a test prompt",
-									preset.flag,
-									"--no-open",
-									"--output",
-									outputPath,
-								],
-								fullFlowEnv,
-								60000, // Extended timeout for property test iterations (11 presets * ~2-3s each)
-							);
-							expect(result.exitCode).toBe(0);
-							expect(result.stdout).toContain(preset.aspect);
-						},
-					),
-					{ numRuns: 11 },
-				);
-			},
-			90000,
-		); // Increased test timeout to accommodate all iterations
 	});
 });

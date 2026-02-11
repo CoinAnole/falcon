@@ -16,6 +16,10 @@ export interface CliResult {
 
 const KILL_GRACE_MS = 500;
 const STREAM_READ_TIMEOUT_BUFFER_MS = 3000;
+const DEFAULT_RUNCLI_TIMEOUT_MS = 20000;
+const PROCESS_TIMEOUT_REASON = "[runCli] process timeout exceeded";
+const STREAM_TIMEOUT_REASON = "[runCli] stream read timeout exceeded";
+const MAX_RUNCLI_ATTEMPTS = 2;
 
 // Global temp directory for CLI test outputs (within project root for path validation)
 const globalKey = "__FALCON_TEST_OUTPUT_DIR__";
@@ -88,6 +92,7 @@ export function getTestOutputPath(filename: string): string {
 
 // Counter for unique output filenames
 let outputCounter = 0;
+let runCliQueue: Promise<void> = Promise.resolve();
 
 export interface RunCliOptions {
 	envOverrides?: Record<string, string>;
@@ -97,14 +102,123 @@ export interface RunCliOptions {
 export async function runCli(
 	args: string[],
 	envOverrides: Record<string, string> = {},
-	timeoutMs = 10000,
+	timeoutMs = DEFAULT_RUNCLI_TIMEOUT_MS,
 ): Promise<CliResult> {
+	const runTask = async () => {
+		return await runCliWithRetry(args, envOverrides, timeoutMs);
+	};
+	const queuedTask = runCliQueue.then(runTask, runTask);
+	runCliQueue = queuedTask.then(
+		() => undefined,
+		() => undefined,
+	);
+	return await queuedTask;
+}
+
+function isBunExecutable(path: string): boolean {
+	return /(^|[/\\])bun(\.exe)?$/i.test(path);
+}
+
+export function resolveBunBinary(
+	envOverrides: Record<string, string> = {},
+): string {
+	const explicit =
+		envOverrides.FALCON_TEST_BUN_BIN || process.env.FALCON_TEST_BUN_BIN;
+	if (explicit) return explicit;
+	if (isBunExecutable(process.execPath)) return process.execPath;
+	return "bun";
+}
+
+function resolveCliEntry(envOverrides: Record<string, string>): string {
+	return (
+		envOverrides.FALCON_TEST_CLI_ENTRY ||
+		process.env.FALCON_TEST_CLI_ENTRY ||
+		"src/index.ts"
+	);
+}
+
+function stripTimeoutMarkers(stderr: string): string {
+	return stderr
+		.split("\n")
+		.filter(
+			(line) =>
+				!line.startsWith(PROCESS_TIMEOUT_REASON) &&
+				!line.startsWith(STREAM_TIMEOUT_REASON) &&
+				!line.startsWith("[runCli] timeout diagnostic:"),
+		)
+		.join("\n")
+		.trim();
+}
+
+function shouldRetryOnLaunchTimeout(
+	result: CliResult,
+	attempt: number,
+	maxAttempts: number,
+): boolean {
+	if (attempt >= maxAttempts) return false;
+	if (result.exitCode !== 143) return false;
+	if (!result.stderr.includes(PROCESS_TIMEOUT_REASON)) return false;
+	if (result.stdout.trim().length > 0) return false;
+	return stripTimeoutMarkers(result.stderr).length === 0;
+}
+
+function createDebugLogger(): (
+	message: string,
+	meta?: Record<string, unknown>,
+) => void {
 	const debugEnabled = process.env.FALCON_CLI_TEST_DEBUG === "1";
-	const debugLog = (message: string, meta?: Record<string, unknown>) => {
+	return (message: string, meta?: Record<string, unknown>) => {
 		if (!debugEnabled) return;
 		const payload = meta ? ` ${JSON.stringify(meta)}` : "";
 		console.error(`[runCli] ${message}${payload}`);
 	};
+}
+
+async function runCliWithRetry(
+	args: string[],
+	envOverrides: Record<string, string>,
+	timeoutMs: number,
+): Promise<CliResult> {
+	const debugLog = createDebugLogger();
+	const bunBinary = resolveBunBinary(envOverrides);
+	debugLog("runtime", { bunBinary, execPath: process.execPath });
+
+	let attempt = 1;
+	let result = await runCliAttempt(
+		args,
+		envOverrides,
+		timeoutMs,
+		attempt,
+		bunBinary,
+	);
+	while (shouldRetryOnLaunchTimeout(result, attempt, MAX_RUNCLI_ATTEMPTS)) {
+		debugLog("retry:launch-timeout", {
+			attempt,
+			nextAttempt: attempt + 1,
+			maxAttempts: MAX_RUNCLI_ATTEMPTS,
+			bunBinary,
+		});
+		attempt++;
+		result = await runCliAttempt(
+			args,
+			envOverrides,
+			timeoutMs,
+			attempt,
+			bunBinary,
+		);
+	}
+	return result;
+}
+
+async function runCliAttempt(
+	args: string[],
+	envOverrides: Record<string, string>,
+	timeoutMs: number,
+	attempt: number,
+	bunBinary: string,
+): Promise<CliResult> {
+	const debugLog = createDebugLogger();
+	const cliEntry = resolveCliEntry(envOverrides);
 	const defaultFixtureEnv: Record<string, string> = {
 		FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
 		FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
@@ -154,8 +268,12 @@ export async function runCli(
 		{},
 	);
 	debugLog("spawn", {
+		attempt,
+		maxAttempts: MAX_RUNCLI_ATTEMPTS,
 		args: testArgs,
 		timeoutMs,
+		bunBinary,
+		cliEntry,
 		setKeys,
 		clearedKeys,
 		fixtures: fixtureEnv,
@@ -165,6 +283,8 @@ export async function runCli(
 		...process.env,
 		HOME: runHome,
 		FALCON_TEST_MODE: "1",
+		FALCON_RUNCLI_ATTEMPT: String(attempt),
+		FALCON_RUNCLI_MAX_ATTEMPTS: String(MAX_RUNCLI_ATTEMPTS),
 	} as Record<string, string>;
 	for (const [key, value] of Object.entries(mergedOverrides)) {
 		if (value === "") {
@@ -174,7 +294,7 @@ export async function runCli(
 		}
 	}
 
-	const proc = Bun.spawn(["bun", "src/index.ts", ...testArgs], {
+	const proc = Bun.spawn([bunBinary, cliEntry, ...testArgs], {
 		cwd: process.cwd(),
 		stdin: "ignore",
 		stdout: "pipe",
@@ -216,6 +336,9 @@ export async function runCli(
 			stderrPromise,
 			debugLog,
 			timeoutFired,
+			attempt,
+			bunBinary,
+			MAX_RUNCLI_ATTEMPTS,
 		);
 	} finally {
 		// HOME cleanup handled by tests/helpers/env.ts
@@ -324,8 +447,16 @@ async function finalizeResult(
 	stderrPromise: Promise<{ text: string; timedOut: boolean }>,
 	debugLog: (message: string, meta?: Record<string, unknown>) => void,
 	timedOut: boolean,
+	attempt: number,
+	bunBinary: string,
+	maxAttempts: number,
 ): Promise<CliResult> {
-	debugLog("finalize:begin", { exitCode });
+	debugLog("finalize:begin", {
+		exitCode,
+		attempt,
+		maxAttempts,
+		bunBinary,
+	});
 	const [stdoutResult, stderrResult] = await Promise.all([
 		stdoutPromise,
 		stderrPromise,
@@ -336,9 +467,10 @@ async function finalizeResult(
 	if (timedOut || stdoutResult.timedOut || stderrResult.timedOut) {
 		const suffix = stderr.endsWith("\n") || stderr.length === 0 ? "" : "\n";
 		const timeoutReason = timedOut
-			? "[runCli] process timeout exceeded"
-			: "[runCli] stream read timeout exceeded";
-		finalStderr = `${stderr}${suffix}${timeoutReason}\n`;
+			? PROCESS_TIMEOUT_REASON
+			: STREAM_TIMEOUT_REASON;
+		const timeoutDiagnostic = `[runCli] timeout diagnostic: bun=${bunBinary} attempt=${attempt}/${maxAttempts}`;
+		finalStderr = `${stderr}${suffix}${timeoutReason}\n${timeoutDiagnostic}\n`;
 	}
 	debugLog("streams:done", {
 		stdoutTimedOut: stdoutResult.timedOut,
