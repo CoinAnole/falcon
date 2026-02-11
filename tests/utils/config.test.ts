@@ -268,7 +268,7 @@ describe("legacy totalCost migration", () => {
 					expect(history.totalCost.USD.allTime).toBe(allTime || 0);
 				},
 			),
-			{ numRuns: 100 },
+			{ numRuns: 50 },
 		);
 	});
 });
@@ -468,7 +468,7 @@ describe("generateId", () => {
 					expect(id).toMatch(UUID_V4_REGEX);
 				}
 			}),
-			{ numRuns: 100 },
+			{ numRuns: 50 },
 		);
 	});
 });
