@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { AspectRatio, Resolution } from "../api/models";
+import type { AspectRatio, CliResolution, Resolution } from "../api/models";
 import type { CostMetadata } from "../types/pricing";
 
 const LOCAL_CONFIG_PATH = ".falconrc";
@@ -38,7 +38,7 @@ export interface Generation {
 	prompt: string;
 	model: string;
 	aspect: AspectRatio;
-	resolution: Resolution;
+	resolution: CliResolution;
 	output: string;
 	cost: number;
 	costDetails?: CostMetadata;

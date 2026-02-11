@@ -4,9 +4,9 @@ import {
 	type AspectRatio,
 	aspectToFlux2Size,
 	aspectToGptSize,
+	type CliResolution,
 	MODELS,
 	type OutputFormat,
-	type Resolution,
 } from "./models";
 
 const FAL_BASE_URL = "https://fal.run";
@@ -15,7 +15,7 @@ export interface GenerateOptions {
 	prompt: string;
 	model: string;
 	aspect?: AspectRatio;
-	resolution?: Resolution;
+	resolution?: CliResolution;
 	numImages?: number;
 	editImage?: string; // base64 data URL for edit mode
 	transparent?: boolean; // Generate with transparent background (GPT model only)
@@ -126,7 +126,11 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 		}
 	} else if (model.startsWith("flux2")) {
 		// Flux 2 models use image_size enum instead of aspect_ratio
-		body.image_size = aspectToFlux2Size(aspect);
+		if (resolution === "512x512") {
+			body.image_size = { width: 512, height: 512 };
+		} else {
+			body.image_size = aspectToFlux2Size(aspect);
+		}
 		// Add optional guidance scale
 		if (guidanceScale !== undefined) {
 			body.guidance_scale = guidanceScale;
@@ -149,6 +153,11 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 			body.aspect_ratio = aspect;
 		}
 		if (config.supportsResolution) {
+			if (resolution === "512x512") {
+				throw new Error(
+					`Model ${model} does not support 512x512 resolution. Use 1K, 2K, or 4K.`,
+				);
+			}
 			body.resolution = resolution;
 		}
 	}

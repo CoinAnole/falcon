@@ -137,7 +137,7 @@ describe("cli", () => {
 		expect(result.stderr).toContain("Invalid number of images");
 	});
 
-	itCli("accepts 512x512 resolution", async () => {
+	itCli("accepts 512x512 resolution for flux2Flash", async () => {
 		const outputFile = join(getTestOutputDir(), "resolution-512-test.png");
 		const result = await runCli(
 			[
@@ -145,7 +145,7 @@ describe("cli", () => {
 				"--resolution",
 				"512x512",
 				"--model",
-				"banana",
+				"flux2Flash",
 				"--no-open",
 				"--output",
 				outputFile,
@@ -158,7 +158,24 @@ describe("cli", () => {
 			},
 		);
 		expect(result.exitCode).toBe(0);
-		expect(result.stdout).toContain("512x512");
+		expect(result.stdout).toContain("Flux 2 Flash");
+	});
+
+	itCli("rejects 512x512 resolution for non-Flux models", async () => {
+		const result = await runCli(
+			[
+				"a test prompt",
+				"--resolution",
+				"512x512",
+				"--model",
+				"banana",
+			],
+			{
+				FAL_KEY: "test-key",
+			},
+		);
+		expect(result.exitCode).toBe(1);
+		expect(result.stderr).toContain("only supported for Flux 2 models");
 	});
 
 	itCli("rejects invalid Flux guidance scale", async () => {

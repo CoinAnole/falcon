@@ -7,11 +7,12 @@ import { generate, removeBackground, upscale } from "./api/fal";
 import {
 	ASPECT_RATIOS,
 	type AspectRatio,
+	CLI_RESOLUTIONS,
+	type CliResolution,
 	GENERATION_MODELS,
 	getAspectRatiosForModel,
 	MODELS,
 	OUTPUT_FORMATS,
-	RESOLUTIONS,
 	type Resolution,
 } from "./api/models";
 import {
@@ -70,6 +71,19 @@ function parseNumImages(value: string | undefined, fallback: number): number {
 	const parsed = value === undefined ? fallback : Number(value);
 	if (!Number.isInteger(parsed) || parsed < 1 || parsed > 4) {
 		throw new Error("Invalid number of images. Use --num with 1-4.");
+	}
+	return parsed;
+}
+
+function parseCliResolution(
+	value: string | undefined,
+	fallback: Resolution,
+): CliResolution {
+	const parsed = (value ?? fallback) as CliResolution;
+	if (!CLI_RESOLUTIONS.includes(parsed)) {
+		throw new Error(
+			`Invalid resolution: ${parsed}. Use --resolution with ${CLI_RESOLUTIONS.join(", ")}.`,
+		);
 	}
 	return parsed;
 }
@@ -176,7 +190,10 @@ export async function runCli(args: string[]): Promise<void> {
 			"-a, --aspect <ratio>",
 			`Aspect ratio (${ASPECT_RATIOS.join(", ")})`,
 		)
-		.option("-r, --resolution <res>", `Resolution (${RESOLUTIONS.join(", ")})`)
+		.option(
+			"-r, --resolution <res>",
+			`Resolution (${CLI_RESOLUTIONS.join(", ")})`,
+		)
 		.option("-o, --output <file>", "Output filename")
 		.option("-n, --num <count>", "Number of images 1-4")
 		// Format presets
@@ -386,8 +403,14 @@ async function generateImage(
 	// Apply presets
 	let aspect: AspectRatio =
 		(options.aspect as AspectRatio) || config.defaultAspect;
-	let resolution: Resolution =
-		(options.resolution as Resolution) || config.defaultResolution;
+	let resolution: CliResolution;
+	try {
+		resolution = parseCliResolution(options.resolution, config.defaultResolution);
+	} catch (err) {
+		cliDebugLog("generate:error:resolution", { error: getErrorMessage(err) });
+		console.error(chalk.red(getErrorMessage(err)));
+		process.exit(1);
+	}
 	({ aspect, resolution } = applyPresetOverrides(options, {
 		aspect,
 		resolution,
@@ -459,6 +482,16 @@ async function generateImage(
 		console.error(chalk.red(`Unknown model: ${model}`));
 		console.log(`Available models: ${GENERATION_MODELS.join(", ")}`);
 		await new Promise((resolve) => setTimeout(resolve, 10));
+		process.exit(1);
+	}
+
+	if (resolution === "512x512" && !model.startsWith("flux2")) {
+		cliDebugLog("generate:error:resolution-model", { model, resolution });
+		console.error(
+			chalk.red(
+				"Resolution 512x512 is only supported for Flux 2 models (flux2, flux2Flash, flux2Turbo).",
+			),
+		);
 		process.exit(1);
 	}
 
@@ -767,7 +800,7 @@ async function upscaleLast(
 	let sourceImagePath: string;
 	let sourcePrompt = "[upscale]";
 	let sourceAspect: AspectRatio = "1:1";
-	let sourceResolution: Resolution = "1K";
+	let sourceResolution: CliResolution = "1K";
 
 	if (imagePath) {
 		// User provided an image path - validate and use it
@@ -1043,7 +1076,7 @@ ${chalk.bold("Options:")}
 -m, --model < model > Model: gpt, banana, gemini, gemini3, flux2, flux2Flash, flux2Turbo, imagine
 	- e, --edit < file > Edit an existing image with prompt
 	- a, --aspect < ratio > Aspect ratio(see below)
-		- r, --resolution < res > Resolution: 1K, 2K, 4K, 512x512
+		- r, --resolution < res > Resolution: 1K, 2K, 4K, 512x512 (Flux 2 only)
 			- o, --output < file > Output filename
 				- n, --num < count > Number of images(1 - 4)
 					- f, --format < format > Output format: jpeg, png, webp(Grok, Flux, Gemini 3 Pro)

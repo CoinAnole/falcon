@@ -1,4 +1,4 @@
-import type { AspectRatio, Resolution } from "./api/models";
+import type { AspectRatio, CliResolution } from "./api/models";
 
 export interface PresetFlags {
 	cover?: boolean;
@@ -16,7 +16,7 @@ export interface PresetFlags {
 
 export interface PresetResolution {
 	aspect: AspectRatio;
-	resolution: Resolution;
+	resolution: CliResolution;
 }
 
 export const PRESET_MAPPINGS = [

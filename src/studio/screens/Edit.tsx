@@ -5,9 +5,9 @@ import { useEffect, useRef, useState } from "react";
 import { generate, removeBackground, upscale } from "../../api/fal";
 import {
 	type AspectRatio,
+	type CliResolution,
 	GENERATION_MODELS,
 	MODELS,
-	type Resolution,
 } from "../../api/models";
 import {
 	estimateBackgroundRemovalCost,
@@ -111,7 +111,7 @@ export function EditScreen({
 		prompt: string;
 		model: string;
 		aspect: AspectRatio;
-		resolution: Resolution;
+		resolution: CliResolution;
 	} => {
 		if (useCustomPath && customPath) {
 			return {

@@ -11,7 +11,7 @@ import type { CostMetadata, EstimateType } from "../types/pricing";
 import { FALCON_DIR } from "../utils/config";
 import { logger } from "../utils/logger";
 import { getApiKey } from "./fal";
-import { estimateCost, MODELS, type Resolution } from "./models";
+import { estimateCost, MODELS, type CliResolution } from "./models";
 
 const PRICING_BASE_URL = "https://api.fal.ai/v1";
 const PRICING_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
@@ -301,7 +301,7 @@ async function estimateWithApi(
 
 function fallbackEstimate(
 	model: string,
-	resolution: Resolution | undefined,
+	resolution: CliResolution | undefined,
 	numImages: number,
 	endpointId: string,
 	estimateType: EstimateType,
@@ -336,7 +336,7 @@ export async function refreshPricingCache(
 
 export async function estimateGenerationCost(options: {
 	model: string;
-	resolution?: Resolution;
+	resolution?: CliResolution;
 	numImages: number;
 }): Promise<PricingEstimate> {
 	const { model, resolution, numImages } = options;

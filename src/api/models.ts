@@ -16,7 +16,8 @@ export type AspectRatio =
 	| "9:20"
 	| "1:2";
 
-export type Resolution = "1K" | "2K" | "4K" | "512x512";
+export type Resolution = "1K" | "2K" | "4K";
+export type CliResolution = Resolution | "512x512";
 
 export type ModelType = "generation" | "utility";
 
@@ -215,7 +216,8 @@ export const ASPECT_RATIOS: AspectRatio[] = [
 	"21:9", // Ultrawide
 ];
 
-export const RESOLUTIONS: Resolution[] = ["1K", "2K", "4K", "512x512"];
+export const RESOLUTIONS: Resolution[] = ["1K", "2K", "4K"];
+export const CLI_RESOLUTIONS: CliResolution[] = [...RESOLUTIONS, "512x512"];
 
 export const OUTPUT_FORMATS: OutputFormat[] = ["jpeg", "png", "webp"];
 
@@ -269,7 +271,7 @@ export function aspectToFlux2Size(aspect: AspectRatio): string {
 // Estimate cost based on model and settings
 export function estimateCost(
 	model: string,
-	resolution?: Resolution,
+	resolution?: CliResolution,
 	numImages: number = 1,
 ): number {
 	const config = MODELS[model];

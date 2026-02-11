@@ -70,7 +70,7 @@ falcon [prompt] [options]
 -m, --model <model>      Model: gpt, banana, gemini, gemini3, flux2, flux2Flash, flux2Turbo, imagine
 -e, --edit <file>        Edit an existing image with prompt
 -a, --aspect <ratio>     Aspect ratio (model-specific)
--r, --resolution <res>   Resolution: 1K, 2K, 4K, 512x512
+-r, --resolution <res>   Resolution: 1K, 2K, 4K, 512x512 (Flux 2 only)
 -o, --output <file>      Output filename
 -n, --num <count>        Number of images (1-4)
 -f, --format <format>    Output format: jpeg, png, webp (Grok, Flux, Gemini 3 Pro)

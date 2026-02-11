@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import fc from "fast-check";
-import type { AspectRatio, Resolution } from "../../src/api/models";
+import type { AspectRatio, CliResolution } from "../../src/api/models";
 import {
 	ASPECT_RATIOS,
 	aspectToFlux2Size,
@@ -158,7 +158,7 @@ describe("model arrays", () => {
 // **Validates: Requirements 4.9**
 describe("Property 6: estimateCost scales linearly with numImages", () => {
 	const knownModels = [...GENERATION_MODELS, ...UTILITY_MODELS];
-	const resolutions: (Resolution | undefined)[] = [
+	const resolutions: (CliResolution | undefined)[] = [
 		"1K",
 		"2K",
 		"4K",

@@ -76,6 +76,30 @@ describe("fal api", () => {
 		expect(body.output_format).toBe("webp");
 	});
 
+	it("uses explicit 512x512 image_size object for Flux models", async () => {
+		setApiKey("test-key");
+		const { calls } = await withMockFetch(
+			async () => {
+				return Response.json({ images: [] });
+			},
+			async () => {
+				await generate({
+					prompt: "pixel robot",
+					model: "flux2Flash",
+					aspect: "16:9",
+					resolution: "512x512",
+				});
+			},
+		);
+
+		const call = calls[0];
+		const body = JSON.parse(call.init?.body as string) as Record<
+			string,
+			unknown
+		>;
+		expect(body.image_size).toEqual({ width: 512, height: 512 });
+	});
+
 	it("adds edit endpoint and image URLs", async () => {
 		setApiKey("test-key");
 		const { calls } = await withMockFetch(
@@ -425,6 +449,22 @@ describe("fal api", () => {
 			unknown
 		>;
 		expect(body.resolution).toBeUndefined();
+	});
+
+	it("rejects 512x512 resolution for models that require enum resolutions", async () => {
+		setApiKey("test-key");
+		await withMockFetch(
+			async () => Response.json({ images: [] }),
+			async () => {
+				await expect(
+					generate({
+						prompt: "test unsupported resolution",
+						model: "banana",
+						resolution: "512x512",
+					}),
+				).rejects.toThrow("does not support 512x512 resolution");
+			},
+		);
 	});
 
 	it("uses bria endpoint and normalizes single-image response for removeBackground with model bria", async () => {
