@@ -6,8 +6,9 @@
 #
 
 # Configuration
-MAX_RUNS=10
+MAX_RUNS="${FALCON_FLAKY_MAX_RUNS:-10}"
 OUTPUT_DIR="test-runs"
+RUN_TIMEOUT_SECONDS=180
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 RUN_DIR="${OUTPUT_DIR}/${TIMESTAMP}"
 
@@ -20,6 +21,7 @@ echo "========================================"
 echo "Max runs: ${MAX_RUNS}"
 echo "Output directory: ${RUN_DIR}"
 echo "Debug mode: ENABLED"
+echo "Per-run watchdog timeout: ${RUN_TIMEOUT_SECONDS}s"
 echo ""
 
 # Track results
@@ -40,31 +42,51 @@ for ((i=1; i<=MAX_RUNS; i++)); do
 
     # Run tests with debug mode enabled, capture all output
     echo "Running: FALCON_DEBUG=1 FALCON_CLI_TEST_DEBUG=1 bun test ..."
+    echo "Watchdog: ${RUN_TIMEOUT_SECONDS}s"
 
     # Run test and capture output, preserving exit code
     # Use a subshell to prevent set -e from exiting on test failure
     EXIT_CODE=0
+    TIMED_OUT=0
     (
         set -o pipefail
-        FALCON_DEBUG=1 FALCON_CLI_TEST_DEBUG=1 bun test 2>&1 | tee "${RUN_LOG}"
+        timeout "${RUN_TIMEOUT_SECONDS}s" env FALCON_DEBUG=1 FALCON_CLI_TEST_DEBUG=1 bun test 2>&1 | tee "${RUN_LOG}"
     ) || EXIT_CODE=$?
+    if [ $EXIT_CODE -eq 124 ]; then
+        TIMED_OUT=1
+        echo "[flaky-detector] run timed out after ${RUN_TIMEOUT_SECONDS}s" >> "${RUN_LOG}"
+    fi
 
     if [ $EXIT_CODE -eq 0 ]; then
         echo "✓ Run ${i} PASSED"
     else
-        echo "✗ Run ${i} FAILED (exit code: ${EXIT_CODE})"
+        if [ $TIMED_OUT -eq 1 ]; then
+            echo "✗ Run ${i} FAILED (exit code: ${EXIT_CODE}, watchdog timeout)"
+        else
+            echo "✗ Run ${i} FAILED (exit code: ${EXIT_CODE})"
+        fi
         FAILED_RUNS+=($i)
 
         # Extract failure details from the log
         echo "========================================" > "${FAIL_LOG}"
         echo "FAILURE DETAILS FOR RUN ${i}" >> "${FAIL_LOG}"
         echo "Exit code: ${EXIT_CODE}" >> "${FAIL_LOG}"
+        if [ $TIMED_OUT -eq 1 ]; then
+            echo "Timed out: yes" >> "${FAIL_LOG}"
+        else
+            echo "Timed out: no" >> "${FAIL_LOG}"
+        fi
         echo "Timestamp: $(date -Iseconds)" >> "${FAIL_LOG}"
         echo "========================================" >> "${FAIL_LOG}"
         echo "" >> "${FAIL_LOG}"
 
         # Extract test failure sections (lines with fail, error, or stack traces)
         grep -E "(✗|fail|error|Error|FAIL|Timed out|expect|assert|---|\\bat\\b|\\.test\\.ts|\\.test\\.tsx)" "${RUN_LOG}" >> "${FAIL_LOG}" 2>/dev/null || true
+        if [ $TIMED_OUT -eq 1 ]; then
+            echo "" >> "${FAIL_LOG}"
+            echo "Last 80 log lines before timeout:" >> "${FAIL_LOG}"
+            tail -n 80 "${RUN_LOG}" >> "${FAIL_LOG}" 2>/dev/null || true
+        fi
 
         FAILURE_LOGS+=("${FAIL_LOG}")
         ((FAIL_COUNT++))

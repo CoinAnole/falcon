@@ -5,12 +5,19 @@
  * capturing output of failing tests to files for analysis.
  */
 
-import { spawn } from "child_process";
-import { mkdir, writeFile } from "fs/promises";
-import { join } from "path";
+import { spawn } from "node:child_process";
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 
-const MAX_RUNS = 10;
+const configuredRuns = Number.parseInt(
+	process.env.FALCON_FLAKY_MAX_RUNS ?? "10",
+	10,
+);
+const MAX_RUNS =
+	Number.isFinite(configuredRuns) && configuredRuns > 0 ? configuredRuns : 10;
 const OUTPUT_DIR = "test-runs";
+const RUN_TIMEOUT_MS = 180_000;
+const KILL_GRACE_MS = 1_000;
 
 interface RunResult {
 	runNumber: number;
@@ -18,6 +25,7 @@ interface RunResult {
 	exitCode: number;
 	logContent: string;
 	failLogPath?: string;
+	timedOut?: boolean;
 }
 
 async function runTests(runNumber: number, runDir: string): Promise<RunResult> {
@@ -28,10 +36,16 @@ async function runTests(runNumber: number, runDir: string): Promise<RunResult> {
 	console.log(`Run ${runNumber}/${MAX_RUNS}`);
 	console.log("-".repeat(40));
 	console.log("Running: FALCON_DEBUG=1 FALCON_CLI_TEST_DEBUG=1 bun test ...\n");
+	console.log(
+		`Per-run watchdog timeout: ${Math.floor(RUN_TIMEOUT_MS / 1000)}s`,
+	);
 
 	return new Promise((resolve) => {
 		let stdout = "";
 		let stderr = "";
+		let timedOut = false;
+		let finalized = false;
+		let killTimer: ReturnType<typeof setTimeout> | undefined;
 
 		const child = spawn("bun", ["test"], {
 			stdio: ["inherit", "pipe", "pipe"],
@@ -54,8 +68,38 @@ async function runTests(runNumber: number, runDir: string): Promise<RunResult> {
 			process.stderr.write(chunk);
 		});
 
-		child.on("close", async (exitCode) => {
-			const logContent = stdout + stderr;
+		const timeoutTimer = setTimeout(() => {
+			timedOut = true;
+			console.error(
+				`\n⚠ Run ${runNumber} exceeded ${Math.floor(RUN_TIMEOUT_MS / 1000)}s; sending SIGTERM...`,
+			);
+			try {
+				child.kill("SIGTERM");
+			} catch {
+				// Ignore kill errors
+			}
+			killTimer = setTimeout(() => {
+				try {
+					child.kill("SIGKILL");
+				} catch {
+					// Ignore kill errors
+				}
+			}, KILL_GRACE_MS);
+		}, RUN_TIMEOUT_MS);
+
+		const finalize = async (rawExitCode: number | null) => {
+			if (finalized) return;
+			finalized = true;
+			clearTimeout(timeoutTimer);
+			if (killTimer) {
+				clearTimeout(killTimer);
+			}
+
+			const exitCode = timedOut ? 124 : (rawExitCode ?? -1);
+			const timeoutBanner = timedOut
+				? `\n[flaky-detector] run timed out after ${Math.floor(RUN_TIMEOUT_MS / 1000)}s\n`
+				: "";
+			const logContent = stdout + stderr + timeoutBanner;
 			const passed = exitCode === 0;
 
 			// Save full log
@@ -66,7 +110,7 @@ async function runTests(runNumber: number, runDir: string): Promise<RunResult> {
 				const failureLines = logContent
 					.split("\n")
 					.filter((line) =>
-						/✗|fail|error|Error|FAIL|Timed out|expect|assert|---|\bat\b|\.test\.ts|\.test\.tsx/.test(
+						/✗|fail|error|Error|FAIL|Timed out|timed out|expect|assert|---|\bat\b|\.test\.ts|\.test\.tsx/.test(
 							line,
 						),
 					)
@@ -76,13 +120,17 @@ async function runTests(runNumber: number, runDir: string): Promise<RunResult> {
 ========================================
 FAILURE DETAILS FOR RUN ${runNumber}
 Exit code: ${exitCode}
+Timed out: ${timedOut ? "yes" : "no"}
 Timestamp: ${new Date().toISOString()}
 ========================================
 
 ${failureLines}
 `;
 				await writeFile(failLogPath, failContent);
-				console.log(`\n✗ Run ${runNumber} FAILED (exit code: ${exitCode})`);
+				const timeoutSuffix = timedOut ? " (watchdog timeout)" : "";
+				console.log(
+					`\n✗ Run ${runNumber} FAILED (exit code: ${exitCode})${timeoutSuffix}`,
+				);
 				console.log(`Failure details saved to: ${failLogPath}`);
 			} else {
 				console.log(`\n✓ Run ${runNumber} PASSED`);
@@ -91,10 +139,15 @@ ${failureLines}
 			resolve({
 				runNumber,
 				passed,
-				exitCode: exitCode ?? -1,
+				exitCode,
 				logContent,
 				failLogPath: passed ? undefined : failLogPath,
+				timedOut,
 			});
+		};
+
+		child.on("close", (exitCode) => {
+			void finalize(exitCode);
 		});
 	});
 }
@@ -124,7 +177,7 @@ async function main() {
 	const failCount = failedRuns.length;
 	const passCount = results.length - failCount;
 
-	console.log("\n" + "=".repeat(40));
+	console.log(`\n${"=".repeat(40)}`);
 	console.log("SUMMARY REPORT");
 	console.log("=".repeat(40));
 	console.log(`Total runs: ${results.length}`);
@@ -176,7 +229,7 @@ async function main() {
 			}
 		}
 
-		console.log("\n" + "=".repeat(40));
+		console.log(`\n${"=".repeat(40)}`);
 		console.log("FLAKY TESTS DETECTED");
 		console.log("=".repeat(40));
 		console.log("Some tests are failing intermittently.");
@@ -191,7 +244,7 @@ async function main() {
 
 		process.exit(1);
 	} else {
-		console.log("\n" + "=".repeat(40));
+		console.log(`\n${"=".repeat(40)}`);
 		console.log("ALL RUNS PASSED");
 		console.log("=".repeat(40));
 		console.log(`No flaky tests detected in ${results.length} runs.`);

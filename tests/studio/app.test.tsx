@@ -4,6 +4,8 @@ import { App } from "../../src/studio/App";
 import type { FalconConfig, History } from "../../src/utils/config";
 import { KEYS, stripAnsi, waitUntil, writeInput } from "../helpers/ink";
 
+const APP_TEST_TIMEOUT_MS = 15_000;
+
 const baseConfig: FalconConfig = {
 	defaultModel: "banana",
 	defaultAspect: "1:1",
@@ -32,91 +34,110 @@ const renderApp = (history: History = createHistory()) =>
 	);
 
 describe("studio app routing", () => {
-	it("renders the home menu", () => {
-		const result = renderApp();
-		try {
-			const output = stripAnsi(result.lastFrame() ?? "");
-			expect(output).toContain("Generate");
-			expect(output).toContain("Gallery");
-		} finally {
-			result.unmount();
-		}
-	});
+	it(
+		"renders the home menu",
+		async () => {
+			const result = renderApp();
+			try {
+				await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
+					timeoutMs: 3000,
+				});
+				const output = stripAnsi(result.lastFrame() ?? "");
+				expect(output).toContain("Generate");
+				expect(output).toContain("Gallery");
+			} finally {
+				result.unmount();
+			}
+		},
+		APP_TEST_TIMEOUT_MS,
+	);
 
-	it("navigates to generate screen", async () => {
-		const result = renderApp();
-		try {
-			await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
-				timeoutMs: 3000,
-			});
-			await writeInput(result, KEYS.enter);
-			await waitUntil(
-				() =>
-					stripAnsi(result.lastFrame() ?? "").includes("Enter your prompt:"),
-				{ timeoutMs: 3000 },
-			);
-			const output = stripAnsi(result.lastFrame() ?? "");
-			expect(output).toContain("Enter your prompt:");
-		} finally {
-			result.unmount();
-		}
-	});
+	it(
+		"navigates to generate screen",
+		async () => {
+			const result = renderApp();
+			try {
+				await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
+					timeoutMs: 3000,
+				});
+				await writeInput(result, KEYS.enter);
+				await waitUntil(
+					() =>
+						stripAnsi(result.lastFrame() ?? "").includes("Enter your prompt:"),
+					{ timeoutMs: 3000 },
+				);
+				const output = stripAnsi(result.lastFrame() ?? "");
+				expect(output).toContain("Enter your prompt:");
+			} finally {
+				result.unmount();
+			}
+		},
+		APP_TEST_TIMEOUT_MS,
+	);
 
-	it("routes to settings and back with escape", async () => {
-		const result = renderApp();
-		try {
-			await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
-				timeoutMs: 3000,
-			});
-			await writeInput(result, KEYS.down);
-			await writeInput(result, KEYS.down);
-			await writeInput(result, KEYS.down);
-			await writeInput(result, KEYS.enter);
-			await waitUntil(
-				() => stripAnsi(result.lastFrame() ?? "").includes("Settings"),
-				{ timeoutMs: 3000 },
-			);
-			let output = stripAnsi(result.lastFrame() ?? "");
-			expect(output).toContain("Settings");
+	it(
+		"routes to settings and back with escape",
+		async () => {
+			const result = renderApp();
+			try {
+				await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
+					timeoutMs: 3000,
+				});
+				await writeInput(result, KEYS.down);
+				await writeInput(result, KEYS.down);
+				await writeInput(result, KEYS.down);
+				await writeInput(result, KEYS.enter);
+				await waitUntil(
+					() => stripAnsi(result.lastFrame() ?? "").includes("Settings"),
+					{ timeoutMs: 3000 },
+				);
+				let output = stripAnsi(result.lastFrame() ?? "");
+				expect(output).toContain("Settings");
 
-			await writeInput(result, KEYS.escape);
-			await waitUntil(
-				() => stripAnsi(result.lastFrame() ?? "").includes("Generate"),
-				{ timeoutMs: 3000 },
-			);
-			output = stripAnsi(result.lastFrame() ?? "");
-			expect(output).toContain("Generate");
-		} finally {
-			result.unmount();
-		}
-	});
+				await writeInput(result, KEYS.escape);
+				await waitUntil(
+					() => stripAnsi(result.lastFrame() ?? "").includes("Generate"),
+					{ timeoutMs: 3000 },
+				);
+				output = stripAnsi(result.lastFrame() ?? "");
+				expect(output).toContain("Generate");
+			} finally {
+				result.unmount();
+			}
+		},
+		APP_TEST_TIMEOUT_MS,
+	);
 
-	it("opens gallery and returns to home", async () => {
-		const result = renderApp();
-		try {
-			await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
-				timeoutMs: 3000,
-			});
-			await writeInput(result, KEYS.down);
-			await writeInput(result, KEYS.down);
-			await writeInput(result, KEYS.enter);
-			await waitUntil(
-				() =>
-					stripAnsi(result.lastFrame() ?? "").includes("No generations yet"),
-				{ timeoutMs: 3000 },
-			);
-			let output = stripAnsi(result.lastFrame() ?? "");
-			expect(output).toContain("No generations yet");
+	it(
+		"opens gallery and returns to home",
+		async () => {
+			const result = renderApp();
+			try {
+				await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
+					timeoutMs: 3000,
+				});
+				await writeInput(result, KEYS.down);
+				await writeInput(result, KEYS.down);
+				await writeInput(result, KEYS.enter);
+				await waitUntil(
+					() =>
+						stripAnsi(result.lastFrame() ?? "").includes("No generations yet"),
+					{ timeoutMs: 3000 },
+				);
+				let output = stripAnsi(result.lastFrame() ?? "");
+				expect(output).toContain("No generations yet");
 
-			await writeInput(result, KEYS.escape);
-			await waitUntil(
-				() => stripAnsi(result.lastFrame() ?? "").includes("Generate"),
-				{ timeoutMs: 3000 },
-			);
-			output = stripAnsi(result.lastFrame() ?? "");
-			expect(output).toContain("Generate");
-		} finally {
-			result.unmount();
-		}
-	});
+				await writeInput(result, KEYS.escape);
+				await waitUntil(
+					() => stripAnsi(result.lastFrame() ?? "").includes("Generate"),
+					{ timeoutMs: 3000 },
+				);
+				output = stripAnsi(result.lastFrame() ?? "");
+				expect(output).toContain("Generate");
+			} finally {
+				result.unmount();
+			}
+		},
+		APP_TEST_TIMEOUT_MS,
+	);
 });

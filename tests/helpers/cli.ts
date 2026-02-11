@@ -5,8 +5,7 @@ import {
 	rmSync,
 	unlinkSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { getTestHome } from "./env";
 
 export interface CliResult {
@@ -14,6 +13,9 @@ export interface CliResult {
 	stdout: string;
 	stderr: string;
 }
+
+const KILL_GRACE_MS = 500;
+const STREAM_READ_TIMEOUT_BUFFER_MS = 3000;
 
 // Global temp directory for CLI test outputs (within project root for path validation)
 const globalKey = "__FALCON_TEST_OUTPUT_DIR__";
@@ -185,15 +187,19 @@ export async function runCli(
 		hasStderr: Boolean(proc.stderr),
 	});
 
-	// Read stdout and stderr using Bun's helper which handles process exit correctly
-	const stdoutPromise = Bun.readableStreamToText(proc.stdout).then((stdout) => {
-		debugLog("stdout:closed", { length: stdout.length });
-		return stdout;
-	});
-	const stderrPromise = Bun.readableStreamToText(proc.stderr).then((stderr) => {
-		debugLog("stderr:closed", { length: stderr.length });
-		return stderr;
-	});
+	const streamTimeoutMs = timeoutMs + STREAM_READ_TIMEOUT_BUFFER_MS;
+	const stdoutPromise = readStreamWithTimeout(
+		proc.stdout,
+		"stdout",
+		streamTimeoutMs,
+		debugLog,
+	);
+	const stderrPromise = readStreamWithTimeout(
+		proc.stderr,
+		"stderr",
+		streamTimeoutMs,
+		debugLog,
+	);
 
 	try {
 		debugLog("waitForExit:begin", { pid: proc.pid, timeoutMs });
@@ -211,8 +217,6 @@ export async function runCli(
 			debugLog,
 			timeoutFired,
 		);
-	} catch (error) {
-		throw error;
 	} finally {
 		// HOME cleanup handled by tests/helpers/env.ts
 	}
@@ -226,49 +230,125 @@ async function waitForExit(
 	return await new Promise<{ exitCode: number; timedOut: boolean }>(
 		(resolve) => {
 			let resolved = false;
+			let timedOut = false;
+			let killGraceTimer: ReturnType<typeof setTimeout> | null = null;
+			let forceResolveTimer: ReturnType<typeof setTimeout> | null = null;
+			const cleanup = () => {
+				if (killGraceTimer) {
+					clearTimeout(killGraceTimer);
+					killGraceTimer = null;
+				}
+				if (forceResolveTimer) {
+					clearTimeout(forceResolveTimer);
+					forceResolveTimer = null;
+				}
+			};
 			const timeoutId = setTimeout(() => {
 				if (resolved) return;
-				resolved = true;
+				timedOut = true;
 				debugLog("timeout", { timeoutMs, pid: proc.pid });
-				proc.kill();
-				debugLog("timeout:kill", { pid: proc.pid });
-				resolve({ exitCode: 143, timedOut: true });
+				try {
+					proc.kill("SIGTERM");
+					debugLog("timeout:sigterm", { pid: proc.pid });
+				} catch {
+					debugLog("timeout:sigterm:error", { pid: proc.pid });
+				}
+				killGraceTimer = setTimeout(() => {
+					if (resolved) return;
+					try {
+						proc.kill("SIGKILL");
+						debugLog("timeout:sigkill", { pid: proc.pid });
+					} catch {
+						debugLog("timeout:sigkill:error", { pid: proc.pid });
+					}
+				}, KILL_GRACE_MS);
+				forceResolveTimer = setTimeout(() => {
+					if (resolved) return;
+					resolved = true;
+					debugLog("timeout:resolve-fallback", { pid: proc.pid });
+					resolve({ exitCode: 143, timedOut: true });
+				}, KILL_GRACE_MS + 1000);
 			}, timeoutMs);
 
 			void proc.exited.then((exitCode) => {
-				debugLog("exited", { exitCode, resolved, pid: proc.pid });
+				debugLog("exited", { exitCode, resolved, pid: proc.pid, timedOut });
 				if (resolved) return;
 				resolved = true;
 				clearTimeout(timeoutId);
-				resolve({ exitCode, timedOut: false });
+				cleanup();
+				resolve({ exitCode, timedOut });
 			});
 		},
 	);
 }
 
+async function readStreamWithTimeout(
+	stream: ReadableStream,
+	streamName: "stdout" | "stderr",
+	timeoutMs: number,
+	debugLog: (message: string, meta?: Record<string, unknown>) => void,
+): Promise<{ text: string; timedOut: boolean }> {
+	const readPromise = Bun.readableStreamToText(stream)
+		.then((text) => {
+			debugLog(`${streamName}:closed`, { length: text.length });
+			return text;
+		})
+		.catch((error) => {
+			debugLog(`${streamName}:error`, {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return "";
+		});
+
+	return await new Promise<{ text: string; timedOut: boolean }>((resolve) => {
+		let settled = false;
+		const timeoutId = setTimeout(() => {
+			if (settled) return;
+			settled = true;
+			debugLog(`${streamName}:timeout`, { timeoutMs });
+			resolve({ text: "", timedOut: true });
+		}, timeoutMs);
+
+		void readPromise.then((text) => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timeoutId);
+			resolve({ text, timedOut: false });
+		});
+	});
+}
+
 async function finalizeResult(
 	exitCode: number,
-	stdoutPromise: Promise<string>,
-	stderrPromise: Promise<string>,
+	stdoutPromise: Promise<{ text: string; timedOut: boolean }>,
+	stderrPromise: Promise<{ text: string; timedOut: boolean }>,
 	debugLog: (message: string, meta?: Record<string, unknown>) => void,
 	timedOut: boolean,
 ): Promise<CliResult> {
 	debugLog("finalize:begin", { exitCode });
-	const [stdout, stderr] = await Promise.all([stdoutPromise, stderrPromise]);
+	const [stdoutResult, stderrResult] = await Promise.all([
+		stdoutPromise,
+		stderrPromise,
+	]);
+	const stdout = stdoutResult.text;
+	const stderr = stderrResult.text;
 	let finalStderr = stderr;
-	if (timedOut) {
+	if (timedOut || stdoutResult.timedOut || stderrResult.timedOut) {
 		const suffix = stderr.endsWith("\n") || stderr.length === 0 ? "" : "\n";
-		finalStderr = `${stderr}${suffix}[runCli] timeout exceeded\n`;
+		const timeoutReason = timedOut
+			? "[runCli] process timeout exceeded"
+			: "[runCli] stream read timeout exceeded";
+		finalStderr = `${stderr}${suffix}${timeoutReason}\n`;
 	}
 	debugLog("streams:done", {
-		stdoutTimedOut: false,
-		stderrTimedOut: false,
+		stdoutTimedOut: stdoutResult.timedOut,
+		stderrTimedOut: stderrResult.timedOut,
 		stdoutLength: stdout.length,
 		stderrLength: finalStderr.length,
 	});
 	debugLog("streams", {
-		stdoutTimedOut: false,
-		stderrTimedOut: false,
+		stdoutTimedOut: stdoutResult.timedOut,
+		stderrTimedOut: stderrResult.timedOut,
 		stdoutLength: stdout.length,
 		stderrLength: finalStderr.length,
 	});
