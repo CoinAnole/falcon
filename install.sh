@@ -37,7 +37,7 @@ if [ -d "$REPO_DIR" ]; then
     git pull --quiet
 else
     echo "Downloading Falcon..."
-    git clone --quiet https://github.com/howells/falcon.git "$REPO_DIR"
+    git clone --quiet https://github.com/coinanole/falcon.git "$REPO_DIR"
     cd "$REPO_DIR"
 fi
 

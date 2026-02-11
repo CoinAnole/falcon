@@ -1,11 +1,14 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/howells/falcon/main/logo.png" width="128" alt="Falcon">
+  <img src="https://raw.githubusercontent.com/coinanole/falcon/main/logo.png" width="128" alt="Falcon">
 </p>
 <h1 align="center">Falcon</h1>
 
 <p align="center">
-  CLI for generating images with <a href="https://fal.ai">fal.ai</a><br>
-  <code>brew install howells/tap/falcon</code>
+  CLI for generating images with <a href="https://fal.ai">fal.ai</a>
+</p>
+
+<p align="center">
+  <em>A fork of <a href="https://github.com/howells/falcon">howells/falcon</a>. Originally created by Daniel Howells.</em>
 </p>
 
 ## Quick Start
@@ -29,19 +32,9 @@ falcon --vary -n 4   # Generate variations
 
 ## Install
 
-**Homebrew**
-```bash
-brew install howells/tap/falcon
-```
-
-**bunx** (requires [Bun](https://bun.sh))
-```bash
-bunx @howells/falcon "your prompt"
-```
-
 **Manual**
 ```bash
-git clone https://github.com/howells/falcon.git
+git clone https://github.com/coinanole/falcon.git
 cd falcon && bun install && bun link
 ```
 
