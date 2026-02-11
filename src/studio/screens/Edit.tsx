@@ -21,7 +21,7 @@ import {
 	type Generation,
 	generateId,
 	loadHistory,
-} from "../../utils/config";
+} from "../deps/config";
 import { isValidUpscaleFactor, UPSCALE_FACTORS } from "../../utils/constants";
 import {
 	downloadImage,
@@ -30,13 +30,13 @@ import {
 	getImageDimensions,
 	imageToDataUrl,
 	openImage,
-} from "../../utils/image";
-import { logger } from "../../utils/logger";
+} from "../deps/image";
+import { logger } from "../deps/logger";
 import {
 	isPathWithinCwd,
 	validateImagePath,
 	validateOutputPath,
-} from "../../utils/paths";
+} from "../deps/paths";
 import { Spinner } from "../components/Spinner";
 
 type Mode = "edit" | "variations" | "upscale" | "rmbg";

@@ -14,8 +14,11 @@ import { getApiKey } from "./fal";
 import { estimateCost, MODELS, type Resolution } from "./models";
 
 const PRICING_BASE_URL = "https://api.fal.ai/v1";
-const PRICING_CACHE_PATH = join(FALCON_DIR, "pricing.json");
 const PRICING_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+
+function getPricingCachePath(): string {
+	return join(FALCON_DIR, "pricing.json");
+}
 
 interface PricingCache {
 	fetchedAt: string;
@@ -58,9 +61,10 @@ async function atomicWrite(filePath: string, data: string): Promise<void> {
 }
 
 async function loadPricingCache(): Promise<PricingCache | null> {
-	if (!existsSync(PRICING_CACHE_PATH)) return null;
+	const cachePath = getPricingCachePath();
+	if (!existsSync(cachePath)) return null;
 	try {
-		const file = Bun.file(PRICING_CACHE_PATH);
+		const file = Bun.file(cachePath);
 		return (await file.json()) as PricingCache;
 	} catch {
 		return null;
@@ -69,7 +73,8 @@ async function loadPricingCache(): Promise<PricingCache | null> {
 
 async function savePricingCache(cache: PricingCache): Promise<void> {
 	ensureFalconDir();
-	await atomicWrite(PRICING_CACHE_PATH, JSON.stringify(cache, null, 2));
+	const cachePath = getPricingCachePath();
+	await atomicWrite(cachePath, JSON.stringify(cache, null, 2));
 }
 
 function isCacheFresh(cache: PricingCache | null): boolean {

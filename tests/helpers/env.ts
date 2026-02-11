@@ -13,6 +13,10 @@ if (!existingHome) {
 
 process.env.HOME = testHome;
 
+// Refresh config paths in case src/utils/config was loaded before HOME override.
+const { refreshFalconPaths } = await import("../../src/utils/config");
+refreshFalconPaths();
+
 export function getTestHome(): string {
 	return testHome;
 }

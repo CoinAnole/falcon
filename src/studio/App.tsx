@@ -1,7 +1,7 @@
 import { Box, Text, useApp, useInput } from "ink";
 import { useEffect, useRef, useState } from "react";
-import type { FalconConfig, History } from "../utils/config";
-import { logger } from "../utils/logger";
+import type { FalconConfig, History } from "./deps/config";
+import { logger } from "./deps/logger";
 import { EditScreen } from "./screens/Edit";
 import { GalleryScreen } from "./screens/Gallery";
 import { GenerateScreen } from "./screens/Generate";

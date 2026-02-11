@@ -1,16 +1,23 @@
-import { describe, expect, it, mock } from "bun:test";
+import { afterAll, beforeAll, describe, expect, it, mock } from "bun:test";
 import { render } from "ink-testing-library";
-import type { Generation, History } from "../../src/utils/config";
+import type { Generation, History } from "../../src/studio/deps/config";
 import { KEYS, stripAnsi, waitUntil, writeInput } from "../helpers/ink";
-
-// Lazy import to avoid top-level side effects
-const { GalleryScreen } = await import("../../src/studio/screens/Gallery");
 
 // Mock openImage to prevent actual file system access
 const openImageMock = mock(() => Promise.resolve());
-mock.module("../../src/utils/image", () => ({
-	openImage: openImageMock,
-}));
+let GalleryScreen = null as unknown as (typeof import("../../src/studio/screens/Gallery"))["GalleryScreen"];
+
+beforeAll(async () => {
+	// Defer module mocking until runtime so it does not affect test-file loading.
+	mock.module("../../src/studio/deps/image", () => ({
+		openImage: openImageMock,
+	}));
+	({ GalleryScreen } = await import("../../src/studio/screens/Gallery"));
+});
+
+afterAll(() => {
+	mock.restore();
+});
 
 const createEmptyHistory = (): History => ({
 	generations: [],

@@ -5,12 +5,22 @@ import { join } from "node:path";
 import type { AspectRatio, Resolution } from "../api/models";
 import type { CostMetadata } from "../types/pricing";
 
-// Use HOME env var if available (allows test override), fallback to homedir()
-// Bun's homedir() ignores process.env.HOME changes, so we check it explicitly
-const FALCON_DIR = join(process.env.HOME || homedir(), ".falcon");
-const CONFIG_PATH = join(FALCON_DIR, "config.json");
-const HISTORY_PATH = join(FALCON_DIR, "history.json");
 const LOCAL_CONFIG_PATH = ".falconrc";
+
+// Use HOME env var if available (allows test override), fallback to homedir().
+// These are mutable exports so test helpers can refresh them after HOME changes.
+export let FALCON_DIR = "";
+export let CONFIG_PATH = "";
+export let HISTORY_PATH = "";
+
+export function refreshFalconPaths(): void {
+	const baseHome = process.env.HOME || homedir();
+	FALCON_DIR = join(baseHome, ".falcon");
+	CONFIG_PATH = join(FALCON_DIR, "config.json");
+	HISTORY_PATH = join(FALCON_DIR, "history.json");
+}
+
+refreshFalconPaths();
 
 export interface FalconConfig {
 	apiKey?: string;
@@ -99,6 +109,7 @@ function summarizeConfig(config: FalconConfig): Record<string, unknown> {
 }
 
 function ensureFalconDir(): void {
+	refreshFalconPaths();
 	if (!existsSync(FALCON_DIR)) {
 		mkdirSync(FALCON_DIR, { recursive: true, mode: 0o700 });
 	}
@@ -330,5 +341,3 @@ export function generateId(): string {
 	// Use cryptographically secure UUID for guaranteed uniqueness
 	return randomUUID();
 }
-
-export { FALCON_DIR, CONFIG_PATH, HISTORY_PATH };

@@ -19,16 +19,16 @@ import {
 	addGeneration,
 	type FalconConfig,
 	generateId,
-} from "../../utils/config";
+} from "../deps/config";
 import {
 	downloadImage,
 	generateFilename,
 	getFileSize,
 	getImageDimensions,
 	openImage,
-} from "../../utils/image";
-import { logger } from "../../utils/logger";
-import { validateOutputPath } from "../../utils/paths";
+} from "../deps/image";
+import { logger } from "../deps/logger";
+import { validateOutputPath } from "../deps/paths";
 import { Spinner } from "../components/Spinner";
 
 type Step =

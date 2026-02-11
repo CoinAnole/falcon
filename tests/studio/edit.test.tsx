@@ -1,7 +1,7 @@
-import { describe, expect, it, mock } from "bun:test";
+import { afterAll, beforeAll, describe, expect, it, mock } from "bun:test";
 import fc from "fast-check";
 import { render } from "ink-testing-library";
-import type { FalconConfig, Generation, History } from "../../src/utils/config";
+import type { FalconConfig, Generation, History } from "../../src/studio/deps/config";
 import { withMockFetch } from "../helpers/fetch";
 import { KEYS, stripAnsi, waitUntil, writeInput } from "../helpers/ink";
 
@@ -35,55 +35,64 @@ const createHistoryWithGenerations = (count: number): History => ({
 const testHistory = createHistoryWithGenerations(3);
 
 // --- Module mocks ---
+let EditScreen = null as unknown as (typeof import("../../src/studio/screens/Edit"))["EditScreen"];
 
-mock.module("../../src/utils/image", () => ({
-	downloadImage: mock(() => Promise.resolve()),
-	openImage: mock(() => Promise.resolve()),
-	generateFilename: mock(() => "test-output.png"),
-	getImageDimensions: mock(() =>
-		Promise.resolve({ width: 1024, height: 1024 }),
-	),
-	getFileSize: mock(() => Promise.resolve("1.2 MB")),
-	imageToDataUrl: mock(() => Promise.resolve("data:image/png;base64,dGVzdA==")),
-}));
+beforeAll(async () => {
+	// Defer module mocking until runtime so it does not affect test-file loading.
+	mock.module("../../src/studio/deps/image", () => ({
+		downloadImage: mock(() => Promise.resolve()),
+		openImage: mock(() => Promise.resolve()),
+		generateFilename: mock(() => "test-output.png"),
+		getImageDimensions: mock(() =>
+			Promise.resolve({ width: 1024, height: 1024 }),
+		),
+		getFileSize: mock(() => Promise.resolve("1.2 MB")),
+		imageToDataUrl: mock(() =>
+			Promise.resolve("data:image/png;base64,dGVzdA=="),
+		),
+	}));
 
-mock.module("../../src/utils/config", () => ({
-	addGeneration: mock(() => Promise.resolve()),
-	generateId: mock(() => "test-id"),
-	loadConfig: mock(() =>
-		Promise.resolve({
-			defaultModel: "banana",
-			defaultAspect: "1:1",
-			defaultResolution: "2K",
-			openAfterGenerate: false,
-			upscaler: "clarity",
-			backgroundRemover: "rmbg",
-			promptExpansion: false,
-		}),
-	),
-	loadHistory: mock(() => Promise.resolve(testHistory)),
-	FALCON_DIR: "/tmp/falcon-test",
-}));
+	mock.module("../../src/studio/deps/config", () => ({
+		addGeneration: mock(() => Promise.resolve()),
+		generateId: mock(() => "test-id"),
+		loadConfig: mock(() =>
+			Promise.resolve({
+				defaultModel: "banana",
+				defaultAspect: "1:1",
+				defaultResolution: "2K",
+				openAfterGenerate: false,
+				upscaler: "clarity",
+				backgroundRemover: "rmbg",
+				promptExpansion: false,
+			}),
+		),
+		loadHistory: mock(() => Promise.resolve(testHistory)),
+		FALCON_DIR: "/tmp/falcon-test",
+	}));
 
-mock.module("../../src/utils/paths", () => ({
-	validateOutputPath: mock((p: string) => p),
-	validateImagePath: mock(() => {}),
-	isPathWithinCwd: mock(() => true),
-}));
+	mock.module("../../src/studio/deps/paths", () => ({
+		validateOutputPath: mock((p: string) => p),
+		validateImagePath: mock(() => {}),
+		isPathWithinCwd: mock(() => true),
+	}));
 
-mock.module("../../src/utils/logger", () => ({
-	logger: {
-		debug: () => {},
-		info: () => {},
-		warn: () => {},
-		error: () => {},
-		errorWithStack: () => {},
-	},
-}));
+	mock.module("../../src/studio/deps/logger", () => ({
+		logger: {
+			debug: () => {},
+			info: () => {},
+			warn: () => {},
+			error: () => {},
+			errorWithStack: () => {},
+		},
+	}));
 
-process.env.FAL_KEY = "test-key-for-edit-tests";
+	process.env.FAL_KEY = "test-key-for-edit-tests";
+	({ EditScreen } = await import("../../src/studio/screens/Edit"));
+});
 
-const { EditScreen } = await import("../../src/studio/screens/Edit");
+afterAll(() => {
+	mock.restore();
+});
 
 const baseConfig: FalconConfig = {
 	defaultModel: "banana",

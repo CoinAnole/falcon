@@ -1,8 +1,8 @@
 import { Box, Text, useInput } from "ink";
 import { useState } from "react";
 import { MODELS } from "../../api/models";
-import type { History } from "../../utils/config";
-import { openImage } from "../../utils/image";
+import type { History } from "../deps/config";
+import { openImage } from "../deps/image";
 
 interface GalleryScreenProps {
 	history: History;
