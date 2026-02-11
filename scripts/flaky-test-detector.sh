@@ -45,13 +45,19 @@ for ((i=1; i<=MAX_RUNS; i++)); do
     echo "Watchdog: ${RUN_TIMEOUT_SECONDS}s"
 
     # Run test and capture output, preserving exit code
-    # Use a subshell to prevent set -e from exiting on test failure
-    EXIT_CODE=0
+    # Use a temporary file to capture exit code from subshell
+    EXIT_CODE_FILE="${RUN_DIR}/.exit_code_${i}"
     TIMED_OUT=0
     (
         set -o pipefail
         timeout "${RUN_TIMEOUT_SECONDS}s" env FALCON_DEBUG=1 FALCON_CLI_TEST_DEBUG=1 bun test 2>&1 | tee "${RUN_LOG}"
-    ) || EXIT_CODE=$?
+        EXIT_CODE=$?
+        echo $EXIT_CODE > "${EXIT_CODE_FILE}"
+        exit $EXIT_CODE
+    ) || true
+    # Read exit code from file (default to 0 if file doesn't exist)
+    EXIT_CODE=$(cat "${EXIT_CODE_FILE}" 2>/dev/null || echo 0)
+    rm -f "${EXIT_CODE_FILE}"
     if [ $EXIT_CODE -eq 124 ]; then
         TIMED_OUT=1
         echo "[flaky-detector] run timed out after ${RUN_TIMEOUT_SECONDS}s" >> "${RUN_LOG}"
