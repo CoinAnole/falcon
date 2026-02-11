@@ -11,6 +11,17 @@
   <em>A fork of <a href="https://github.com/howells/falcon">howells/falcon</a>. Originally created by Daniel Howells.</em>
 </p>
 
+## What Changed In This Fork
+
+Since forking from `6ff02bf42409a9995927e41b9d720f0bd8763690`, this fork has focused on broader model support, stronger reliability, and much deeper test coverage:
+
+- Added major model support and model-specific behavior: Flux 2 (`flux2`, `flux2Flash`, `flux2Turbo`), Grok Imagine (`imagine`), extra aspect ratios, and output format control (`--format`) for supported models.
+- Added live pricing integration (`src/api/pricing.ts`) with 6-hour cache, `falcon pricing --refresh`, and cost metadata used across CLI/Studio history tracking.
+- Added reproducibility and advanced generation controls, including `--seed` plus Flux-specific flags (`--guidance-scale`, `--prompt-expansion`, `--inference-steps`, `--acceleration`).
+- Hardened CLI and file handling with stricter validation (model-specific aspect checks, bounds checks, output path normalization/indexing, safer path constraints) and improved API error handling/timeouts.
+- Added an OS-temp debug logging system (`FALCON_DEBUG`, `FALCON_LOG_LEVEL`) with API key redaction and broader logging coverage across CLI, Studio, and API layers.
+- Added a comprehensive Bun test suite from scratch (API, CLI, utilities, and Studio/Ink UI), including property-based tests and flaky-test detector scripts.
+
 ## Quick Start
 
 ```bash
