@@ -1,5 +1,4 @@
 import { describe, expect, it } from "bun:test";
-import fc from "fast-check";
 import { ASPECT_RATIOS, RESOLUTIONS } from "../../src/api/models";
 import {
 	applyPresetOverrides,
@@ -76,21 +75,17 @@ describe("cli preset mapping", () => {
 	});
 
 	it("property: preset mappings preserve expected aspect and resolution", () => {
-		fc.assert(
-			fc.property(
-				fc.constantFrom(...PRESET_MAPPINGS),
-				fc.constantFrom(...ASPECT_RATIOS),
-				fc.constantFrom(...RESOLUTIONS),
-				(mapping, baseAspect, baseResolution) => {
+		for (const mapping of PRESET_MAPPINGS) {
+			for (const baseAspect of ASPECT_RATIOS) {
+				for (const baseResolution of RESOLUTIONS) {
 					const result = applyPresetOverrides(withOnlyFlag(mapping.flag), {
 						aspect: baseAspect,
 						resolution: baseResolution,
 					});
 					expect(result.aspect).toBe(mapping.aspect);
 					expect(result.resolution).toBe(mapping.resolution ?? baseResolution);
-				},
-			),
-			{ numRuns: PRESET_MAPPINGS.length * 2 },
-		);
+				}
+			}
+		}
 	});
 });
