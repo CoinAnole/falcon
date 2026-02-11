@@ -2,7 +2,7 @@ import { describe, expect, it, mock } from "bun:test";
 import fc from "fast-check";
 import { render } from "ink-testing-library";
 import { GENERATION_MODELS, MODELS } from "../../src/api/models";
-import type { FalconConfig } from "../../src/utils/config";
+import type { FalconConfig } from "../../src/studio/deps/config";
 import { KEYS, stripAnsi, waitUntil, writeInput } from "../helpers/ink";
 
 const { SettingsScreen } = await import("../../src/studio/screens/Settings");

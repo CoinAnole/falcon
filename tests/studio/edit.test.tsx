@@ -1,7 +1,8 @@
-import { afterAll, beforeAll, describe, expect, it, mock } from "bun:test";
+import { beforeAll, describe, expect, it, mock } from "bun:test";
 import fc from "fast-check";
 import { render } from "ink-testing-library";
 import type { FalconConfig, Generation, History } from "../../src/studio/deps/config";
+import { registerStudioMocks, STUDIO_TEST_CONFIG } from "../helpers/studio-mocks";
 import { withMockFetch } from "../helpers/fetch";
 import { KEYS, stripAnsi, waitUntil, writeInput } from "../helpers/ink";
 
@@ -38,71 +39,12 @@ const testHistory = createHistoryWithGenerations(3);
 let EditScreen = null as unknown as (typeof import("../../src/studio/screens/Edit"))["EditScreen"];
 
 beforeAll(async () => {
-	// Defer module mocking until runtime so it does not affect test-file loading.
-	mock.module("../../src/studio/deps/image", () => ({
-		downloadImage: mock(() => Promise.resolve()),
-		openImage: mock(() => Promise.resolve()),
-		generateFilename: mock(() => "test-output.png"),
-		getImageDimensions: mock(() =>
-			Promise.resolve({ width: 1024, height: 1024 }),
-		),
-		getFileSize: mock(() => Promise.resolve("1.2 MB")),
-		imageToDataUrl: mock(() =>
-			Promise.resolve("data:image/png;base64,dGVzdA=="),
-		),
-	}));
-
-	mock.module("../../src/studio/deps/config", () => ({
-		addGeneration: mock(() => Promise.resolve()),
-		generateId: mock(() => "test-id"),
-		loadConfig: mock(() =>
-			Promise.resolve({
-				defaultModel: "banana",
-				defaultAspect: "1:1",
-				defaultResolution: "2K",
-				openAfterGenerate: false,
-				upscaler: "clarity",
-				backgroundRemover: "rmbg",
-				promptExpansion: false,
-			}),
-		),
-		loadHistory: mock(() => Promise.resolve(testHistory)),
-		FALCON_DIR: "/tmp/falcon-test",
-	}));
-
-	mock.module("../../src/studio/deps/paths", () => ({
-		validateOutputPath: mock((p: string) => p),
-		validateImagePath: mock(() => {}),
-		isPathWithinCwd: mock(() => true),
-	}));
-
-	mock.module("../../src/studio/deps/logger", () => ({
-		logger: {
-			debug: () => {},
-			info: () => {},
-			warn: () => {},
-			error: () => {},
-			errorWithStack: () => {},
-		},
-	}));
-
+	registerStudioMocks({ history: testHistory });
 	process.env.FAL_KEY = "test-key-for-edit-tests";
 	({ EditScreen } = await import("../../src/studio/screens/Edit"));
 });
 
-afterAll(() => {
-	mock.restore();
-});
-
-const baseConfig: FalconConfig = {
-	defaultModel: "banana",
-	defaultAspect: "1:1",
-	defaultResolution: "2K",
-	openAfterGenerate: false,
-	upscaler: "clarity",
-	backgroundRemover: "rmbg",
-	promptExpansion: false,
-};
+const baseConfig: FalconConfig = STUDIO_TEST_CONFIG;
 
 const mockFetchImpl = (input: RequestInfo | URL) => {
 	const url = input.toString();

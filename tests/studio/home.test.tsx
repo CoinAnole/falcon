@@ -1,7 +1,7 @@
 import { describe, expect, it, mock } from "bun:test";
 import fc from "fast-check";
 import { render } from "ink-testing-library";
-import type { History } from "../../src/utils/config";
+import type { History } from "../../src/studio/deps/config";
 import { KEYS, stripAnsi, waitUntil, writeInput } from "../helpers/ink";
 
 // Lazy import to avoid top-level side effects
