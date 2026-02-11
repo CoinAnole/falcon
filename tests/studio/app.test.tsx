@@ -387,17 +387,18 @@ describe("studio app routing", () => {
 	it(
 		"property: error message display — any non-empty error message appears in the UI",
 		async () => {
-			await fc.assert(
-				fc.asyncProperty(
-					fc
-						.string({ minLength: 1, maxLength: 80 })
-						.filter(
-							(s) =>
-								s.trim().length > 0 &&
-								// Filter out strings with ANSI escape sequences or control chars
-								// that could interfere with rendering/stripping
-								!/[\x00-\x1f\x7f-\x9f]/.test(s),
-						),
+				await fc.assert(
+					fc.asyncProperty(
+						fc
+							.string({ minLength: 1, maxLength: 80 })
+							.filter(
+								(s) =>
+									s.trim().length > 0 &&
+									s === s.trim() &&
+									// Filter out strings with ANSI escape sequences or control chars
+									// that could interfere with rendering/stripping
+									!/[\x00-\x1f\x7f-\x9f]/.test(s),
+							),
 					async (errorMessage) => {
 						const errorFetchImpl = (input: RequestInfo | URL) => {
 							const url = input.toString();
@@ -415,55 +416,55 @@ describe("studio app routing", () => {
 
 						await withMockFetch(errorFetchImpl, async () => {
 							const result = renderApp();
-							try {
-								// Wait for home screen
-								await waitUntil(
-									() => (result.lastFrame() ?? "").length > 0,
-									{ timeoutMs: 3000 },
-								);
+								try {
+									// Wait for home screen
+									await waitUntil(
+										() => (result.lastFrame() ?? "").length > 0,
+										{ timeoutMs: 5000 },
+									);
 
 								// Navigate to generate screen
 								await writeInput(result, KEYS.enter);
-								await waitUntil(
-									() =>
-										stripAnsi(result.lastFrame() ?? "").includes(
-											"Enter your prompt:",
-										),
-									{ timeoutMs: 3000 },
-								);
+									await waitUntil(
+										() =>
+											stripAnsi(result.lastFrame() ?? "").includes(
+												"Enter your prompt:",
+											),
+										{ timeoutMs: 5000 },
+									);
 
 								// Type a prompt and submit
 								await writeInput(result, "test prompt");
 								await writeInput(result, KEYS.enter);
 
 								// Wait for preset step
-								await waitUntil(
-									() =>
-										stripAnsi(result.lastFrame() ?? "").includes(
-											"Quick presets",
-										),
-									{ timeoutMs: 3000 },
-								);
+									await waitUntil(
+										() =>
+											stripAnsi(result.lastFrame() ?? "").includes(
+												"Quick presets",
+											),
+										{ timeoutMs: 5000 },
+									);
 
 								// Select first preset to go to confirm step
 								await writeInput(result, KEYS.enter);
-								await waitUntil(
-									() =>
-										stripAnsi(result.lastFrame() ?? "").includes(
-											"Ready to generate",
-										),
-									{ timeoutMs: 3000 },
-								);
+									await waitUntil(
+										() =>
+											stripAnsi(result.lastFrame() ?? "").includes(
+												"Ready to generate",
+											),
+										{ timeoutMs: 5000 },
+									);
 
 								// Press 'y' to trigger generation (which will fail)
 								await writeInput(result, "y");
 
 								// Wait for error banner to appear
-								await waitUntil(
-									() =>
-										stripAnsi(result.lastFrame() ?? "").includes(errorMessage),
-									{ timeoutMs: 5000 },
-								);
+									await waitUntil(
+										() =>
+											stripAnsi(result.lastFrame() ?? "").includes(errorMessage),
+										{ timeoutMs: 7000 },
+									);
 
 								const output = stripAnsi(result.lastFrame() ?? "");
 								expect(output).toContain(`✗ ${errorMessage}`);

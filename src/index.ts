@@ -38,6 +38,15 @@ async function main() {
 		return;
 	}
 
+	// Test hook: allow no-args entrypoint tests to verify studio path without requiring a TTY.
+	if (
+		process.env.FALCON_TEST_MODE === "1" &&
+		process.env.FALCON_TEST_SKIP_STUDIO === "1"
+	) {
+		console.log("[falcon:index] studio-mode");
+		return;
+	}
+
 	// No arguments = launch Studio mode
 	await launchStudio();
 }

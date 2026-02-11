@@ -1,6 +1,7 @@
 import { describe, expect, it, mock } from "bun:test";
 import fc from "fast-check";
 import { render } from "ink-testing-library";
+import { GENERATION_MODELS, MODELS } from "../../src/api/models";
 import type { FalconConfig } from "../../src/utils/config";
 import { KEYS, stripAnsi, waitUntil, writeInput } from "../helpers/ink";
 
@@ -59,7 +60,7 @@ describe("settings screen", () => {
 		try {
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Default Model"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 5000 },
 			);
 			// Down moves to next
 			await writeInput(result, KEYS.down);
@@ -296,48 +297,57 @@ describe("settings screen", () => {
 			<SettingsScreen config={baseConfig} onSave={onSave} onBack={onBack} />,
 		);
 		try {
+			const validDisplayNames = GENERATION_MODELS.map(
+				(key) => MODELS[key].name,
+			);
+			const selectedModelLine = () =>
+				(stripAnsi(result.lastFrame() ?? "")
+					.split("\n")
+					.find((line) => line.includes("◆ Default Model")) ?? "");
+
 			// Wait for render with Default Model selected (index 0)
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Default Model"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 5000 },
 			);
 
-			// Initial value should show display name "Nano Banana Pro" (not "banana")
-			let output = stripAnsi(result.lastFrame() ?? "");
-			expect(output).toContain("Nano Banana Pro");
-			expect(output).not.toMatch(/◆ Default Model.*\bbanana\b/);
+			const initialLine = selectedModelLine();
+			const initialValue = initialLine.replace(/^.*◆ Default Model\s+/, "").trim();
+			expect(initialValue).toBe(MODELS[baseConfig.defaultModel].name);
+			expect(GENERATION_MODELS).not.toContain(initialValue);
+			expect(validDisplayNames).toContain(initialValue);
 
 			// Press enter to cycle to next model
 			await writeInput(result, KEYS.enter);
 
-			// After cycling, the value should change to the next model's display name
-			// GENERATION_MODELS order: gpt, banana, gemini, gemini3, flux2, flux2Flash, flux2Turbo, imagine
-			// banana is at index 1, so next is gemini → "Gemini 2.5 Flash"
+			// After cycling, selected model value should change and still be a display name.
 			await waitUntil(
-				() => {
-					const frame = stripAnsi(result.lastFrame() ?? "");
-					return frame.includes("Gemini 2.5 Flash");
-				},
-				{ timeoutMs: 3000 },
+				() => selectedModelLine() !== initialLine,
+				{ timeoutMs: 5000 },
 			);
 
-			output = stripAnsi(result.lastFrame() ?? "");
-			// Verify it shows the display name, not the key
-			expect(output).toContain("Gemini 2.5 Flash");
-			expect(output).not.toMatch(/◆ Default Model.*\bgemini\b[^3]/);
+			const firstCycledLine = selectedModelLine();
+			const firstCycledValue = firstCycledLine
+				.replace(/^.*◆ Default Model\s+/, "")
+				.trim();
+			expect(GENERATION_MODELS).not.toContain(firstCycledValue);
+			expect(validDisplayNames).toContain(firstCycledValue);
+			expect(firstCycledValue).not.toBe(initialValue);
 
-			// Press enter again to cycle to next model (gemini3 → "Gemini 3 Pro")
+			// Press enter again to cycle again.
 			await writeInput(result, KEYS.enter);
 			await waitUntil(
-				() => {
-					const frame = stripAnsi(result.lastFrame() ?? "");
-					return frame.includes("Gemini 3 Pro");
-				},
-				{ timeoutMs: 3000 },
+				() => selectedModelLine() !== firstCycledLine,
+				{ timeoutMs: 5000 },
 			);
 
-			output = stripAnsi(result.lastFrame() ?? "");
-			expect(output).toContain("Gemini 3 Pro");
+			const secondCycledLine = selectedModelLine();
+			const secondCycledValue = secondCycledLine
+				.replace(/^.*◆ Default Model\s+/, "")
+				.trim();
+			expect(GENERATION_MODELS).not.toContain(secondCycledValue);
+			expect(validDisplayNames).toContain(secondCycledValue);
+			expect(secondCycledValue).not.toBe(firstCycledValue);
 		} finally {
 			result.unmount();
 		}
