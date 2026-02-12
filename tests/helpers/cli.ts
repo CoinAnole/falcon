@@ -1,9 +1,7 @@
 import {
 	mkdirSync,
 	mkdtempSync,
-	readdirSync,
 	rmSync,
-	unlinkSync,
 } from "node:fs";
 import { join } from "node:path";
 import { getTestHome } from "./env";
@@ -44,32 +42,6 @@ export function cleanupTestFiles(removeDir = false): void {
 		rmSync(testOutputDir, { recursive: true, force: true });
 		if (!removeDir) {
 			mkdirSync(testOutputDir, { recursive: true });
-		}
-
-		// Clean up any files in project root that match test patterns
-		const projectRoot = process.cwd();
-		const files = readdirSync(projectRoot);
-		const patterns = [
-			/^falcon-.*\.(png|jpg|jpeg|webp)$/,
-			/^falcon-upscale-.*\.(png|jpg|jpeg|webp)$/,
-			/^falcon-nobg-.*\.(png|jpg|jpeg|webp)$/,
-			/^falcon-edit-.*\.(png|jpg|jpeg|webp)$/,
-			/^test-out\.(png|jpg|jpeg|webp)$/,
-			/^test-output\.(png|jpg|jpeg|webp)$/,
-			/-up[248]x\.(png|jpg|jpeg|webp)$/,
-			/-nobg\.(png|jpg|jpeg|webp)$/,
-		];
-		for (const file of files) {
-			for (const pattern of patterns) {
-				if (pattern.test(file)) {
-					try {
-						unlinkSync(join(projectRoot, file));
-					} catch {
-						// Ignore cleanup errors
-					}
-					break;
-				}
-			}
 		}
 	} catch {
 		// Ignore cleanup errors
@@ -232,21 +204,16 @@ async function runCliAttempt(
 	}
 	const startTime = Date.now();
 	let timeoutFired = false;
-	// If this is a generation command without explicit output, redirect to temp directory
+	// If this is an image-producing command without explicit output, redirect to temp directory.
 	const hasOutputFlag = args.includes("--output") || args.includes("-o");
 	const hasPrompt = args.length > 0 && !args[0].startsWith("-");
 	const isSubcommand = ["pricing"].includes(args[0]);
-	const isGeneration =
-		envOverrides.FALCON_DOWNLOAD_FIXTURE &&
-		hasPrompt &&
-		!isSubcommand &&
-		!hasOutputFlag &&
-		!args.includes("--up") &&
-		!args.includes("--rmbg") &&
-		!args.includes("--vary");
+	const isPostProcess =
+		args.includes("--vary") || args.includes("--up") || args.includes("--rmbg");
+	const isImageProducing = !isSubcommand && !hasOutputFlag && (hasPrompt || isPostProcess);
 
 	const testArgs = [...args];
-	if (isGeneration) {
+	if (isImageProducing) {
 		outputCounter++;
 		const outputPath = join(testOutputDir, `test-gen-${outputCounter}.png`);
 		testArgs.push("--output", outputPath);

@@ -255,8 +255,8 @@ describe("pricing", () => {
 		expect(estimate.cost).toBeCloseTo(0.3);
 	});
 
-	it("returns estimate results when API succeeds", async () => {
-		const { result: estimate, calls } = await withMockFetch(
+		it("returns estimate results when API succeeds", async () => {
+			const { result: estimate, calls } = await withMockFetch(
 			async (input) => {
 				const url = input.toString();
 				if (url.includes("/models/pricing?")) {
@@ -294,12 +294,144 @@ describe("pricing", () => {
 			string
 		>;
 		expect(estimateHeaders?.Authorization).toBe("Key test-key");
-		expect(estimate.costDetails.estimateSource).toBe("estimate");
-		expect(estimate.cost).toBeCloseTo(0.2);
-	});
+			expect(estimate.costDetails.estimateSource).toBe("estimate");
+			expect(estimate.cost).toBeCloseTo(0.2);
+		});
 
-	it("handles megapixel units for upscales", async () => {
-		const { result: estimate } = await withMockFetch(
+		it("uses historical_api_price and call_quantity for compute-like generation pricing units", async () => {
+			const { result: estimate, calls } = await withMockFetch(
+				async (input) => {
+					const url = input.toString();
+					if (url.includes("/models/pricing?")) {
+						return Response.json({
+							prices: [
+								{
+									endpoint_id: "fal-ai/flux-2",
+									unit_price: 0.04,
+									unit: "gpu_second",
+									currency: "USD",
+								},
+							],
+						});
+					}
+					if (url.includes("/models/pricing/estimate")) {
+						return Response.json({ total_cost: 0.16, currency: "USD" });
+					}
+					return new Response("not found", { status: 404 });
+				},
+				async () => {
+					process.env.FAL_KEY = "test-key";
+					return await estimateGenerationCost({
+						model: "flux2",
+						resolution: "2K",
+						numImages: 4,
+					});
+				},
+			);
+
+			const estimateCall = calls.find((call) =>
+				call.input.toString().includes("/models/pricing/estimate"),
+			);
+			const estimateBody = JSON.parse(estimateCall?.init?.body as string) as {
+				estimate_type: string;
+				endpoints: Record<string, { call_quantity?: number; unit_quantity?: number }>;
+			};
+			expect(estimateBody.estimate_type).toBe("historical_api_price");
+			expect(estimateBody.endpoints["fal-ai/flux-2"]?.call_quantity).toBe(4);
+			expect(estimateBody.endpoints["fal-ai/flux-2"]?.unit_quantity).toBeUndefined();
+			expect(estimate.costDetails.estimateType).toBe("historical_api_price");
+			expect(estimate.costDetails.estimateSource).toBe("estimate");
+			expect(estimate.cost).toBeCloseTo(0.16);
+		});
+
+		it("uses fallback when compute-style generation estimate fails", async () => {
+			const { result: estimate } = await withMockFetch(
+				async (input) => {
+					const url = input.toString();
+					if (url.includes("/models/pricing?")) {
+						return Response.json({
+							prices: [
+								{
+									endpoint_id: "fal-ai/flux-2",
+									unit_price: 0.04,
+									unit: "compute_second",
+									currency: "USD",
+								},
+							],
+						});
+					}
+					if (url.includes("/models/pricing/estimate")) {
+						return new Response("fail", { status: 500 });
+					}
+					return new Response("not found", { status: 404 });
+				},
+				async () => {
+					process.env.FAL_KEY = "test-key";
+					return await estimateGenerationCost({
+						model: "flux2",
+						resolution: "2K",
+						numImages: 3,
+					});
+				},
+			);
+
+			expect(estimate.costDetails.estimateType).toBe("historical_api_price");
+			expect(estimate.costDetails.estimateSource).toBe("fallback");
+		});
+
+		it("uses historical_api_price and call_quantity for compute-like upscale pricing units", async () => {
+			const { result: estimate, calls } = await withMockFetch(
+				async (input) => {
+					const url = input.toString();
+					if (url.includes("/models/pricing?")) {
+						return Response.json({
+							prices: [
+								{
+									endpoint_id: "clarityai/crystal-upscaler",
+									unit_price: 0.1,
+									unit: "gpu_seconds",
+									currency: "USD",
+								},
+							],
+						});
+					}
+					if (url.includes("/models/pricing/estimate")) {
+						return Response.json({ total_cost: 0.11, currency: "USD" });
+					}
+					return new Response("not found", { status: 404 });
+				},
+				async () => {
+					process.env.FAL_KEY = "test-key";
+					return await estimateUpscaleCost({
+						model: "crystal",
+						inputWidth: 1920,
+						inputHeight: 1080,
+						scaleFactor: 2,
+					});
+				},
+			);
+
+			const estimateCall = calls.find((call) =>
+				call.input.toString().includes("/models/pricing/estimate"),
+			);
+			const estimateBody = JSON.parse(estimateCall?.init?.body as string) as {
+				estimate_type: string;
+				endpoints: Record<string, { call_quantity?: number; unit_quantity?: number }>;
+			};
+			expect(estimateBody.estimate_type).toBe("historical_api_price");
+			expect(estimateBody.endpoints["clarityai/crystal-upscaler"]?.call_quantity).toBe(
+				1,
+			);
+			expect(
+				estimateBody.endpoints["clarityai/crystal-upscaler"]?.unit_quantity,
+			).toBeUndefined();
+			expect(estimate.costDetails.estimateType).toBe("historical_api_price");
+			expect(estimate.costDetails.estimateSource).toBe("estimate");
+			expect(estimate.cost).toBeCloseTo(0.11);
+		});
+
+		it("handles megapixel units for upscales", async () => {
+			const { result: estimate } = await withMockFetch(
 			async (input) => {
 				const url = input.toString();
 				if (url.includes("/models/pricing?")) {

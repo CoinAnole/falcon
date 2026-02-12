@@ -132,7 +132,7 @@ describe("estimateCost — all models", () => {
 // Requirements: 4.11, 4.12
 describe("model arrays", () => {
 	it("GENERATION_MODELS contains exactly the expected keys", () => {
-		expect(GENERATION_MODELS.sort()).toEqual(
+		expect([...GENERATION_MODELS].sort()).toEqual(
 			[
 				"gpt",
 				"banana",
@@ -147,7 +147,7 @@ describe("model arrays", () => {
 	});
 
 	it("UTILITY_MODELS contains exactly the expected keys", () => {
-		expect(UTILITY_MODELS.sort()).toEqual(
+		expect([...UTILITY_MODELS].sort()).toEqual(
 			["clarity", "crystal", "rmbg", "bria"].sort(),
 		);
 	});

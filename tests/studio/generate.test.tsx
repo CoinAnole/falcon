@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, mock } from "bun:test";
+import { afterAll, beforeAll, describe, expect, it, mock } from "bun:test";
 import fc from "fast-check";
 import { render } from "ink-testing-library";
 import type { FalconConfig } from "../../src/studio/deps/config";
@@ -7,12 +7,22 @@ import { withMockFetch } from "../helpers/fetch";
 import { KEYS, stripAnsi, waitUntil, writeInput } from "../helpers/ink";
 
 let GenerateScreen = null as unknown as (typeof import("../../src/studio/screens/Generate"))["GenerateScreen"];
+let originalFalKey: string | undefined;
 
 beforeAll(async () => {
+	originalFalKey = process.env.FAL_KEY;
 	registerStudioMocks();
 	// Set FAL_KEY so getApiKey() doesn't throw during generation
 	process.env.FAL_KEY = "test-key-for-generate-tests";
 	({ GenerateScreen } = await import("../../src/studio/screens/Generate"));
+});
+
+afterAll(() => {
+	if (originalFalKey === undefined) {
+		delete process.env.FAL_KEY;
+	} else {
+		process.env.FAL_KEY = originalFalKey;
+	}
 });
 
 const baseConfig: FalconConfig = STUDIO_TEST_CONFIG;

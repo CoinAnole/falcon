@@ -85,7 +85,13 @@ tests/
 
 ### Global state cleanup
 - Restore environment changes in `afterEach` or `finally`.
+- Restore env vars changed in `beforeAll`/`beforeEach` using matching `afterAll`/`afterEach` hooks.
 - Do not use `test.concurrent` in files that mutate globals (`process.env`, `globalThis.fetch`, module mocks).
+- Do not mutate imported shared constants in-place in tests (for example, copy arrays before `.sort()`).
+
+### Artifact cleanup
+- Cleanup must be scoped to test-owned directories only.
+- Never delete files from project root using broad filename patterns.
 
 ## Mocking Policy (Important)
 
@@ -140,6 +146,8 @@ import { runCli } from "../helpers/cli";
 const result = await runCli(["--help"]);
 expect(result.exitCode).toBe(0);
 ```
+
+`cleanupTestFiles()` should only remove helper-managed output directories.
 
 ### `tests/helpers/env.ts`
 - Sets temp `HOME`

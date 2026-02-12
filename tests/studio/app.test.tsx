@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, mock } from "bun:test";
+import { afterAll, beforeAll, describe, expect, it, mock } from "bun:test";
 import fc from "fast-check";
 import { render } from "ink-testing-library";
 import type { FalconConfig, History } from "../../src/studio/deps/config";
@@ -11,11 +11,21 @@ import { withMockFetch } from "../helpers/fetch";
 import { KEYS, stripAnsi, waitUntil, writeInput } from "../helpers/ink";
 
 let App = null as unknown as (typeof import("../../src/studio/App"))["App"];
+let originalFalKey: string | undefined;
 
 beforeAll(async () => {
+	originalFalKey = process.env.FAL_KEY;
 	registerStudioMocks();
 	process.env.FAL_KEY = "test-key-for-app-tests";
 	({ App } = await import("../../src/studio/App"));
+});
+
+afterAll(() => {
+	if (originalFalKey === undefined) {
+		delete process.env.FAL_KEY;
+	} else {
+		process.env.FAL_KEY = originalFalKey;
+	}
 });
 
 const APP_TEST_TIMEOUT_MS = 15_000;

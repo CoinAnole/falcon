@@ -1,9 +1,19 @@
 import "./helpers/env";
 
+import { existsSync, unlinkSync } from "node:fs";
+import { join } from "node:path";
 import { afterAll, describe, expect, it } from "bun:test";
 import { cleanupTestFiles, runCli } from "./helpers/cli";
+import { getTestHome } from "./helpers/env";
 
 const CLI_TEST_TIMEOUT_MS = 60_000;
+
+function resetHistoryForEmptyState(): void {
+	const historyPath = join(getTestHome(), ".falcon", "history.json");
+	if (existsSync(historyPath)) {
+		unlinkSync(historyPath);
+	}
+}
 
 describe("entry point mode detection", () => {
 	afterAll(() => {
@@ -40,6 +50,7 @@ describe("entry point mode detection", () => {
 		it(
 			"invokes CLI mode with flag-only arguments",
 			async () => {
+				resetHistoryForEmptyState();
 				const result = await runCli(["--last"]);
 				expect(result.exitCode).toBe(0);
 				// --last with no history confirms CLI mode processed the flag

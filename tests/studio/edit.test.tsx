@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, mock } from "bun:test";
+import { afterAll, beforeAll, describe, expect, it, mock } from "bun:test";
 import fc from "fast-check";
 import { render } from "ink-testing-library";
 import type { FalconConfig, Generation, History } from "../../src/studio/deps/config";
@@ -37,11 +37,21 @@ const testHistory = createHistoryWithGenerations(3);
 
 // --- Module mocks ---
 let EditScreen = null as unknown as (typeof import("../../src/studio/screens/Edit"))["EditScreen"];
+let originalFalKey: string | undefined;
 
 beforeAll(async () => {
+	originalFalKey = process.env.FAL_KEY;
 	registerStudioMocks({ history: testHistory });
 	process.env.FAL_KEY = "test-key-for-edit-tests";
 	({ EditScreen } = await import("../../src/studio/screens/Edit"));
+});
+
+afterAll(() => {
+	if (originalFalKey === undefined) {
+		delete process.env.FAL_KEY;
+	} else {
+		process.env.FAL_KEY = originalFalKey;
+	}
 });
 
 const baseConfig: FalconConfig = STUDIO_TEST_CONFIG;

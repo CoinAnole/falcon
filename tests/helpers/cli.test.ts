@@ -1,5 +1,7 @@
+import { existsSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
-import { resolveBunBinary, runCli } from "./cli";
+import { cleanupTestFiles, getTestOutputDir, resolveBunBinary, runCli } from "./cli";
 
 const FIXTURE_ENTRY = "tests/fixtures/runcli-timeout-fixture.ts";
 
@@ -50,5 +52,28 @@ describe("runCli helper", () => {
 		expect(result.exitCode).toBe(143);
 		expect(result.stderr).toContain("[runCli] process timeout exceeded");
 		expect(result.stderr).toContain("attempt=2/2");
+	});
+
+	it("cleanupTestFiles only removes helper-managed output directory", () => {
+		const sentinel = join(process.cwd(), "falcon-helper-sentinel.png");
+		writeFileSync(sentinel, "sentinel");
+		try {
+			cleanupTestFiles();
+			expect(existsSync(sentinel)).toBe(true);
+		} finally {
+			rmSync(sentinel, { force: true });
+		}
+	});
+
+	it("auto-injects output path for --up when --output is omitted", async () => {
+		const result = await runCli(
+			["tests/fixtures/tiny.png", "--up", "--no-open"],
+			{
+				FAL_KEY: "test-key",
+			},
+			30000,
+		);
+		expect(result.exitCode).toBe(0);
+		expect(result.stdout).toContain(getTestOutputDir());
 	});
 });
