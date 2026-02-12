@@ -1,8 +1,8 @@
 import "./helpers/env";
 
+import { afterAll, describe, expect, it } from "bun:test";
 import { existsSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
-import { afterAll, describe, expect, it } from "bun:test";
 import { cleanupTestFiles, runCli } from "./helpers/cli";
 import { getTestHome } from "./helpers/env";
 
@@ -17,8 +17,7 @@ function resetHistoryForEmptyState(): void {
 
 describe("entry point mode detection", () => {
 	afterAll(() => {
-		// Keep the shared output directory in place for later test files.
-		cleanupTestFiles();
+		cleanupTestFiles(true);
 	});
 
 	describe("CLI mode detection", () => {

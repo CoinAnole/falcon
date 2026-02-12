@@ -1,11 +1,20 @@
+import { afterAll, describe, expect, it } from "bun:test";
 import { existsSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "bun:test";
-import { cleanupTestFiles, getTestOutputDir, resolveBunBinary, runCli } from "./cli";
+import {
+	cleanupTestFiles,
+	getTestOutputDir,
+	resolveBunBinary,
+	runCli,
+} from "./cli";
 
 const FIXTURE_ENTRY = "tests/fixtures/runcli-timeout-fixture.ts";
 
 describe("runCli helper", () => {
+	afterAll(() => {
+		cleanupTestFiles(true);
+	});
+
 	it("uses explicit bun binary override when provided", () => {
 		const resolved = resolveBunBinary({
 			FALCON_TEST_BUN_BIN: "/tmp/custom-bun",

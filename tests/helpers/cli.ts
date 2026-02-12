@@ -1,8 +1,4 @@
-import {
-	mkdirSync,
-	mkdtempSync,
-	rmSync,
-} from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { getTestHome } from "./env";
 
@@ -29,6 +25,30 @@ const testOutputDir =
 
 if (!existingDir) {
 	(globalStore as Record<string, string>)[globalKey] = testOutputDir;
+}
+
+const cleanupHookKey = "__FALCON_TEST_OUTPUT_CLEANUP_HOOK__";
+const hasCleanupHook = globalStore[cleanupHookKey] === "1";
+let cleanedUp = false;
+
+function cleanupOnProcessExit(): void {
+	if (cleanedUp) return;
+	cleanedUp = true;
+	cleanupTestFiles(true);
+	delete globalStore[globalKey];
+}
+
+if (!hasCleanupHook) {
+	globalStore[cleanupHookKey] = "1";
+	process.once("exit", cleanupOnProcessExit);
+	process.once("SIGINT", () => {
+		cleanupOnProcessExit();
+		process.exit(130);
+	});
+	process.once("SIGTERM", () => {
+		cleanupOnProcessExit();
+		process.exit(143);
+	});
 }
 
 /**
@@ -210,7 +230,8 @@ async function runCliAttempt(
 	const isSubcommand = ["pricing"].includes(args[0]);
 	const isPostProcess =
 		args.includes("--vary") || args.includes("--up") || args.includes("--rmbg");
-	const isImageProducing = !isSubcommand && !hasOutputFlag && (hasPrompt || isPostProcess);
+	const isImageProducing =
+		!isSubcommand && !hasOutputFlag && (hasPrompt || isPostProcess);
 
 	const testArgs = [...args];
 	if (isImageProducing) {
