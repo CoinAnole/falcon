@@ -1,13 +1,14 @@
 # Testing Guidelines
 
 ## Purpose
-This document defines how tests should be written in Falcon so they stay deterministic, isolated, and maintainable as the suite grows.
+This document is advisory guidance for writing Falcon tests that stay deterministic, isolated, and maintainable as the suite grows.
 
 ## Core Principles
-- Keep tests deterministic: no live network calls, no random external state.
-- Keep tests isolated: no writes to real user files (`~/.falcon`), no leaked globals between tests.
-- Keep tests focused: assert behavior, not implementation details.
-- Keep tests fast: prefer focused unit/integration tests over broad E2E flows.
+- Keep tests deterministic: avoid live network calls and uncontrolled external state.
+- Keep tests isolated: avoid writes to real user files (`~/.falcon`) and leaked globals between tests.
+- Keep tests focused: assert behavior rather than internal implementation details.
+- Keep tests fast: prefer focused unit/integration tests over broad end-to-end flows.
+- Keep tests stable: prefer condition-based waiting over fixed sleeps.
 
 ## Toolchain
 - Runner: Bun (`bun test`)
@@ -15,7 +16,9 @@ This document defines how tests should be written in Falcon so they stay determi
 - UI tests: `ink-testing-library`
 - Property testing: `fast-check`
 
-## Current Test Structure
+## Test Structure (Representative)
+The test tree evolves over time. Treat this as representative, not exhaustive:
+
 ```
 tests/
 ├── api/
@@ -55,43 +58,54 @@ tests/
 ### API Tests (`tests/api`)
 - Verify request payloads, endpoint selection, and response normalization.
 - Verify fallback behavior when API estimate/pricing calls fail.
-- Always mock `fetch` with `withMockFetch`.
+- Prefer mocking `fetch` through `withMockFetch`.
+- Prefer asserting both success and failure paths for external responses.
 
 ### CLI Tests (`tests/cli`)
 - Validate arg parsing, flag validation, and command behavior.
-- Use `runCli()` helper for consistent process behavior and timeouts.
-- Keep tests in CLI mode (pass at least one arg).
+- Prefer `runCli()` for consistent process behavior and timeout handling.
+- Keep tests in CLI mode (pass at least one arg) unless testing Studio-mode detection.
 - Avoid real output paths and real user config locations.
+- Prefer fixture-driven environment inputs for API/pricing/download behavior.
 
 ### Studio Tests (`tests/studio`)
 - Validate keyboard navigation, step transitions, and rendered text.
 - Use `KEYS`, `writeInput`, `waitUntil`, and `stripAnsi` from `tests/helpers/ink.ts`.
 - Always `unmount()` rendered trees in `finally`.
-- Use `withMockFetch` for generation/edit/pricing request flows.
+- Prefer `withMockFetch` for generation/edit/pricing request flows.
+- Avoid raw `setTimeout(...)` waits for behavior assertions; prefer `waitUntil(...)` with explicit conditions.
 
 ### Utils Tests (`tests/utils`)
 - Test data/path/config logic directly with minimal mocking.
 - Favor temp directories and explicit fixtures.
+- For date/time-sensitive behavior, prefer explicit timestamps rather than depending on current wall-clock timing.
 
 ## Isolation Rules
 
 ### HOME and config/history isolation
 - Import `tests/helpers/env.ts` in test files that touch config/history paths.
+- Prefer importing `env.ts` before importing source modules that compute paths from `HOME`.
 - `env.ts` sets a temporary `HOME` and refreshes Falcon config paths.
 
 ### Network isolation
-- Never call live fal.ai endpoints.
-- Use `withMockFetch`.
+- Do not call live fal.ai endpoints in tests.
+- Prefer `withMockFetch`.
 
 ### Global state cleanup
 - Restore environment changes in `afterEach` or `finally`.
 - Restore env vars changed in `beforeAll`/`beforeEach` using matching `afterAll`/`afterEach` hooks.
-- Do not use `test.concurrent` in files that mutate globals (`process.env`, `globalThis.fetch`, module mocks).
-- Do not mutate imported shared constants in-place in tests (for example, copy arrays before `.sort()`).
+- Avoid `test.concurrent` in files that mutate globals (`process.env`, `globalThis.fetch`, module mocks).
+- Avoid mutating imported shared constants in-place (for example, copy arrays before `.sort()`).
 
 ### Artifact cleanup
 - Cleanup must be scoped to test-owned directories only.
-- Never delete files from project root using broad filename patterns.
+- Avoid deleting files from project root using broad filename patterns.
+
+## Determinism and Flake Resistance
+- Prefer condition-based waiting (`waitUntil`) over fixed-duration sleeps.
+- Prefer explicit test timestamps for cache staleness/day-boundary logic instead of depending on local current time.
+- Keep assertions targeted to observable outcomes and avoid over-asserting intermediate frames.
+- Use property tests for invariants and keep `numRuns` conservative for mount-heavy UI flows.
 
 ## Mocking Policy (Important)
 
@@ -191,6 +205,8 @@ bun test
 bun test --watch
 bun test tests/api
 bun test tests/studio/generate.test.tsx
+bun run test:flaky
+bun run test:flaky:bun
 ```
 
 ## Pre-PR Checklist
