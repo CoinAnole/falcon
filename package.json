@@ -1,73 +1,73 @@
 {
-	"name": "@coinanole/falcon",
-	"version": "1.1.0",
-	"description": "fal.ai image generation CLI with interactive studio mode",
-	"type": "module",
-	"bin": {
-		"falcon": "./bin/falcon"
-	},
-	"files": [
-		"bin",
-		"src",
-		"package.json",
-		"README.md"
-	],
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/coinanole/falcon.git"
-	},
-	"homepage": "https://github.com/coinanole/falcon",
-	"keywords": [
-		"fal",
-		"fal.ai",
-		"image-generation",
-		"ai",
-		"cli",
-		"gpt",
-		"gemini"
-	],
-	"author": "coinanole (forked from Daniel Howells)",
-	"license": "MIT",
-	"scripts": {
-		"dev": "FALCON_DEBUG=1 bun run src/index.ts",
-		"build": "bun build src/index.ts --outdir dist --target node",
-		"link": "bun link",
-		"test": "bun test",
-		"test:watch": "bun test --watch",
-		"test:flaky": "./scripts/flaky-test-detector.sh",
-		"test:flaky:bun": "bun run scripts/flaky-test-detector.ts",
-		"typecheck": "tsc --noEmit",
-		"lint": "biome check --write . && ultracite fix",
-		"prepare": "husky"
-	},
-	"lint-staged": {
-		"*.{ts,tsx}": [
-			"biome check --write",
-			"ultracite fix"
-		],
-		"*.{js,json}": [
-			"biome check --write"
-		]
-	},
-	"dependencies": {
-		"ink": "^5.0.1",
-		"ink-text-input": "^6.0.0",
-		"react": "^18.3.1",
-		"commander": "^12.1.0",
-		"chalk": "^5.3.0",
-		"ora": "^8.0.1"
-	},
-	"devDependencies": {
-		"@biomejs/biome": "^2.3.11",
-		"@types/bun": "latest",
-		"@types/react": "^18.3.3",
-		"fast-check": "^4.5.3",
-		"husky": "^9.1.7",
-		"ink-testing-library": "^4.0.0",
-		"lint-staged": "^16.2.7",
-		"react-devtools-core": "^7.0.1",
-		"strip-ansi": "^7.1.2",
-		"typescript": "^5.5.0",
-		"ultracite": "^7.0.11"
-	}
+  "name": "@coinanole/falcon",
+  "version": "1.1.0",
+  "description": "fal.ai image generation CLI with interactive studio mode",
+  "type": "module",
+  "bin": {
+    "falcon": "./bin/falcon"
+  },
+  "files": [
+    "bin",
+    "src",
+    "package.json",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/coinanole/falcon.git"
+  },
+  "homepage": "https://github.com/coinanole/falcon",
+  "keywords": [
+    "fal",
+    "fal.ai",
+    "image-generation",
+    "ai",
+    "cli",
+    "gpt",
+    "gemini"
+  ],
+  "author": "coinanole (forked from Daniel Howells)",
+  "license": "MIT",
+  "scripts": {
+    "dev": "FALCON_DEBUG=1 bun run src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target node",
+    "link": "bun link",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "test:flaky": "./scripts/flaky-test-detector.sh",
+    "test:flaky:bun": "bun run scripts/flaky-test-detector.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check --write . && ultracite fix",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "biome check --write",
+      "ultracite fix"
+    ],
+    "*.{js,json}": [
+      "biome check --write"
+    ]
+  },
+  "dependencies": {
+    "ink": "^5.0.1",
+    "ink-text-input": "^6.0.0",
+    "react": "^18.3.1",
+    "commander": "^12.1.0",
+    "chalk": "^5.3.0",
+    "ora": "^8.0.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.13",
+    "@types/bun": "latest",
+    "@types/react": "^18.3.3",
+    "fast-check": "^4.5.3",
+    "husky": "^9.1.7",
+    "ink-testing-library": "^4.0.0",
+    "lint-staged": "^16.2.7",
+    "react-devtools-core": "^7.0.1",
+    "strip-ansi": "^7.1.2",
+    "typescript": "^5.5.0",
+    "ultracite": "^7.1.1"
+  }
 }
