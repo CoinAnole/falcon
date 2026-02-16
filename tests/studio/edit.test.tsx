@@ -705,20 +705,14 @@ describe("edit screen", () => {
 						stripAnsi(result.lastFrame() ?? "").includes("Ready to process"),
 					{ timeoutMs: 3000 }
 				);
-				// Press y to start processing
+				// Press y to start processing and wait for completion before cleanup.
+				// This prevents background async work from outliving the fetch mock.
 				await writeInput(result, "y");
-				// Verify processing starts
 				await waitUntil(
-					() => {
-						const frame = stripAnsi(result.lastFrame() ?? "");
-						return (
-							frame.includes("Uploading") ||
-							frame.includes("Removing") ||
-							frame.includes("Complete")
-						);
-					},
-					{ timeoutMs: 5000 }
+					() => stripAnsi(result.lastFrame() ?? "").includes("Complete"),
+					{ timeoutMs: 10_000 }
 				);
+				expect(onError).not.toHaveBeenCalled();
 			} finally {
 				result.unmount();
 			}
@@ -881,18 +875,13 @@ describe("edit screen", () => {
 						stripAnsi(result.lastFrame() ?? "").includes("Ready to process"),
 					{ timeoutMs: 3000 }
 				);
+				// Wait for completion before the fetch mock is restored.
 				await writeInput(result, "Y");
 				await waitUntil(
-					() => {
-						const frame = stripAnsi(result.lastFrame() ?? "");
-						return (
-							frame.includes("Uploading") ||
-							frame.includes("Removing") ||
-							frame.includes("Complete")
-						);
-					},
-					{ timeoutMs: 5000 }
+					() => stripAnsi(result.lastFrame() ?? "").includes("Complete"),
+					{ timeoutMs: 10_000 }
 				);
+				expect(onError).not.toHaveBeenCalled();
 			} finally {
 				result.unmount();
 			}
