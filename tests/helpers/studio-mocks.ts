@@ -78,7 +78,7 @@ export function registerStudioMocks(
 	if (includePaths) {
 		mock.module("../../src/studio/deps/paths", () => ({
 			validateOutputPath: mock((p: string) => p),
-			validateImagePath: mock(() => {}),
+			validateImagePath: mock(() => undefined),
 			isPathWithinCwd: mock(() => true),
 			...pathOverrides,
 		}));
@@ -87,11 +87,11 @@ export function registerStudioMocks(
 	if (includeLogger) {
 		mock.module("../../src/studio/deps/logger", () => ({
 			logger: {
-				debug: () => {},
-				info: () => {},
-				warn: () => {},
-				error: () => {},
-				errorWithStack: () => {},
+				debug: () => undefined,
+				info: () => undefined,
+				warn: () => undefined,
+				error: () => undefined,
+				errorWithStack: () => undefined,
 			},
 			...loggerOverrides,
 		}));

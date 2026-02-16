@@ -1,3 +1,5 @@
+import stripAnsiLibrary from "strip-ansi";
+
 export interface InkRenderResult {
 	stdin: { write: (data: string) => void };
 	lastFrame: () => string | undefined;
@@ -47,14 +49,14 @@ export async function waitUntil(
 	throw new Error("Timed out waiting for render");
 }
 
-import stripAnsi from "strip-ansi";
-
-export { stripAnsi };
-
 export async function writeInput(
 	result: InkRenderResult,
 	input: string
 ): Promise<void> {
 	result.stdin.write(input);
 	await waitForRender();
+}
+
+export function stripAnsi(input: string): string {
+	return stripAnsiLibrary(input);
 }

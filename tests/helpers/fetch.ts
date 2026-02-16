@@ -13,7 +13,7 @@ export async function withMockFetch<T>(
 	const calls: MockFetchCall[] = [];
 	const original = globalThis.fetch;
 
-	globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+	globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
 		calls.push({ input, init });
 		return impl(input, init);
 	}) as typeof fetch;

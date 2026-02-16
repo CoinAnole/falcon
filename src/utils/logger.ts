@@ -95,6 +95,15 @@ function sanitizeMeta(meta: Record<string, unknown>): Record<string, unknown> {
 	return sanitized;
 }
 
+async function appendToLogAsync(entry: string): Promise<void> {
+	try {
+		const fs = await import("node:fs/promises");
+		await fs.appendFile(LOG_FILE, entry);
+	} catch {
+		// Silent fail - logging should never break the app
+	}
+}
+
 // Write to log file
 function writeToLog(entry: string, synchronous = false): void {
 	if (!isLoggingEnabled()) {
@@ -109,14 +118,7 @@ function writeToLog(entry: string, synchronous = false): void {
 			appendFileSync(LOG_FILE, entry);
 		} else {
 			// Async write for non-critical logs
-			void (async () => {
-				try {
-					const fs = await import("node:fs/promises");
-					await fs.appendFile(LOG_FILE, entry);
-				} catch {
-					// Silent fail - logging should never break the app
-				}
-			})();
+			appendToLogAsync(entry);
 		}
 	} catch {
 		// Silent fail - logging should never break the app

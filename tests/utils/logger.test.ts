@@ -14,6 +14,8 @@ import {
 // Save/restore env vars for isolation
 let savedDebug: string | undefined;
 let savedLogLevel: string | undefined;
+const SAFE_VALUE_REGEX = /^safeVal_[a-z0-9]{3,10}$/;
+const SENSITIVE_VALUE_REGEX = /^secret_[a-z0-9]{3,10}$/;
 
 beforeEach(() => {
 	savedDebug = process.env.FALCON_DEBUG;
@@ -22,12 +24,12 @@ beforeEach(() => {
 
 afterEach(() => {
 	if (savedDebug === undefined) {
-		delete process.env.FALCON_DEBUG;
+		process.env.FALCON_DEBUG = undefined;
 	} else {
 		process.env.FALCON_DEBUG = savedDebug;
 	}
 	if (savedLogLevel === undefined) {
-		delete process.env.FALCON_LOG_LEVEL;
+		process.env.FALCON_LOG_LEVEL = undefined;
 	} else {
 		process.env.FALCON_LOG_LEVEL = savedLogLevel;
 	}
@@ -58,7 +60,7 @@ describe("isEnabled", () => {
 	});
 
 	it("returns false when FALCON_DEBUG is unset", () => {
-		delete process.env.FALCON_DEBUG;
+		process.env.FALCON_DEBUG = undefined;
 		expect(isEnabled()).toBe(false);
 	});
 
@@ -78,9 +80,9 @@ describe("getLogPath", () => {
 // --- 2.2 Log writing ---
 
 describe("log writing", () => {
-	it("writes messages to log file when enabled", async () => {
+	it("writes messages to log file when enabled", () => {
 		process.env.FALCON_DEBUG = "1";
-		delete process.env.FALCON_LOG_LEVEL;
+		process.env.FALCON_LOG_LEVEL = undefined;
 		clearLog();
 
 		logger.warn("test-write-message");
@@ -91,12 +93,12 @@ describe("log writing", () => {
 	});
 
 	it("does not write when logging is disabled", async () => {
-		delete process.env.FALCON_DEBUG;
+		process.env.FALCON_DEBUG = undefined;
 		// Clear any existing content first while enabled
 		process.env.FALCON_DEBUG = "1";
 		clearLog();
 		const before = readLog();
-		delete process.env.FALCON_DEBUG;
+		process.env.FALCON_DEBUG = undefined;
 
 		logger.warn("should-not-appear");
 		await tick();
@@ -150,7 +152,7 @@ describe("log level filtering", () => {
 describe("clearLog", () => {
 	it("empties the log file", () => {
 		process.env.FALCON_DEBUG = "1";
-		delete process.env.FALCON_LOG_LEVEL;
+		process.env.FALCON_LOG_LEVEL = undefined;
 		logger.error("some content");
 		expect(readLog().length).toBeGreaterThan(0);
 
@@ -162,7 +164,7 @@ describe("clearLog", () => {
 describe("errorWithStack", () => {
 	it("includes error name, message, and stack in the log entry", () => {
 		process.env.FALCON_DEBUG = "1";
-		delete process.env.FALCON_LOG_LEVEL;
+		process.env.FALCON_LOG_LEVEL = undefined;
 		clearLog();
 
 		const err = new TypeError("something broke");
@@ -199,8 +201,8 @@ describe("property tests", () => {
 		const safeKeys = ["model", "prompt", "count", "name", "url"];
 
 		// Use alphanumeric strings with a unique prefix to avoid collisions with log formatting
-		const safeValueArb = fc.stringMatching(/^safeVal_[a-z0-9]{3,10}$/);
-		const sensitiveValueArb = fc.stringMatching(/^secret_[a-z0-9]{3,10}$/);
+		const safeValueArb = fc.stringMatching(SAFE_VALUE_REGEX);
+		const sensitiveValueArb = fc.stringMatching(SENSITIVE_VALUE_REGEX);
 
 		fc.assert(
 			fc.property(
@@ -210,7 +212,7 @@ describe("property tests", () => {
 				safeValueArb,
 				(sensitiveKey, safeKey, sensitiveVal, safeVal) => {
 					process.env.FALCON_DEBUG = "1";
-					delete process.env.FALCON_LOG_LEVEL;
+					process.env.FALCON_LOG_LEVEL = undefined;
 					clearLog();
 
 					const meta: Record<string, unknown> = {
@@ -244,7 +246,7 @@ describe("property tests", () => {
 				fc.string({ minLength: 1, maxLength: 20 }),
 				(sensitiveKey, secretValue) => {
 					process.env.FALCON_DEBUG = "1";
-					delete process.env.FALCON_LOG_LEVEL;
+					process.env.FALCON_LOG_LEVEL = undefined;
 					clearLog();
 
 					const meta = {

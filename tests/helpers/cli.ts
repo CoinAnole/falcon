@@ -14,6 +14,7 @@ const DEFAULT_RUNCLI_TIMEOUT_MS = 20_000;
 const PROCESS_TIMEOUT_REASON = "[runCli] process timeout exceeded";
 const STREAM_TIMEOUT_REASON = "[runCli] stream read timeout exceeded";
 const MAX_RUNCLI_ATTEMPTS = 2;
+const BUN_EXECUTABLE_REGEX = /(^|[/\\])bun(\.exe)?$/i;
 
 // Global temp directory for CLI test outputs (within project root for path validation)
 const globalKey = "__FALCON_TEST_OUTPUT_DIR__";
@@ -110,7 +111,7 @@ export async function runCli(
 }
 
 function isBunExecutable(path: string): boolean {
-	return /(^|[/\\])bun(\.exe)?$/i.test(path);
+	return BUN_EXECUTABLE_REGEX.test(path);
 }
 
 export function resolveBunBinary(
@@ -408,7 +409,7 @@ async function waitForExit(
 				}, KILL_GRACE_MS + 1000);
 			}, timeoutMs);
 
-			void proc.exited.then((exitCode) => {
+			proc.exited.then((exitCode) => {
 				debugLog("exited", { exitCode, resolved, pid: proc.pid, timedOut });
 				if (resolved) {
 					return;
@@ -451,7 +452,7 @@ async function readStreamWithTimeout(
 			resolve({ text: "", timedOut: true });
 		}, timeoutMs);
 
-		void readPromise.then((text) => {
+		readPromise.then((text) => {
 			if (settled) {
 				return;
 			}

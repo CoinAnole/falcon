@@ -52,6 +52,7 @@ import {
 } from "./utils/paths";
 
 const cliDebugEnabled = process.env.FALCON_CLI_TEST_DEBUG === "1";
+const IMAGE_EXT_REGEX = /\.(png|jpg|jpeg|webp)$/i;
 const cliDebugLog = (message: string, meta?: Record<string, unknown>) => {
 	if (!cliDebugEnabled) {
 		return;
@@ -406,6 +407,7 @@ function getHistoryTotals(history: Awaited<ReturnType<typeof loadHistory>>) {
 	};
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Generation flow intentionally keeps validation and side effects in one linear command path.
 async function generateImage(
 	prompt: string,
 	options: CliOptions,
@@ -854,16 +856,15 @@ async function upscaleLast(
 	const sourceInCwd = isPathWithinCwd(sourceImagePath);
 	let outputPath: string;
 	try {
-		outputPath = options.output
-			? validateOutputPath(options.output)
-			: sourceInCwd
-				? validateOutputPath(
-						sourceImagePath.replace(
-							/\.(png|jpg|jpeg|webp)$/i,
-							`- up${scaleFactor} x.png`
-						)
-					)
-				: generateFilename("falcon-upscale", "png");
+		if (options.output) {
+			outputPath = validateOutputPath(options.output);
+		} else if (sourceInCwd) {
+			outputPath = validateOutputPath(
+				sourceImagePath.replace(IMAGE_EXT_REGEX, `- up${scaleFactor} x.png`)
+			);
+		} else {
+			outputPath = generateFilename("falcon-upscale", "png");
+		}
 	} catch (err) {
 		cliDebugLog("upscale:error:output", { error: getErrorMessage(err) });
 		console.error(chalk.red(getErrorMessage(err)));
@@ -981,13 +982,15 @@ async function removeBackgroundLast(
 	const sourceInCwd = isPathWithinCwd(last.output);
 	let outputPath: string;
 	try {
-		outputPath = options.output
-			? validateOutputPath(options.output)
-			: sourceInCwd
-				? validateOutputPath(
-						last.output.replace(/\.(png|jpg|jpeg|webp)$/i, "-nobg.png")
-					)
-				: generateFilename("falcon-nobg", "png");
+		if (options.output) {
+			outputPath = validateOutputPath(options.output);
+		} else if (sourceInCwd) {
+			outputPath = validateOutputPath(
+				last.output.replace(IMAGE_EXT_REGEX, "-nobg.png")
+			);
+		} else {
+			outputPath = generateFilename("falcon-nobg", "png");
+		}
 	} catch (err) {
 		cliDebugLog("rmbg:error:output", { error: getErrorMessage(err) });
 		console.error(chalk.red(getErrorMessage(err)));

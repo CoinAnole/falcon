@@ -43,7 +43,7 @@ function ensureFalconDir(): void {
 	}
 }
 
-async function atomicWrite(filePath: string, data: string): Promise<void> {
+function atomicWrite(filePath: string, data: string): void {
 	const tempPath = `${filePath}.${randomUUID()}.tmp`;
 	try {
 		writeFileSync(tempPath, data, { mode: 0o600 });
@@ -73,10 +73,10 @@ async function loadPricingCache(): Promise<PricingCache | null> {
 	}
 }
 
-async function savePricingCache(cache: PricingCache): Promise<void> {
+function savePricingCache(cache: PricingCache): void {
 	ensureFalconDir();
 	const cachePath = getPricingCachePath();
-	await atomicWrite(cachePath, JSON.stringify(cache, null, 2));
+	atomicWrite(cachePath, JSON.stringify(cache, null, 2));
 }
 
 function isCacheFresh(cache: PricingCache | null): boolean {

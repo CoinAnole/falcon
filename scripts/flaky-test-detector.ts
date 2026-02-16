@@ -18,6 +18,12 @@ const MAX_RUNS =
 const OUTPUT_DIR = "test-runs";
 const RUN_TIMEOUT_MS = 180_000;
 const KILL_GRACE_MS = 1000;
+const FAILURE_LINE_REGEX =
+	/✗|fail|error|Error|FAIL|Timed out|timed out|expect|assert|---|\bat\b|\.test\.ts|\.test\.tsx/;
+const TEST_FILE_HEADER_REGEX = /^(tests\/[a-zA-Z0-9_/]+\.test\.tsx?):?$/;
+const TEST_FILE_OR_SUMMARY_REGEX =
+	/^tests\/[a-zA-Z0-9_/]+\.test\.tsx?:?$|^\d+ tests? failed/;
+const FAIL_ENTRY_REGEX = /^\(fail\)/;
 
 interface RunResult {
 	runNumber: number;
@@ -28,7 +34,7 @@ interface RunResult {
 	timedOut?: boolean;
 }
 
-async function runTests(runNumber: number, runDir: string): Promise<RunResult> {
+function runTests(runNumber: number, runDir: string): Promise<RunResult> {
 	const runLogPath = join(runDir, `run_${runNumber}.log`);
 	const failLogPath = join(runDir, `run_${runNumber}_failures.log`);
 
@@ -87,6 +93,7 @@ async function runTests(runNumber: number, runDir: string): Promise<RunResult> {
 			}, KILL_GRACE_MS);
 		}, RUN_TIMEOUT_MS);
 
+		// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Process teardown intentionally consolidates timeout and log persistence.
 		const finalize = async (rawExitCode: number | null) => {
 			if (finalized) {
 				return;
@@ -113,11 +120,7 @@ async function runTests(runNumber: number, runDir: string): Promise<RunResult> {
 				// Extract failure details
 				const failureLines = logContent
 					.split("\n")
-					.filter((line) =>
-						/✗|fail|error|Error|FAIL|Timed out|timed out|expect|assert|---|\bat\b|\.test\.ts|\.test\.tsx/.test(
-							line
-						)
-					)
+					.filter((line) => FAILURE_LINE_REGEX.test(line))
 					.join("\n");
 
 				const failContent = `
@@ -149,11 +152,14 @@ ${failureLines}
 		};
 
 		child.on("close", (exitCode) => {
-			void finalize(exitCode);
+			finalize(exitCode).catch((error) => {
+				console.error(`Failed to finalize run ${runNumber}:`, error);
+			});
 		});
 	});
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Summary rendering and flaky extraction are intentionally linear for CLI output clarity.
 async function main() {
 	const timestamp = new Date().toISOString().replace(/[:.]/g, "").slice(0, 15);
 	const runDir = join(OUTPUT_DIR, timestamp);
@@ -208,21 +214,18 @@ async function main() {
 			for (let i = 0; i < lines.length; i++) {
 				const line = lines[i];
 				// Look for test file headers (e.g., "tests/cli/cli.test.ts:")
-				const fileMatch = line.match(/^(tests\/[a-zA-Z0-9_/]+\.test\.tsx?):?$/);
+				const fileMatch = line.match(TEST_FILE_HEADER_REGEX);
 				if (fileMatch) {
 					// Check if this file has any failures in subsequent lines
 					// Look ahead for "(fail)" entries before the next test file or summary
 					for (let j = i + 1; j < lines.length; j++) {
 						const nextLine = lines[j];
 						// Stop if we hit another test file or summary line
-						if (
-							/^tests\/[a-zA-Z0-9_/]+\.test\.tsx?:?$/.test(nextLine) ||
-							/^\d+ tests? failed/.test(nextLine)
-						) {
+						if (TEST_FILE_OR_SUMMARY_REGEX.test(nextLine)) {
 							break;
 						}
 						// If we find a failure for this file, add it
-						if (/^\(fail\)/.test(nextLine)) {
+						if (FAIL_ENTRY_REGEX.test(nextLine)) {
 							testFiles.add(fileMatch[1]);
 							break;
 						}

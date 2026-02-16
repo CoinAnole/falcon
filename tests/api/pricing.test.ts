@@ -23,7 +23,7 @@ afterEach(() => {
 	if (originalKey !== undefined) {
 		process.env.FAL_KEY = originalKey;
 	} else {
-		delete process.env.FAL_KEY;
+		process.env.FAL_KEY = undefined;
 	}
 });
 
@@ -51,7 +51,7 @@ describe("pricing", () => {
 		);
 
 		const { result: estimate, calls } = await withMockFetch(
-			async (input) => {
+			(input) => {
 				const url = input.toString();
 				if (url.includes("/models/pricing/estimate")) {
 					return new Response("fail", { status: 500 });
@@ -80,7 +80,7 @@ describe("pricing", () => {
 	it("refreshPricingCache writes pricing data to disk", async () => {
 		const cachePath = join(FALCON_DIR, "pricing.json");
 		const { calls } = await withMockFetch(
-			async (input) => {
+			(input) => {
 				const url = input.toString();
 				if (url.includes("/models/pricing?")) {
 					return Response.json({
@@ -137,7 +137,7 @@ describe("pricing", () => {
 		);
 
 		const { result: estimate, calls } = await withMockFetch(
-			async (input) => {
+			(input) => {
 				const url = input.toString();
 				if (url.includes("/models/pricing?")) {
 					return Response.json({
@@ -184,7 +184,7 @@ describe("pricing", () => {
 
 	it("uses cached pricing when estimate API fails", async () => {
 		const { result: estimate } = await withMockFetch(
-			async (input, _init) => {
+			(input, _init) => {
 				const url = input.toString();
 				if (url.includes("/models/pricing?")) {
 					return Response.json({
@@ -219,7 +219,7 @@ describe("pricing", () => {
 
 	it("defaults to unit pricing when unit is missing", async () => {
 		const { result: estimate, calls } = await withMockFetch(
-			async (input) => {
+			(input) => {
 				const url = input.toString();
 				if (url.includes("/models/pricing?")) {
 					return Response.json({
@@ -257,7 +257,7 @@ describe("pricing", () => {
 
 	it("returns estimate results when API succeeds", async () => {
 		const { result: estimate, calls } = await withMockFetch(
-			async (input) => {
+			(input) => {
 				const url = input.toString();
 				if (url.includes("/models/pricing?")) {
 					return Response.json({
@@ -300,7 +300,7 @@ describe("pricing", () => {
 
 	it("uses historical_api_price and call_quantity for compute-like generation pricing units", async () => {
 		const { result: estimate, calls } = await withMockFetch(
-			async (input) => {
+			(input) => {
 				const url = input.toString();
 				if (url.includes("/models/pricing?")) {
 					return Response.json({
@@ -351,7 +351,7 @@ describe("pricing", () => {
 
 	it("uses fallback when compute-style generation estimate fails", async () => {
 		const { result: estimate } = await withMockFetch(
-			async (input) => {
+			(input) => {
 				const url = input.toString();
 				if (url.includes("/models/pricing?")) {
 					return Response.json({
@@ -386,7 +386,7 @@ describe("pricing", () => {
 
 	it("uses historical_api_price and call_quantity for compute-like upscale pricing units", async () => {
 		const { result: estimate, calls } = await withMockFetch(
-			async (input) => {
+			(input) => {
 				const url = input.toString();
 				if (url.includes("/models/pricing?")) {
 					return Response.json({
@@ -440,7 +440,7 @@ describe("pricing", () => {
 
 	it("handles megapixel units for upscales", async () => {
 		const { result: estimate } = await withMockFetch(
-			async (input) => {
+			(input) => {
 				const url = input.toString();
 				if (url.includes("/models/pricing?")) {
 					return Response.json({
@@ -476,7 +476,7 @@ describe("pricing", () => {
 
 	it("uses fallback when background removal estimate fails", async () => {
 		const { result: estimate } = await withMockFetch(
-			async () => {
+			() => {
 				return new Response("fail", { status: 500 });
 			},
 			async () => {

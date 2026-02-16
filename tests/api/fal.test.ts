@@ -12,6 +12,10 @@ import {
 import { getTestHome } from "../helpers/env";
 import { withMockFetch } from "../helpers/fetch";
 
+const HTTP_500_ERROR_REGEX = /500.*Internal Server Error/;
+const HTTP_503_ERROR_REGEX = /503.*Service Unavailable/;
+const HTTP_403_ERROR_REGEX = /403.*Forbidden/;
+
 afterEach(() => {
 	setApiKey("");
 });
@@ -20,7 +24,7 @@ describe("fal api", () => {
 	it("builds GPT payload with transparency", async () => {
 		setApiKey("test-key");
 		const { calls } = await withMockFetch(
-			async () => {
+			() => {
 				return Response.json({ images: [] });
 			},
 			async () => {
@@ -46,7 +50,7 @@ describe("fal api", () => {
 	it("builds Flux 2 payload with guidance options", async () => {
 		setApiKey("test-key");
 		const { calls } = await withMockFetch(
-			async () => {
+			() => {
 				return Response.json({ images: [] });
 			},
 			async () => {
@@ -79,7 +83,7 @@ describe("fal api", () => {
 	it("uses explicit 512x512 image_size object for Flux models", async () => {
 		setApiKey("test-key");
 		const { calls } = await withMockFetch(
-			async () => {
+			() => {
 				return Response.json({ images: [] });
 			},
 			async () => {
@@ -103,7 +107,7 @@ describe("fal api", () => {
 	it("adds edit endpoint and image URLs", async () => {
 		setApiKey("test-key");
 		const { calls } = await withMockFetch(
-			async () => {
+			() => {
 				return Response.json({ images: [] });
 			},
 			async () => {
@@ -127,7 +131,7 @@ describe("fal api", () => {
 	it("throws on API error response", async () => {
 		setApiKey("test-key");
 		await withMockFetch(
-			async () => {
+			() => {
 				return Response.json({ detail: "Bad request" });
 			},
 			async () => {
@@ -141,7 +145,7 @@ describe("fal api", () => {
 	it("normalizes upscale response", async () => {
 		setApiKey("test-key");
 		const { result } = await withMockFetch(
-			async () => {
+			() => {
 				return Response.json({ image: { url: "https://example.com/x.png" } });
 			},
 			async () => {
@@ -158,7 +162,7 @@ describe("fal api", () => {
 	it("normalizes background removal response", async () => {
 		setApiKey("test-key");
 		const { result } = await withMockFetch(
-			async () => {
+			() => {
 				return Response.json({ image: { url: "https://example.com/x.png" } });
 			},
 			async () => {
@@ -174,7 +178,7 @@ describe("fal api", () => {
 	it("includes seed in generate payload", async () => {
 		setApiKey("test-key");
 		const { calls } = await withMockFetch(
-			async () => {
+			() => {
 				return Response.json({ images: [], seed: 12_345 });
 			},
 			async () => {
@@ -194,7 +198,7 @@ describe("fal api", () => {
 	it("includes seed in upscale payload", async () => {
 		setApiKey("test-key");
 		const { calls } = await withMockFetch(
-			async () => {
+			() => {
 				return Response.json({
 					image: { url: "https://example.com/x.png" },
 					seed: 54_321,
@@ -217,7 +221,7 @@ describe("fal api", () => {
 	it("builds Banana payload with aspect_ratio, resolution, num_images and no output_format", async () => {
 		setApiKey("test-key");
 		const { calls } = await withMockFetch(
-			async () => {
+			() => {
 				return Response.json({ images: [] });
 			},
 			async () => {
@@ -247,7 +251,7 @@ describe("fal api", () => {
 	it("builds Gemini payload with aspect_ratio, num_images and no resolution", async () => {
 		setApiKey("test-key");
 		const { calls } = await withMockFetch(
-			async () => {
+			() => {
 				return Response.json({ images: [] });
 			},
 			async () => {
@@ -275,7 +279,7 @@ describe("fal api", () => {
 	it("builds Gemini3 payload with aspect_ratio, resolution, num_images, and output_format", async () => {
 		setApiKey("test-key");
 		const { calls } = await withMockFetch(
-			async () => {
+			() => {
 				return Response.json({ images: [] });
 			},
 			async () => {
@@ -307,7 +311,7 @@ describe("fal api", () => {
 	it("builds Imagine payload with aspect_ratio, num_images, output_format and correct endpoint", async () => {
 		setApiKey("test-key");
 		const { calls } = await withMockFetch(
-			async () => {
+			() => {
 				return Response.json({ images: [] });
 			},
 			async () => {
@@ -335,7 +339,7 @@ describe("fal api", () => {
 	it("sets num_images to provided value when explicit", async () => {
 		setApiKey("test-key");
 		const { calls } = await withMockFetch(
-			async () => Response.json({ images: [] }),
+			() => Response.json({ images: [] }),
 			async () => {
 				await generate({
 					prompt: "test numImages",
@@ -355,7 +359,7 @@ describe("fal api", () => {
 	it("defaults num_images to 1 when omitted", async () => {
 		setApiKey("test-key");
 		const { calls } = await withMockFetch(
-			async () => Response.json({ images: [] }),
+			() => Response.json({ images: [] }),
 			async () => {
 				await generate({
 					prompt: "test default numImages",
@@ -374,7 +378,7 @@ describe("fal api", () => {
 	it("includes output_format in payload for supporting model", async () => {
 		setApiKey("test-key");
 		const { calls } = await withMockFetch(
-			async () => Response.json({ images: [] }),
+			() => Response.json({ images: [] }),
 			async () => {
 				await generate({
 					prompt: "test outputFormat",
@@ -394,7 +398,7 @@ describe("fal api", () => {
 	it("omits output_format from payload for non-supporting model", async () => {
 		setApiKey("test-key");
 		const { calls } = await withMockFetch(
-			async () => Response.json({ images: [] }),
+			() => Response.json({ images: [] }),
 			async () => {
 				await generate({
 					prompt: "test no outputFormat",
@@ -414,7 +418,7 @@ describe("fal api", () => {
 	it("includes resolution in payload for supporting model", async () => {
 		setApiKey("test-key");
 		const { calls } = await withMockFetch(
-			async () => Response.json({ images: [] }),
+			() => Response.json({ images: [] }),
 			async () => {
 				await generate({
 					prompt: "test resolution",
@@ -434,7 +438,7 @@ describe("fal api", () => {
 	it("omits resolution from payload for non-supporting model", async () => {
 		setApiKey("test-key");
 		const { calls } = await withMockFetch(
-			async () => Response.json({ images: [] }),
+			() => Response.json({ images: [] }),
 			async () => {
 				await generate({
 					prompt: "test no resolution",
@@ -454,7 +458,7 @@ describe("fal api", () => {
 	it("rejects 512x512 resolution for models that require enum resolutions", async () => {
 		setApiKey("test-key");
 		await withMockFetch(
-			async () => Response.json({ images: [] }),
+			() => Response.json({ images: [] }),
 			async () => {
 				await expect(
 					generate({
@@ -470,7 +474,7 @@ describe("fal api", () => {
 	it("uses bria endpoint and normalizes single-image response for removeBackground with model bria", async () => {
 		setApiKey("test-key");
 		const { calls, result } = await withMockFetch(
-			async () => {
+			() => {
 				return Response.json({
 					image: { url: "https://example.com/bria-result.png" },
 				});
@@ -503,7 +507,7 @@ describe("fal api", () => {
 			async () => {
 				await expect(
 					generate({ prompt: "fail", model: "banana" })
-				).rejects.toThrow(/500.*Internal Server Error/);
+				).rejects.toThrow(HTTP_500_ERROR_REGEX);
 			}
 		);
 	});
@@ -522,7 +526,7 @@ describe("fal api", () => {
 						imageUrl: "data:image/png;base64,abc",
 						model: "clarity",
 					})
-				).rejects.toThrow(/503.*Service Unavailable/);
+				).rejects.toThrow(HTTP_503_ERROR_REGEX);
 			}
 		);
 	});
@@ -541,7 +545,7 @@ describe("fal api", () => {
 						imageUrl: "data:image/png;base64,abc",
 						model: "rmbg",
 					})
-				).rejects.toThrow(/403.*Forbidden/);
+				).rejects.toThrow(HTTP_403_ERROR_REGEX);
 			}
 		);
 	});
@@ -556,7 +560,7 @@ describe("getApiKey fallback chain", () => {
 		if (savedFalKey !== undefined) {
 			process.env.FAL_KEY = savedFalKey;
 		} else {
-			delete process.env.FAL_KEY;
+			process.env.FAL_KEY = undefined;
 		}
 	});
 
@@ -565,7 +569,7 @@ describe("getApiKey fallback chain", () => {
 		setApiKey("manual-key-priority");
 
 		const { calls } = await withMockFetch(
-			async () => Response.json({ images: [] }),
+			() => Response.json({ images: [] }),
 			async () => {
 				await generate({ prompt: "test", model: "banana" });
 			}
@@ -581,7 +585,7 @@ describe("getApiKey fallback chain", () => {
 		process.env.FAL_KEY = "env-var-key";
 
 		const { calls } = await withMockFetch(
-			async () => Response.json({ images: [] }),
+			() => Response.json({ images: [] }),
 			async () => {
 				await generate({ prompt: "test", model: "banana" });
 			}
@@ -594,7 +598,7 @@ describe("getApiKey fallback chain", () => {
 	it("falls back to config file apiKey when setApiKey and env var are cleared", async () => {
 		savedFalKey = process.env.FAL_KEY;
 		setApiKey("");
-		delete process.env.FAL_KEY;
+		process.env.FAL_KEY = undefined;
 
 		// Write config file with apiKey to the isolated test HOME
 		const testHome = getTestHome();
@@ -609,7 +613,7 @@ describe("getApiKey fallback chain", () => {
 		// Re-import to pick up the fresh HOME/config
 		// loadConfig reads process.env.HOME at call time via FALCON_DIR
 		const { calls } = await withMockFetch(
-			async () => Response.json({ images: [] }),
+			() => Response.json({ images: [] }),
 			async () => {
 				await generate({ prompt: "test", model: "banana" });
 			}
@@ -622,7 +626,7 @@ describe("getApiKey fallback chain", () => {
 	it("throws FAL_KEY not found when no key is available from any source", async () => {
 		savedFalKey = process.env.FAL_KEY;
 		setApiKey("");
-		delete process.env.FAL_KEY;
+		process.env.FAL_KEY = undefined;
 
 		// Write config file without apiKey to the isolated test HOME
 		const testHome = getTestHome();
@@ -719,7 +723,7 @@ describe("property-based tests", () => {
 					setApiKey("test-key");
 
 					const { calls } = await withMockFetch(
-						async () => Response.json({ images: [] }),
+						() => Response.json({ images: [] }),
 						async () => {
 							await generate({ prompt, model });
 						}
@@ -768,7 +772,7 @@ describe("property-based tests", () => {
 				setApiKey("test-key");
 
 				const { calls } = await withMockFetch(
-					async () => Response.json({ images: [] }),
+					() => Response.json({ images: [] }),
 					async () => {
 						await generate({
 							prompt: "test capability flags",

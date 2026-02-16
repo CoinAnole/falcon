@@ -86,6 +86,7 @@ async function getApiKey(): Promise<string> {
 	);
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Model-specific payload assembly is intentionally centralized for CLI consistency.
 export async function generate(options: GenerateOptions): Promise<FalResponse> {
 	const {
 		prompt,

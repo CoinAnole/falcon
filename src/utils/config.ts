@@ -320,7 +320,7 @@ export async function addGeneration(generation: Generation): Promise<void> {
 export async function getLastGeneration(): Promise<Generation | null> {
 	const history = await loadHistory();
 	// Generations are stored oldest-first, so last element is most recent
-	const last = history.generations[history.generations.length - 1] || null;
+	const last = history.generations.at(-1) || null;
 	historyDebug("getLastGeneration", {
 		found: Boolean(last),
 		generations: history.generations.length,

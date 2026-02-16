@@ -27,7 +27,7 @@ function resetFalconDir(): void {
 
 beforeEach(() => {
 	originalKey = process.env.FAL_KEY;
-	delete process.env.FAL_KEY;
+	process.env.FAL_KEY = undefined;
 	resetFalconDir();
 	process.chdir(baseCwd);
 });
@@ -36,7 +36,7 @@ afterEach(() => {
 	if (originalKey !== undefined) {
 		process.env.FAL_KEY = originalKey;
 	} else {
-		delete process.env.FAL_KEY;
+		process.env.FAL_KEY = undefined;
 	}
 	process.chdir(baseCwd);
 });

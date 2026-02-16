@@ -22,7 +22,7 @@ beforeAll(async () => {
 
 afterAll(() => {
 	if (originalFalKey === undefined) {
-		delete process.env.FAL_KEY;
+		process.env.FAL_KEY = undefined;
 	} else {
 		process.env.FAL_KEY = originalFalKey;
 	}
@@ -32,14 +32,19 @@ const APP_TEST_TIMEOUT_MS = 15_000;
 
 const baseConfig: FalconConfig = STUDIO_TEST_CONFIG;
 const createHistory = (): History => createEmptyStudioHistory();
+const hasControlCharacters = (value: string): boolean =>
+	Array.from(value).some((char) => {
+		const code = char.codePointAt(0) ?? 0;
+		return (code >= 0x00 && code <= 0x1f) || (code >= 0x7f && code <= 0x9f);
+	});
 
 const renderApp = (history: History = createHistory()) =>
 	render(
 		<App
 			config={baseConfig}
 			history={history}
-			onConfigChange={async () => {}}
-			onHistoryChange={async () => {}}
+			onConfigChange={async () => undefined}
+			onHistoryChange={async () => undefined}
 		/>
 	);
 
@@ -129,7 +134,7 @@ describe("studio app routing", () => {
 				const output = stripAnsi(result.lastFrame() ?? "");
 				expect(output).toContain("Generate");
 
-				const frameCountBeforeQuit = result.frames.length;
+				const _frameCountBeforeQuit = result.frames.length;
 				await writeInput(result, "q");
 				// Give Ink time to process the exit
 				await new Promise((r) => setTimeout(r, 200));
@@ -332,7 +337,7 @@ describe("studio app routing", () => {
 						s === s.trim() &&
 						// Filter out strings with ANSI escape sequences or control chars
 						// that could interfere with rendering/stripping
-						!/[\x00-\x1f\x7f-\x9f]/.test(s)
+						!hasControlCharacters(s)
 				),
 				async (errorMessage) => {
 					const errorFetchImpl = (input: RequestInfo | URL) => {
