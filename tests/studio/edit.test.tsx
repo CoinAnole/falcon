@@ -47,11 +47,37 @@ let EditScreen =
 	null as unknown as typeof import("../../src/studio/screens/edit")["EditScreen"];
 let originalFalKey: string | undefined;
 
+async function importWithTimeout<T>(
+	importer: () => Promise<T>,
+	timeoutMs: number,
+	label: string
+): Promise<T> {
+	let timeoutId: ReturnType<typeof setTimeout> | undefined;
+	try {
+		return await Promise.race([
+			importer(),
+			new Promise<T>((_, reject) => {
+				timeoutId = setTimeout(() => {
+					reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+				}, timeoutMs);
+			}),
+		]);
+	} finally {
+		if (timeoutId !== undefined) {
+			clearTimeout(timeoutId);
+		}
+	}
+}
+
 beforeAll(async () => {
 	originalFalKey = process.env.FAL_KEY;
 	registerStudioMocks({ history: testHistory });
 	process.env.FAL_KEY = "test-key-for-edit-tests";
-	({ EditScreen } = await import("../../src/studio/screens/edit"));
+	({ EditScreen } = await importWithTimeout(
+		() => import("../../src/studio/screens/edit"),
+		15_000,
+		"EditScreen import"
+	));
 });
 
 afterAll(() => {
