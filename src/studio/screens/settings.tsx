@@ -1,6 +1,6 @@
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
 	ASPECT_RATIOS,
 	GENERATION_MODELS,
@@ -58,107 +58,265 @@ const SETTINGS: SettingItem[] = [
 
 interface SettingsScreenProps {
 	config: FalconConfig;
-	onSave: (config: Partial<FalconConfig>) => Promise<void>;
+	onPersistChange: (config: Partial<FalconConfig>) => Promise<void>;
 	onBack: () => void;
 	onQuit?: () => void;
 }
 
+type SettingsStep = "list" | "editSelect" | "editToggle" | "editText";
+type SaveStatusType = "idle" | "saving" | "saved" | "error" | "hint";
+
+interface SaveStatus {
+	type: SaveStatusType;
+	message?: string;
+}
+
+const STATUS_HIDE_DELAY_MS = 1800;
+
 export function SettingsScreen({
 	config,
-	onSave,
+	onPersistChange,
 	onBack,
 	onQuit = () => undefined,
 }: SettingsScreenProps) {
 	const [selectedIndex, setSelectedIndex] = useState(0);
-	const [editing, setEditing] = useState(false);
+	const [step, setStep] = useState<SettingsStep>("list");
+	const [editorIndex, setEditorIndex] = useState(0);
 	const [editValue, setEditValue] = useState("");
 	const [localConfig, setLocalConfig] = useState<FalconConfig>({ ...config });
+	const [status, setStatus] = useState<SaveStatus>({ type: "idle" });
+	const saveSeqRef = useRef(0);
+	const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const currentSetting = SETTINGS[selectedIndex];
 
-	const handleEscape = () => {
-		if (editing) {
-			setEditing(false);
-			return;
+	useEffect(() => {
+		return () => {
+			if (statusTimerRef.current) {
+				clearTimeout(statusTimerRef.current);
+			}
+		};
+	}, []);
+
+	const clearStatusTimer = () => {
+		if (statusTimerRef.current) {
+			clearTimeout(statusTimerRef.current);
+			statusTimerRef.current = null;
 		}
-		onBack();
 	};
 
-	const handleSettingChange = () => {
-		const setting = SETTINGS[selectedIndex];
-		if (setting.type === "toggle") {
-			// Toggle boolean value
-			setLocalConfig((c) => ({
-				...c,
-				[setting.key]: !c[setting.key],
-			}));
-			return;
+	const setTransientStatus = (nextStatus: SaveStatus, durationMs = 1800) => {
+		clearStatusTimer();
+		setStatus(nextStatus);
+		if (durationMs > 0) {
+			statusTimerRef.current = setTimeout(() => {
+				setStatus({ type: "idle" });
+			}, durationMs);
 		}
+	};
 
+	const persistPatch = async (patch: Partial<FalconConfig>) => {
+		setLocalConfig((current) => ({
+			...current,
+			...patch,
+		}));
+		clearStatusTimer();
+		setStatus({ type: "saving", message: "Saving..." });
+		const sequence = ++saveSeqRef.current;
+		try {
+			await onPersistChange(patch);
+			if (sequence !== saveSeqRef.current) {
+				return;
+			}
+			setTransientStatus({ type: "saved", message: "Saved" }, STATUS_HIDE_DELAY_MS);
+		} catch {
+			if (sequence !== saveSeqRef.current) {
+				return;
+			}
+			clearStatusTimer();
+			setStatus({
+				type: "error",
+				message: "Save failed. Change is kept locally; try again.",
+			});
+		}
+	};
+
+	const enterEditor = () => {
+		const setting = currentSetting;
 		if (setting.type === "text") {
 			setEditValue((localConfig[setting.key] as string) || "");
-			setEditing(true);
+			setStep("editText");
 			return;
 		}
 
-		const options = setting.options;
-		if (setting.type === "select" && options) {
-			// Cycle through options
-			const currentValue = localConfig[setting.key] as string;
-			const currentIdx = options.indexOf(currentValue);
-			const nextIdx = (currentIdx + 1) % options.length;
-			setLocalConfig((c) => ({
-				...c,
-				[setting.key]: options[nextIdx],
-			}));
-		}
-	};
-
-	const saveSettings = () => {
-		onSave(localConfig).catch(() => {
-			// Error handled by parent
-		});
-	};
-
-	useInput((input, key) => {
-		if (key.escape) {
-			handleEscape();
+		if (setting.type === "toggle") {
+			setEditorIndex(localConfig[setting.key] ? 1 : 0);
+			setStep("editToggle");
 			return;
 		}
 
-		if (editing) {
-			return; // Let TextInput handle input
-		}
+		const options = setting.options ?? [];
+		const currentValue = localConfig[setting.key] as string;
+		const currentIdx = options.indexOf(currentValue);
+		setEditorIndex(currentIdx >= 0 ? currentIdx : 0);
+		setStep("editSelect");
+	};
 
+	const handleEscapeInput = () => {
+		if (step === "list") {
+			onBack();
+			return;
+		}
+		if (step === "editText") {
+			setEditValue((localConfig[currentSetting.key] as string) || "");
+		}
+		setStep("list");
+	};
+
+	const handleListInput = (input: string, key: { upArrow?: boolean; downArrow?: boolean; return?: boolean }) => {
 		if (input === "q") {
 			onQuit();
 			return;
 		}
 
 		if (key.upArrow) {
-			setSelectedIndex((i) => (i > 0 ? i - 1 : SETTINGS.length - 1));
+			setSelectedIndex((index) =>
+				index > 0 ? index - 1 : SETTINGS.length - 1
+			);
+			return;
 		}
 
 		if (key.downArrow) {
-			setSelectedIndex((i) => (i < SETTINGS.length - 1 ? i + 1 : 0));
+			setSelectedIndex((index) =>
+				index < SETTINGS.length - 1 ? index + 1 : 0
+			);
+			return;
 		}
 
 		if (key.return) {
-			handleSettingChange();
+			enterEditor();
 			return;
 		}
 
 		if (input === "s" || input === "S") {
-			saveSettings();
+			setTransientStatus(
+				{
+					type: "hint",
+					message: "Auto-save is enabled. Changes save automatically.",
+				},
+				STATUS_HIDE_DELAY_MS
+			);
 		}
+	};
+
+	const handleSelectEditorInput = (key: {
+		upArrow?: boolean;
+		downArrow?: boolean;
+		return?: boolean;
+	}) => {
+		if (key.return) {
+			setStep("list");
+			return;
+		}
+
+		const setting = currentSetting;
+		if (setting.type !== "select" || !setting.options || setting.options.length === 0) {
+			return;
+		}
+
+		if (!(key.upArrow || key.downArrow)) {
+			return;
+		}
+
+		const options = setting.options;
+		const nextIndex = key.upArrow
+			? editorIndex > 0
+				? editorIndex - 1
+				: options.length - 1
+			: editorIndex < options.length - 1
+				? editorIndex + 1
+				: 0;
+		setEditorIndex(nextIndex);
+
+		const nextValue = options[nextIndex];
+		const currentValue = localConfig[setting.key] as string;
+		if (currentValue === nextValue) {
+			return;
+		}
+
+		void persistPatch({
+			[setting.key]: nextValue,
+		} as Partial<FalconConfig>);
+	};
+
+	const handleToggleEditorInput = (key: {
+		upArrow?: boolean;
+		downArrow?: boolean;
+		return?: boolean;
+	}) => {
+		if (key.return) {
+			setStep("list");
+			return;
+		}
+
+		if (!(key.upArrow || key.downArrow)) {
+			return;
+		}
+
+		const setting = currentSetting;
+		if (setting.type !== "toggle") {
+			return;
+		}
+
+		const nextIndex = editorIndex === 0 ? 1 : 0;
+		const nextValue = nextIndex === 1;
+		setEditorIndex(nextIndex);
+
+		if (Boolean(localConfig[setting.key]) === nextValue) {
+			return;
+		}
+
+		void persistPatch({
+			[setting.key]: nextValue,
+		} as Partial<FalconConfig>);
+	};
+
+	const handleTextEditorInput = () => {
+		// TextInput handles character input and submission.
+	};
+
+	useInput((input, key) => {
+		if (key.escape) {
+			handleEscapeInput();
+			return;
+		}
+
+		if (step === "list") {
+			handleListInput(input, key);
+			return;
+		}
+
+		if (step === "editSelect") {
+			handleSelectEditorInput(key);
+			return;
+		}
+
+		if (step === "editToggle") {
+			handleToggleEditorInput(key);
+			return;
+		}
+
+		handleTextEditorInput();
 	});
 
 	const handleTextSubmit = (value: string) => {
-		setLocalConfig((c) => ({
-			...c,
+		if (currentSetting.type !== "text") {
+			return;
+		}
+		setStep("list");
+		void persistPatch({
 			[currentSetting.key]: value,
-		}));
-		setEditing(false);
+		} as Partial<FalconConfig>);
 	};
 
 	const formatValue = (setting: SettingItem): string => {
@@ -176,16 +334,108 @@ export function SettingsScreen({
 		return String(value || "Not set");
 	};
 
+	const formatOptionValue = (setting: SettingItem, value: string): string => {
+		if (setting.key === "defaultModel") {
+			return MODELS[value]?.name || value;
+		}
+		return value;
+	};
+
+	const renderEditor = () => {
+		if (step === "list") {
+			return null;
+		}
+
+		if (step === "editSelect" && currentSetting.type === "select") {
+			const options = currentSetting.options ?? [];
+			return (
+				<Box flexDirection="column" marginTop={1} paddingLeft={1}>
+					<Text dimColor>Editing {currentSetting.label}</Text>
+					<Box flexDirection="column" marginTop={1}>
+						{options.map((option, index) => (
+							<Text
+								bold={index === editorIndex}
+								color={index === editorIndex ? "magenta" : undefined}
+								key={option}
+							>
+								{index === editorIndex ? "◆ " : "  "}
+								{formatOptionValue(currentSetting, option)}
+							</Text>
+						))}
+					</Box>
+				</Box>
+			);
+		}
+
+		if (step === "editToggle" && currentSetting.type === "toggle") {
+			const options: Array<{ label: string; index: number }> = [
+				{ label: "No", index: 0 },
+				{ label: "Yes", index: 1 },
+			];
+			return (
+				<Box flexDirection="column" marginTop={1} paddingLeft={1}>
+					<Text dimColor>Editing {currentSetting.label}</Text>
+					<Box flexDirection="column" marginTop={1}>
+						{options.map((option) => (
+							<Text
+								bold={option.index === editorIndex}
+								color={option.index === editorIndex ? "magenta" : undefined}
+								key={option.label}
+							>
+								{option.index === editorIndex ? "◆ " : "  "}
+								{option.label}
+							</Text>
+						))}
+					</Box>
+				</Box>
+			);
+		}
+
+		if (step === "editText" && currentSetting.type === "text") {
+			return (
+				<Box flexDirection="column" marginTop={1} paddingLeft={1}>
+					<Text dimColor>Editing {currentSetting.label}</Text>
+					<Box marginTop={1}>
+						<Text color="magenta">◆ </Text>
+						<TextInput
+							mask="*"
+							onChange={setEditValue}
+							onSubmit={handleTextSubmit}
+							value={editValue}
+						/>
+					</Box>
+				</Box>
+			);
+		}
+
+		return null;
+	};
+
+	const statusColor =
+		status.type === "saved"
+			? "green"
+			: status.type === "saving" || status.type === "hint"
+				? "yellow"
+				: status.type === "error"
+					? "red"
+					: undefined;
+
+	const legend =
+		step === "list"
+			? "enter edit │ esc back │ q quit │ s auto-save info"
+			: step === "editText"
+				? "enter save │ esc cancel"
+				: "↑↓ change │ enter done │ esc cancel";
+
 	return (
 		<Box flexDirection="column">
 			<Box marginBottom={1}>
 				<Text bold>Settings</Text>
-				<Text dimColor> (Enter to edit, S to save)</Text>
+				<Text dimColor> (Auto-save on change)</Text>
 			</Box>
 
 			{SETTINGS.map((setting, index) => {
 				const isSelected = index === selectedIndex;
-				const isEditing = editing && isSelected;
 
 				return (
 					<Box key={setting.key} marginLeft={1}>
@@ -198,27 +448,23 @@ export function SettingsScreen({
 								{setting.label}
 							</Text>
 						</Box>
-						{isEditing && setting.type === "text" ? (
-							<TextInput
-								mask="*"
-								onChange={setEditValue}
-								onSubmit={handleTextSubmit}
-								value={editValue}
-							/>
-						) : (
-							<Text color={isSelected ? "green" : "gray"}>
-								{formatValue(setting)}
-							</Text>
-						)}
+						<Text color={isSelected ? "green" : "gray"}>{formatValue(setting)}</Text>
 					</Box>
 				);
 			})}
 
+			{renderEditor()}
+
 			<Box flexDirection="column" marginTop={2}>
 				<Text dimColor>────────────────────────────</Text>
 				<Box marginTop={1}>
-					<Text dimColor>enter toggle/edit │ s save │ esc cancel</Text>
+					<Text dimColor>{legend}</Text>
 				</Box>
+				{status.type !== "idle" && (
+					<Box marginTop={1}>
+						<Text color={statusColor}>{status.message}</Text>
+					</Box>
+				)}
 			</Box>
 		</Box>
 	);

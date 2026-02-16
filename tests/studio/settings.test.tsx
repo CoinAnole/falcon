@@ -6,7 +6,6 @@ import type { FalconConfig } from "../../src/studio/deps/config";
 import { KEYS, stripAnsi, waitUntil, writeInput } from "../helpers/ink";
 
 const { SettingsScreen } = await import("../../src/studio/screens/settings");
-const DEFAULT_MODEL_PREFIX_REGEX = /^.*◆ Default Model\s+/;
 
 const baseConfig: FalconConfig = {
 	defaultModel: "banana",
@@ -18,19 +17,39 @@ const baseConfig: FalconConfig = {
 	promptExpansion: false,
 };
 
+const waitForRender = async (result: ReturnType<typeof render>) => {
+	await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
+		timeoutMs: 3000,
+	});
+};
+
+const selectedLine = (result: ReturnType<typeof render>, label: string): string => {
+	const output = stripAnsi(result.lastFrame() ?? "");
+	return output.split("\n").find((line) => line.includes(`◆ ${label}`)) ?? "";
+};
+
+async function goToSetting(result: ReturnType<typeof render>, settingIndex: number) {
+	for (let index = 0; index < settingIndex; index++) {
+		await writeInput(result, KEYS.down);
+	}
+}
+
 describe("settings screen", () => {
-	it("renders all 8 setting items with current values", async () => {
-		const onSave = mock(async () => undefined);
+	it("renders all settings and auto-save hint", async () => {
+		const onPersistChange = mock(async () => undefined);
 		const onBack = mock(() => undefined);
 		const result = render(
-			<SettingsScreen config={baseConfig} onBack={onBack} onSave={onSave} />
+			<SettingsScreen
+				config={baseConfig}
+				onBack={onBack}
+				onPersistChange={onPersistChange}
+			/>
 		);
+
 		try {
-			await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
-				timeoutMs: 3000,
-			});
+			await waitForRender(result);
 			const output = stripAnsi(result.lastFrame() ?? "");
-			// All 8 labels
+
 			expect(output).toContain("Default Model");
 			expect(output).toContain("Default Aspect");
 			expect(output).toContain("Default Resolution");
@@ -39,138 +58,40 @@ describe("settings screen", () => {
 			expect(output).toContain("Open After Generate");
 			expect(output).toContain("Prompt Expansion");
 			expect(output).toContain("API Key");
-			// Current values
+			expect(output).toContain("enter edit │ esc back │ q quit │ s auto-save info");
 			expect(output).toContain("Nano Banana Pro");
-			expect(output).toContain("1:1");
-			expect(output).toContain("2K");
-			expect(output).toContain("clarity");
-			expect(output).toContain("rmbg");
-			expect(output).toContain("No"); // openAfterGenerate=false and promptExpansion=false
-			expect(output).toContain("Not set"); // apiKey undefined
-		} finally {
-			result.unmount();
-		}
-	});
-
-	it("up/down arrow navigation with wrapping", async () => {
-		const onSave = mock(async () => undefined);
-		const onBack = mock(() => undefined);
-		const result = render(
-			<SettingsScreen config={baseConfig} onBack={onBack} onSave={onSave} />
-		);
-		try {
-			await waitUntil(
-				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Default Model"),
-				{ timeoutMs: 5000 }
-			);
-			// Down moves to next
-			await writeInput(result, KEYS.down);
-			await waitUntil(
-				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Default Aspect"),
-				{ timeoutMs: 3000 }
-			);
-			// Up on first item wraps to last (API Key)
-			await writeInput(result, KEYS.up);
-			await waitUntil(
-				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Default Model"),
-				{ timeoutMs: 3000 }
-			);
-			await writeInput(result, KEYS.up);
-			await waitUntil(
-				() => stripAnsi(result.lastFrame() ?? "").includes("◆ API Key"),
-				{ timeoutMs: 3000 }
-			);
-			// Down on last item wraps to first
-			await writeInput(result, KEYS.down);
-			await waitUntil(
-				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Default Model"),
-				{ timeoutMs: 3000 }
-			);
-		} finally {
-			result.unmount();
-		}
-	});
-
-	it("enter on API Key text setting enters editing mode", async () => {
-		const onSave = mock(async () => undefined);
-		const onBack = mock(() => undefined);
-		const result = render(
-			<SettingsScreen config={baseConfig} onBack={onBack} onSave={onSave} />
-		);
-		try {
-			await waitUntil(
-				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Default Model"),
-				{ timeoutMs: 3000 }
-			);
-			// Navigate to API Key (index 7, so 7 downs from index 0)
-			for (let i = 0; i < 7; i++) {
-				await writeInput(result, KEYS.down);
-			}
-			await waitUntil(
-				() => stripAnsi(result.lastFrame() ?? "").includes("◆ API Key"),
-				{ timeoutMs: 3000 }
-			);
-			// Before enter, "Not set" is shown
-			let output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("Not set");
-			// Press enter to start editing
-			await writeInput(result, KEYS.enter);
-			// After entering edit mode, "Not set" should no longer appear for API Key
-			// The TextInput component replaces the static text
-			await waitUntil(
-				() => !stripAnsi(result.lastFrame() ?? "").includes("Not set"),
-				{ timeoutMs: 3000 }
-			);
-			output = stripAnsi(result.lastFrame() ?? "");
-			// In editing mode, the "Not set" text is replaced by the TextInput
-			expect(output).not.toContain("Not set");
 		} finally {
 			result.unmount();
 		}
 	});
 
-	it("escape from text editing mode exits without saving", async () => {
-		const onSave = mock(async () => undefined);
+	it("up/down arrow navigation wraps in list step", async () => {
+		const onPersistChange = mock(async () => undefined);
 		const onBack = mock(() => undefined);
-		const configWithKey: FalconConfig = {
-			...baseConfig,
-			apiKey: "test-key-12345678",
-		};
 		const result = render(
-			<SettingsScreen config={configWithKey} onBack={onBack} onSave={onSave} />
+			<SettingsScreen
+				config={baseConfig}
+				onBack={onBack}
+				onPersistChange={onPersistChange}
+			/>
 		);
+
 		try {
-			await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
-				timeoutMs: 3000,
-			});
-			// Navigate to API Key
-			for (let i = 0; i < 7; i++) {
-				await writeInput(result, KEYS.down);
-			}
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Default Model"),
+				{ timeoutMs: 3000 }
+			);
+
+			await writeInput(result, KEYS.up);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("◆ API Key"),
 				{ timeoutMs: 3000 }
 			);
-			// Enter editing mode
-			await writeInput(result, KEYS.enter);
+
+			await writeInput(result, KEYS.down);
 			await waitUntil(
-				() => {
-					const frame = stripAnsi(result.lastFrame() ?? "");
-					// The masked value (test-key-12345678) should no longer show as masked display
-					return frame.includes("◆ API Key") && !frame.includes("test-key-");
-				},
-				{ timeoutMs: 3000 }
-			);
-			// Press escape to exit editing without saving
-			await writeInput(result, KEYS.escape);
-			// onBack should NOT have been called (escape exits editing, not the screen)
-			expect(onBack).not.toHaveBeenCalled();
-			// The original masked value should be restored
-			await waitUntil(
-				() => {
-					const frame = stripAnsi(result.lastFrame() ?? "");
-					return frame.includes("test-key...5678");
-				},
+				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Default Model"),
 				{ timeoutMs: 3000 }
 			);
 		} finally {
@@ -178,16 +99,79 @@ describe("settings screen", () => {
 		}
 	});
 
-	it("escape while not editing invokes onBack", async () => {
-		const onSave = mock(async () => undefined);
+	it("enter on API key opens text editor", async () => {
+		const onPersistChange = mock(async () => undefined);
 		const onBack = mock(() => undefined);
 		const result = render(
-			<SettingsScreen config={baseConfig} onBack={onBack} onSave={onSave} />
+			<SettingsScreen
+				config={baseConfig}
+				onBack={onBack}
+				onPersistChange={onPersistChange}
+			/>
 		);
+
 		try {
-			await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
-				timeoutMs: 3000,
-			});
+			await waitForRender(result);
+			await goToSetting(result, 7);
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("◆ API Key"),
+				{ timeoutMs: 3000 }
+			);
+
+			await writeInput(result, KEYS.enter);
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("enter save │ esc cancel"),
+				{ timeoutMs: 3000 }
+			);
+		} finally {
+			result.unmount();
+		}
+	});
+
+	it("escape from text editor exits without persisting", async () => {
+		const onPersistChange = mock(async () => undefined);
+		const onBack = mock(() => undefined);
+		const result = render(
+			<SettingsScreen
+				config={baseConfig}
+				onBack={onBack}
+				onPersistChange={onPersistChange}
+			/>
+		);
+
+		try {
+			await waitForRender(result);
+			await goToSetting(result, 7);
+			await writeInput(result, KEYS.enter);
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("enter save │ esc cancel"),
+				{ timeoutMs: 3000 }
+			);
+
+			await writeInput(result, "new-key-123");
+			await writeInput(result, KEYS.escape);
+
+			expect(onPersistChange).not.toHaveBeenCalled();
+			expect(onBack).not.toHaveBeenCalled();
+			expect(stripAnsi(result.lastFrame() ?? "")).toContain("Not set");
+		} finally {
+			result.unmount();
+		}
+	});
+
+	it("escape in list step invokes onBack", async () => {
+		const onPersistChange = mock(async () => undefined);
+		const onBack = mock(() => undefined);
+		const result = render(
+			<SettingsScreen
+				config={baseConfig}
+				onBack={onBack}
+				onPersistChange={onPersistChange}
+			/>
+		);
+
+		try {
+			await waitForRender(result);
 			await writeInput(result, KEYS.escape);
 			expect(onBack).toHaveBeenCalledTimes(1);
 		} finally {
@@ -195,22 +179,21 @@ describe("settings screen", () => {
 		}
 	});
 
-	it("q while not editing invokes onQuit", async () => {
-		const onSave = mock(async () => undefined);
+	it("q in list step invokes onQuit", async () => {
+		const onPersistChange = mock(async () => undefined);
 		const onBack = mock(() => undefined);
 		const onQuit = mock(() => undefined);
 		const result = render(
 			<SettingsScreen
 				config={baseConfig}
 				onBack={onBack}
+				onPersistChange={onPersistChange}
 				onQuit={onQuit}
-				onSave={onSave}
 			/>
 		);
+
 		try {
-			await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
-				timeoutMs: 3000,
-			});
+			await waitForRender(result);
 			await writeInput(result, "q");
 			expect(onQuit).toHaveBeenCalledTimes(1);
 			expect(onBack).not.toHaveBeenCalled();
@@ -219,423 +202,348 @@ describe("settings screen", () => {
 		}
 	});
 
-	it("q while editing API key does not invoke onQuit", async () => {
-		const onSave = mock(async () => undefined);
+	it("q in text editor does not invoke onQuit", async () => {
+		const onPersistChange = mock(async () => undefined);
 		const onBack = mock(() => undefined);
 		const onQuit = mock(() => undefined);
 		const result = render(
 			<SettingsScreen
 				config={baseConfig}
 				onBack={onBack}
+				onPersistChange={onPersistChange}
 				onQuit={onQuit}
-				onSave={onSave}
 			/>
 		);
+
 		try {
-			await waitUntil(
-				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Default Model"),
-				{ timeoutMs: 3000 }
-			);
-			for (let i = 0; i < 7; i++) {
-				await writeInput(result, KEYS.down);
-			}
-			await waitUntil(
-				() => stripAnsi(result.lastFrame() ?? "").includes("◆ API Key"),
-				{ timeoutMs: 3000 }
-			);
+			await waitForRender(result);
+			await goToSetting(result, 7);
 			await writeInput(result, KEYS.enter);
 			await waitUntil(
-				() => !stripAnsi(result.lastFrame() ?? "").includes("Not set"),
+				() => stripAnsi(result.lastFrame() ?? "").includes("enter save │ esc cancel"),
 				{ timeoutMs: 3000 }
 			);
+
 			await writeInput(result, "q");
 			expect(onQuit).not.toHaveBeenCalled();
+			expect(stripAnsi(result.lastFrame() ?? "")).toContain("enter save │ esc cancel");
 		} finally {
 			result.unmount();
 		}
 	});
 
-	it("Default Aspect cycling shows valid aspect ratio strings", async () => {
-		const onSave = mock(async () => undefined);
+	it("pressing s shows auto-save hint and does not persist", async () => {
+		const onPersistChange = mock(async () => undefined);
 		const onBack = mock(() => undefined);
 		const result = render(
-			<SettingsScreen config={baseConfig} onBack={onBack} onSave={onSave} />
+			<SettingsScreen
+				config={baseConfig}
+				onBack={onBack}
+				onPersistChange={onPersistChange}
+			/>
 		);
+
 		try {
-			await waitUntil(
-				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Default Model"),
-				{ timeoutMs: 3000 }
-			);
-
-			// Navigate to Default Aspect (index 1)
-			await writeInput(result, KEYS.down);
-			await waitUntil(
-				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Default Aspect"),
-				{ timeoutMs: 3000 }
-			);
-
-			// Initial value should be "1:1"
-			let output = stripAnsi(result.lastFrame() ?? "");
-			const selectedLine = output
-				.split("\n")
-				.find((l) => l.includes("◆ Default Aspect"));
-			expect(selectedLine).toContain("1:1");
-
-			// Press enter to cycle to next aspect ratio
-			// ASPECT_RATIOS order: 1:1, 4:3, 3:4, 16:9, 9:16, 3:2, 2:3, 4:5, 5:4, 21:9
-			// 1:1 is at index 0, so next is 4:3
-			await writeInput(result, KEYS.enter);
-			await waitUntil(
-				() => {
-					const frame = stripAnsi(result.lastFrame() ?? "");
-					const line = frame
-						.split("\n")
-						.find((l) => l.includes("◆ Default Aspect"));
-					return line?.includes("4:3") ?? false;
-				},
-				{ timeoutMs: 3000 }
-			);
-
-			output = stripAnsi(result.lastFrame() ?? "");
-			const updatedLine = output
-				.split("\n")
-				.find((l) => l.includes("◆ Default Aspect"));
-			expect(updatedLine).toContain("4:3");
-		} finally {
-			result.unmount();
-		}
-	});
-
-	it("Default Resolution cycling shows valid resolution strings", async () => {
-		const onSave = mock(async () => undefined);
-		const onBack = mock(() => undefined);
-		const result = render(
-			<SettingsScreen config={baseConfig} onBack={onBack} onSave={onSave} />
-		);
-		try {
-			await waitUntil(
-				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Default Model"),
-				{ timeoutMs: 3000 }
-			);
-
-			// Navigate to Default Resolution (index 2)
-			await writeInput(result, KEYS.down);
-			await waitUntil(
-				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Default Aspect"),
-				{ timeoutMs: 3000 }
-			);
-			await writeInput(result, KEYS.down);
+			await waitForRender(result);
+			await writeInput(result, "s");
 			await waitUntil(
 				() =>
-					stripAnsi(result.lastFrame() ?? "").includes("◆ Default Resolution"),
+					stripAnsi(result.lastFrame() ?? "").includes(
+						"Auto-save is enabled. Changes save automatically."
+					),
 				{ timeoutMs: 3000 }
 			);
-
-			// Initial value should be "2K"
-			let output = stripAnsi(result.lastFrame() ?? "");
-			const selectedLine = output
-				.split("\n")
-				.find((l) => l.includes("◆ Default Resolution"));
-			expect(selectedLine).toContain("2K");
-
-			// Press enter to cycle to next resolution
-			// RESOLUTIONS order starts with: 1K, 2K, 4K
-			// 2K is at index 1, so next is 4K
-			await writeInput(result, KEYS.enter);
-			await waitUntil(
-				() => {
-					const frame = stripAnsi(result.lastFrame() ?? "");
-					const line = frame
-						.split("\n")
-						.find((l) => l.includes("◆ Default Resolution"));
-					return line?.includes("4K") ?? false;
-				},
-				{ timeoutMs: 3000 }
-			);
-
-			output = stripAnsi(result.lastFrame() ?? "");
-			const updatedLine = output
-				.split("\n")
-				.find((l) => l.includes("◆ Default Resolution"));
-			expect(updatedLine).toContain("4K");
+			expect(onPersistChange).not.toHaveBeenCalled();
 		} finally {
 			result.unmount();
 		}
 	});
 
-	it("Default Model cycling shows display names not keys", async () => {
-		const onSave = mock(async () => undefined);
+	it("select editor persists on arrow change", async () => {
+		const onPersistChange = mock(async () => undefined);
 		const onBack = mock(() => undefined);
 		const result = render(
-			<SettingsScreen config={baseConfig} onBack={onBack} onSave={onSave} />
+			<SettingsScreen
+				config={baseConfig}
+				onBack={onBack}
+				onPersistChange={onPersistChange}
+			/>
 		);
+
 		try {
-			const validDisplayNames = GENERATION_MODELS.map(
-				(key) => MODELS[key].name
-			);
-			const selectedModelLine = () =>
-				stripAnsi(result.lastFrame() ?? "")
-					.split("\n")
-					.find((line) => line.includes("◆ Default Model")) ?? "";
-
-			// Wait for render with Default Model selected (index 0)
+			await waitForRender(result);
+			await goToSetting(result, 3); // Upscaler
+			await writeInput(result, KEYS.enter);
 			await waitUntil(
-				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Default Model"),
-				{ timeoutMs: 5000 }
+				() => stripAnsi(result.lastFrame() ?? "").includes("Editing Upscaler"),
+				{ timeoutMs: 3000 }
 			);
 
-			const initialLine = selectedModelLine();
-			const initialValue = initialLine
-				.replace(DEFAULT_MODEL_PREFIX_REGEX, "")
-				.trim();
-			expect(initialValue).toBe(MODELS[baseConfig.defaultModel].name);
-			expect(GENERATION_MODELS).not.toContain(initialValue);
-			expect(validDisplayNames).toContain(initialValue);
-
-			// Press enter to cycle to next model
-			await writeInput(result, KEYS.enter);
-
-			// After cycling, selected model value should change and still be a display name.
-			await waitUntil(() => selectedModelLine() !== initialLine, {
-				timeoutMs: 5000,
+			await writeInput(result, KEYS.down);
+			await waitUntil(() => onPersistChange.mock.calls.length === 1, {
+				timeoutMs: 3000,
 			});
-
-			const firstCycledLine = selectedModelLine();
-			const firstCycledValue = firstCycledLine
-				.replace(DEFAULT_MODEL_PREFIX_REGEX, "")
-				.trim();
-			expect(GENERATION_MODELS).not.toContain(firstCycledValue);
-			expect(validDisplayNames).toContain(firstCycledValue);
-			expect(firstCycledValue).not.toBe(initialValue);
-
-			// Press enter again to cycle again.
-			await writeInput(result, KEYS.enter);
-			await waitUntil(() => selectedModelLine() !== firstCycledLine, {
-				timeoutMs: 5000,
-			});
-
-			const secondCycledLine = selectedModelLine();
-			const secondCycledValue = secondCycledLine
-				.replace(DEFAULT_MODEL_PREFIX_REGEX, "")
-				.trim();
-			expect(GENERATION_MODELS).not.toContain(secondCycledValue);
-			expect(validDisplayNames).toContain(secondCycledValue);
-			expect(secondCycledValue).not.toBe(firstCycledValue);
+			expect(onPersistChange.mock.calls[0][0]).toEqual({ upscaler: "crystal" });
+			expect(selectedLine(result, "Upscaler")).toContain("crystal");
 		} finally {
 			result.unmount();
 		}
 	});
 
-	it("API key text input submission saves new key", async () => {
-		const onSave = mock(async () => undefined);
+	it("toggle editor persists on arrow change", async () => {
+		const onPersistChange = mock(async () => undefined);
 		const onBack = mock(() => undefined);
 		const result = render(
-			<SettingsScreen config={baseConfig} onBack={onBack} onSave={onSave} />
+			<SettingsScreen
+				config={baseConfig}
+				onBack={onBack}
+				onPersistChange={onPersistChange}
+			/>
 		);
+
 		try {
+			await waitForRender(result);
+			await goToSetting(result, 5); // Open After Generate
+			await writeInput(result, KEYS.enter);
 			await waitUntil(
-				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Default Model"),
+				() =>
+					stripAnsi(result.lastFrame() ?? "").includes(
+						"Editing Open After Generate"
+					),
 				{ timeoutMs: 3000 }
 			);
-			// Navigate to API Key (index 7)
-			for (let i = 0; i < 7; i++) {
-				await writeInput(result, KEYS.down);
+
+			await writeInput(result, KEYS.down);
+			await waitUntil(() => onPersistChange.mock.calls.length === 1, {
+				timeoutMs: 3000,
+			});
+			expect(onPersistChange.mock.calls[0][0]).toEqual({
+				openAfterGenerate: true,
+			});
+			expect(selectedLine(result, "Open After Generate")).toContain("Yes");
+		} finally {
+			result.unmount();
+		}
+	});
+
+	it("default model editor shows display names", async () => {
+		const onPersistChange = mock(async () => undefined);
+		const onBack = mock(() => undefined);
+		const result = render(
+			<SettingsScreen
+				config={baseConfig}
+				onBack={onBack}
+				onPersistChange={onPersistChange}
+			/>
+		);
+
+		try {
+			await waitForRender(result);
+			await writeInput(result, KEYS.enter); // Default Model editor
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Editing Default Model"),
+				{ timeoutMs: 3000 }
+			);
+
+			const output = stripAnsi(result.lastFrame() ?? "");
+			for (const modelKey of GENERATION_MODELS) {
+				expect(output).toContain(MODELS[modelKey].name);
+				expect(output).not.toContain(`◆ ${modelKey}`);
 			}
-			await waitUntil(
-				() => stripAnsi(result.lastFrame() ?? "").includes("◆ API Key"),
-				{ timeoutMs: 3000 }
-			);
-			// Press enter to enter edit mode
+		} finally {
+			result.unmount();
+		}
+	});
+
+	it("API key submit persists and masks value", async () => {
+		const onPersistChange = mock(async () => undefined);
+		const onBack = mock(() => undefined);
+		const result = render(
+			<SettingsScreen
+				config={baseConfig}
+				onBack={onBack}
+				onPersistChange={onPersistChange}
+			/>
+		);
+
+		try {
+			await waitForRender(result);
+			await goToSetting(result, 7);
 			await writeInput(result, KEYS.enter);
 			await waitUntil(
-				() => !stripAnsi(result.lastFrame() ?? "").includes("Not set"),
+				() => stripAnsi(result.lastFrame() ?? "").includes("enter save │ esc cancel"),
 				{ timeoutMs: 3000 }
 			);
-			// Type a key value
+
 			const testKey = "fal-key-abc123";
 			for (const char of testKey) {
 				await writeInput(result, char);
 			}
-			// Press enter to submit the text input
 			await writeInput(result, KEYS.enter);
-			// Wait for edit mode to exit (masked value should appear)
+
+			await waitUntil(() => onPersistChange.mock.calls.length === 1, {
+				timeoutMs: 3000,
+			});
+			expect(onPersistChange.mock.calls[0][0]).toEqual({ apiKey: testKey });
 			await waitUntil(
-				() => {
-					const frame = stripAnsi(result.lastFrame() ?? "");
-					return frame.includes("fal-key-...c123");
-				},
+				() => stripAnsi(result.lastFrame() ?? "").includes("fal-key-...c123"),
 				{ timeoutMs: 3000 }
 			);
-			// Press 's' to save
-			await writeInput(result, "s");
-			expect(onSave).toHaveBeenCalledTimes(1);
-			const savedConfig = onSave.mock.calls[0][0] as FalconConfig;
-			expect(savedConfig.apiKey).toBe(testKey);
 		} finally {
 			result.unmount();
 		}
 	});
 
-	// Feature: studio-ui-tests, Property 6: Settings toggle flips value
-	// **Validates: Requirements 5.3**
-	it("property: toggle flips value", async () => {
-		const toggleIndices = [5, 6]; // Open After Generate, Prompt Expansion
-
-		await fc.assert(
-			fc.asyncProperty(
-				fc.constantFrom(...toggleIndices),
-				fc.integer({ min: 1, max: 5 }),
-				async (settingIndex, pressCount) => {
-					const onSave = mock(async () => undefined);
-					const onBack = mock(() => undefined);
-					const result = render(
-						<SettingsScreen
-							config={baseConfig}
-							onBack={onBack}
-							onSave={onSave}
-						/>
-					);
-					try {
-						await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
-							timeoutMs: 3000,
-						});
-						// Navigate to the toggle setting
-						for (let i = 0; i < settingIndex; i++) {
-							await writeInput(result, KEYS.down);
-						}
-						// Initial value is "No" (both toggles are false in baseConfig)
-						const initialValue = false;
-						// Press enter pressCount times to toggle
-						for (let i = 0; i < pressCount; i++) {
-							await writeInput(result, KEYS.enter);
-						}
-						// After odd presses: flipped; after even presses: same as initial
-						const expectedValue =
-							pressCount % 2 === 1 ? !initialValue : initialValue;
-						const expectedText = expectedValue ? "Yes" : "No";
-						await waitUntil(
-							() => {
-								const frame = stripAnsi(result.lastFrame() ?? "");
-								const lines = frame.split("\n");
-								const selectedLine = lines.find((l) => l.includes("◆"));
-								return selectedLine?.includes(expectedText) ?? false;
-							},
-							{ timeoutMs: 3000 }
-						);
-					} finally {
-						result.unmount();
-					}
-				}
-			),
-			{ numRuns: 10 }
+	it("shows Saving then Saved status on successful persist", async () => {
+		let resolvePersist: (() => void) | undefined;
+		const onPersistChange = mock(
+			() =>
+				new Promise<void>((resolve) => {
+					resolvePersist = resolve;
+				})
 		);
-	}, 30_000);
-
-	// Feature: studio-ui-tests, Property 7: Settings select cycles options
-	// **Validates: Requirements 5.4**
-	it("property: select cycles options", async () => {
-		// Use simpler select settings (Upscaler and Background Remover) where
-		// displayed value matches the option key directly
-		const selectSettings = [
-			{
-				index: 3,
-				options: ["clarity", "crystal"],
-				initial: "clarity",
-			},
-			{ index: 4, options: ["rmbg", "bria"], initial: "rmbg" },
-		];
-
-		await fc.assert(
-			fc.asyncProperty(
-				fc.constantFrom(...selectSettings),
-				fc.integer({ min: 1, max: 5 }),
-				async (setting, pressCount) => {
-					const onSave = mock(async () => undefined);
-					const onBack = mock(() => undefined);
-					const result = render(
-						<SettingsScreen
-							config={baseConfig}
-							onBack={onBack}
-							onSave={onSave}
-						/>
-					);
-					try {
-						await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
-							timeoutMs: 3000,
-						});
-						// Navigate to the setting
-						for (let i = 0; i < setting.index; i++) {
-							await writeInput(result, KEYS.down);
-						}
-						// Press enter pressCount times to cycle
-						for (let i = 0; i < pressCount; i++) {
-							await writeInput(result, KEYS.enter);
-						}
-						// Calculate expected option
-						const initialIdx = setting.options.indexOf(setting.initial);
-						const expectedIdx =
-							(initialIdx + pressCount) % setting.options.length;
-						const expectedOption = setting.options[expectedIdx];
-						await waitUntil(
-							() => {
-								const frame = stripAnsi(result.lastFrame() ?? "");
-								const lines = frame.split("\n");
-								const selectedLine = lines.find((l) => l.includes("◆"));
-								return selectedLine?.includes(expectedOption) ?? false;
-							},
-							{ timeoutMs: 3000 }
-						);
-					} finally {
-						result.unmount();
-					}
-				}
-			),
-			{ numRuns: 10 }
+		const onBack = mock(() => undefined);
+		const result = render(
+			<SettingsScreen
+				config={baseConfig}
+				onBack={onBack}
+				onPersistChange={onPersistChange}
+			/>
 		);
-	}, 30_000);
 
-	// Feature: studio-ui-tests, Property 8: Settings save captures current state
-	// **Validates: Requirements 5.7**
-	it("property: save captures current state after modifications", async () => {
+		try {
+			await waitForRender(result);
+			await goToSetting(result, 5);
+			await writeInput(result, KEYS.enter);
+			await writeInput(result, KEYS.down);
+
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Saving..."),
+				{ timeoutMs: 3000 }
+			);
+			resolvePersist?.();
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Saved"),
+				{ timeoutMs: 3000 }
+			);
+		} finally {
+			result.unmount();
+		}
+	});
+
+	it("shows save failure while keeping local value", async () => {
+		const onPersistChange = mock(async () => {
+			throw new Error("persist failed");
+		});
+		const onBack = mock(() => undefined);
+		const result = render(
+			<SettingsScreen
+				config={baseConfig}
+				onBack={onBack}
+				onPersistChange={onPersistChange}
+			/>
+		);
+
+		try {
+			await waitForRender(result);
+			await goToSetting(result, 5);
+			await writeInput(result, KEYS.enter);
+			await writeInput(result, KEYS.down);
+
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Save failed"),
+				{ timeoutMs: 3000 }
+			);
+			expect(selectedLine(result, "Open After Generate")).toContain("Yes");
+		} finally {
+			result.unmount();
+		}
+	});
+
+	it("ignores stale save completions and keeps latest save status", async () => {
+		const resolvers: Array<() => void> = [];
+		const onPersistChange = mock(
+			() =>
+				new Promise<void>((resolve) => {
+					resolvers.push(resolve);
+				})
+		);
+		const onBack = mock(() => undefined);
+		const result = render(
+			<SettingsScreen
+				config={baseConfig}
+				onBack={onBack}
+				onPersistChange={onPersistChange}
+			/>
+		);
+
+		try {
+			await waitForRender(result);
+			await goToSetting(result, 3); // Upscaler
+			await writeInput(result, KEYS.enter);
+
+			await writeInput(result, KEYS.down); // clarity -> crystal
+			await writeInput(result, KEYS.up); // crystal -> clarity
+			await waitUntil(() => onPersistChange.mock.calls.length === 2, {
+				timeoutMs: 3000,
+			});
+
+			resolvers[0]?.();
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Saving..."),
+				{ timeoutMs: 3000 }
+			);
+			expect(stripAnsi(result.lastFrame() ?? "")).not.toContain("Saved");
+
+			resolvers[1]?.();
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Saved"),
+				{ timeoutMs: 3000 }
+			);
+
+			await writeInput(result, KEYS.enter); // exit editor
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Upscaler"),
+				{ timeoutMs: 3000 }
+			);
+			expect(selectedLine(result, "Upscaler")).toContain("clarity");
+		} finally {
+			result.unmount();
+		}
+	});
+
+	it("property: repeated toggle changes persist every change", async () => {
 		await fc.assert(
-			fc.asyncProperty(
-				fc.integer({ min: 0, max: 3 }),
-				async (togglePresses) => {
-					const onSave = mock(async () => undefined);
-					const onBack = mock(() => undefined);
-					const result = render(
-						<SettingsScreen
-							config={baseConfig}
-							onBack={onBack}
-							onSave={onSave}
-						/>
-					);
-					try {
-						await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
-							timeoutMs: 3000,
-						});
-						// Navigate to "Open After Generate" (index 5) and toggle it
-						for (let i = 0; i < 5; i++) {
-							await writeInput(result, KEYS.down);
-						}
-						for (let i = 0; i < togglePresses; i++) {
-							await writeInput(result, KEYS.enter);
-						}
-						// Press 's' to save
-						await writeInput(result, "s");
-						expect(onSave).toHaveBeenCalledTimes(1);
-						const savedConfig = onSave.mock.calls[0][0] as FalconConfig;
-						// After togglePresses toggles, the value should be flipped if odd
-						const expectedValue = togglePresses % 2 === 1;
-						expect(savedConfig.openAfterGenerate).toBe(expectedValue);
-						// Other values should remain unchanged
-						expect(savedConfig.defaultModel).toBe("banana");
-						expect(savedConfig.defaultAspect).toBe("1:1");
-					} finally {
-						result.unmount();
+			fc.asyncProperty(fc.integer({ min: 1, max: 6 }), async (presses) => {
+				const onPersistChange = mock(async () => undefined);
+				const onBack = mock(() => undefined);
+				const result = render(
+					<SettingsScreen
+						config={baseConfig}
+						onBack={onBack}
+						onPersistChange={onPersistChange}
+					/>
+				);
+
+				try {
+					await waitForRender(result);
+					await goToSetting(result, 5);
+					await writeInput(result, KEYS.enter);
+
+					for (let index = 0; index < presses; index++) {
+						await writeInput(result, KEYS.down);
 					}
+
+					const expected = presses % 2 === 1 ? "Yes" : "No";
+					await waitUntil(
+						() => selectedLine(result, "Open After Generate").includes(expected),
+						{ timeoutMs: 3000 }
+					);
+					expect(onPersistChange).toHaveBeenCalledTimes(presses);
+				} finally {
+					result.unmount();
 				}
-			),
+			}),
 			{ numRuns: 10 }
 		);
 	}, 30_000);

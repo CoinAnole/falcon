@@ -123,9 +123,8 @@ export function App({
 						config={config}
 						onBack={() => setScreen("home")}
 						onQuit={handleQuit}
-						onSave={async (newConfig) => {
-							await onConfigChange(newConfig);
-							setScreen("home");
+						onPersistChange={async (configPatch) => {
+							await onConfigChange(configPatch);
 						}}
 					/>
 				);

@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import { afterAll, beforeAll, describe, expect, it, mock } from "bun:test";
 import fc from "fast-check";
 import { render } from "ink-testing-library";
 import type { FalconConfig, History } from "../../src/studio/deps/config";
@@ -116,6 +116,68 @@ describe("studio app routing", () => {
 				);
 				output = stripAnsi(result.lastFrame() ?? "");
 				expect(output).toContain("Generate");
+			} finally {
+				result.unmount();
+			}
+		},
+		APP_TEST_TIMEOUT_MS
+	);
+
+	it(
+		"stays on settings after a change and returns home on escape",
+		async () => {
+			const onConfigChange = mock(async () => undefined);
+			const result = render(
+				<App
+					config={baseConfig}
+					history={createHistory()}
+					onConfigChange={onConfigChange}
+					onHistoryChange={async () => undefined}
+				/>
+			);
+			try {
+				await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
+					timeoutMs: 3000,
+				});
+				await writeInput(result, KEYS.down);
+				await writeInput(result, KEYS.down);
+				await writeInput(result, KEYS.down);
+				await writeInput(result, KEYS.enter);
+				await waitUntil(
+					() => stripAnsi(result.lastFrame() ?? "").includes("Settings"),
+					{ timeoutMs: 3000 }
+				);
+
+				await writeInput(result, KEYS.enter); // Open Default Model editor
+				await waitUntil(
+					() =>
+						stripAnsi(result.lastFrame() ?? "").includes("Editing Default Model"),
+					{ timeoutMs: 3000 }
+				);
+				await writeInput(result, KEYS.down); // Persist change
+				await waitUntil(() => onConfigChange.mock.calls.length === 1, {
+					timeoutMs: 3000,
+				});
+
+				const stillOnSettings = stripAnsi(result.lastFrame() ?? "");
+				expect(stillOnSettings).toContain("Settings");
+				expect(stillOnSettings).toContain("Default Model");
+				expect(stillOnSettings).not.toContain("Create new image from prompt");
+
+				await writeInput(result, KEYS.escape); // Editor -> list
+				await waitUntil(
+					() =>
+						stripAnsi(result.lastFrame() ?? "").includes(
+							"enter edit │ esc back │ q quit │ s auto-save info"
+						),
+					{ timeoutMs: 3000 }
+				);
+
+				await writeInput(result, KEYS.escape); // Settings -> home
+				await waitUntil(
+					() => stripAnsi(result.lastFrame() ?? "").includes("Generate"),
+					{ timeoutMs: 3000 }
+				);
 			} finally {
 				result.unmount();
 			}
