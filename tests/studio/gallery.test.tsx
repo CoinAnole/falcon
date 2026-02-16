@@ -37,8 +37,8 @@ const createHistoryWithGenerations = (count: number): History => ({
 		createGeneration({
 			id: `test-id-${i}`,
 			prompt: `test prompt ${i}`,
-			timestamp: new Date(Date.now() - i * 60000).toISOString(),
-		}),
+			timestamp: new Date(Date.now() - i * 60_000).toISOString(),
+		})
 	),
 	totalCost: { USD: { session: 0, today: 0, allTime: 0 } },
 	lastSessionDate: new Date().toISOString().split("T")[0],
@@ -46,9 +46,9 @@ const createHistoryWithGenerations = (count: number): History => ({
 
 describe("gallery screen", () => {
 	it("renders empty state with no generations", async () => {
-		const onBack = mock(() => {});
+		const onBack = mock(() => undefined);
 		const result = render(
-			<GalleryScreen history={createEmptyHistory()} onBack={onBack} />,
+			<GalleryScreen history={createEmptyHistory()} onBack={onBack} />
 		);
 		try {
 			await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
@@ -62,7 +62,7 @@ describe("gallery screen", () => {
 	});
 
 	it("displays prompts and model names with generations", async () => {
-		const onBack = mock(() => {});
+		const onBack = mock(() => undefined);
 		const history = createHistoryWithGenerations(3);
 		const result = render(<GalleryScreen history={history} onBack={onBack} />);
 		try {
@@ -78,7 +78,7 @@ describe("gallery screen", () => {
 	});
 
 	it("shows pagination controls with more than 8 generations", async () => {
-		const onBack = mock(() => {});
+		const onBack = mock(() => undefined);
 		const history = createHistoryWithGenerations(12);
 		const result = render(<GalleryScreen history={history} onBack={onBack} />);
 		try {
@@ -93,18 +93,18 @@ describe("gallery screen", () => {
 	});
 
 	it("right arrow navigates to next page", async () => {
-		const onBack = mock(() => {});
+		const onBack = mock(() => undefined);
 		const history = createHistoryWithGenerations(12);
 		const result = render(<GalleryScreen history={history} onBack={onBack} />);
 		try {
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Page 1/2"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			await writeInput(result, KEYS.right);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Page 2/2"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			const output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("Page 2/2");
@@ -114,25 +114,25 @@ describe("gallery screen", () => {
 	});
 
 	it("left arrow navigates to previous page", async () => {
-		const onBack = mock(() => {});
+		const onBack = mock(() => undefined);
 		const history = createHistoryWithGenerations(12);
 		const result = render(<GalleryScreen history={history} onBack={onBack} />);
 		try {
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Page 1/2"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			// Go to page 2 first
 			await writeInput(result, KEYS.right);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Page 2/2"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			// Go back to page 1
 			await writeInput(result, KEYS.left);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Page 1/2"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			const output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("Page 1/2");
@@ -142,7 +142,7 @@ describe("gallery screen", () => {
 	});
 
 	it("up/down arrow moves selection between items", async () => {
-		const onBack = mock(() => {});
+		const onBack = mock(() => undefined);
 		const history = createHistoryWithGenerations(3);
 		// Gallery reverses: display order is [prompt 2, prompt 1, prompt 0] (newest first)
 		const result = render(<GalleryScreen history={history} onBack={onBack} />);
@@ -164,7 +164,7 @@ describe("gallery screen", () => {
 					const selected = frame.split("\n").filter((l) => l.includes("◆"));
 					return selected.length === 1 && selected[0].includes("test prompt 1");
 				},
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 
 			// Move back up — should select "test prompt 2" again
@@ -175,7 +175,7 @@ describe("gallery screen", () => {
 					const selected = frame.split("\n").filter((l) => l.includes("◆"));
 					return selected.length === 1 && selected[0].includes("test prompt 2");
 				},
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 		} finally {
 			result.unmount();
@@ -183,7 +183,7 @@ describe("gallery screen", () => {
 	});
 
 	it("escape invokes onBack callback", async () => {
-		const onBack = mock(() => {});
+		const onBack = mock(() => undefined);
 		const history = createHistoryWithGenerations(3);
 		const result = render(<GalleryScreen history={history} onBack={onBack} />);
 		try {
@@ -198,13 +198,13 @@ describe("gallery screen", () => {
 	});
 
 	it("down arrow on last item of page 1 navigates to page 2 with first item selected", async () => {
-		const onBack = mock(() => {});
+		const onBack = mock(() => undefined);
 		const history = createHistoryWithGenerations(12);
 		const result = render(<GalleryScreen history={history} onBack={onBack} />);
 		try {
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Page 1/2"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 
 			// Navigate down 7 times to reach the last item on page 1 (index 7)
@@ -218,7 +218,7 @@ describe("gallery screen", () => {
 					const frame = stripAnsi(result.lastFrame() ?? "");
 					return frame.includes("Page 1/2") && frame.includes("◆");
 				},
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 
 			// Press down once more to cross to page 2
@@ -227,7 +227,7 @@ describe("gallery screen", () => {
 			// Verify page 2 is shown and first item is selected
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Page 2/2"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			const output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("Page 2/2");
@@ -241,20 +241,20 @@ describe("gallery screen", () => {
 	});
 
 	it("up arrow on first item of page 2 navigates to page 1 with last item selected", async () => {
-		const onBack = mock(() => {});
+		const onBack = mock(() => undefined);
 		const history = createHistoryWithGenerations(12);
 		const result = render(<GalleryScreen history={history} onBack={onBack} />);
 		try {
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Page 1/2"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 
 			// Navigate to page 2
 			await writeInput(result, KEYS.right);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Page 2/2"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 
 			// First item on page 2 is selected by default (index 0)
@@ -268,7 +268,7 @@ describe("gallery screen", () => {
 			// Verify page changes back to page 1
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Page 1/2"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 
 			output = stripAnsi(result.lastFrame() ?? "");
@@ -288,7 +288,7 @@ describe("gallery screen", () => {
 	});
 
 	it("enter opens the selected generation's image", async () => {
-		const onBack = mock(() => {});
+		const onBack = mock(() => undefined);
 		const history = createHistoryWithGenerations(3);
 		// Gallery reverses: display order is newest first, so index 0 = generations[2] = "test prompt 0" with id "test-id-0"
 		// Actually: createHistoryWithGenerations creates [test-id-0, test-id-1, test-id-2], reversed = [test-id-2, test-id-1, test-id-0]

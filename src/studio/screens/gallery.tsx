@@ -19,6 +19,24 @@ export function GalleryScreen({ history, onBack }: GalleryScreenProps) {
 	const totalPages = Math.ceil(generations.length / pageSize);
 	const pageItems = generations.slice(page * pageSize, (page + 1) * pageSize);
 
+	const handleUpArrow = () => {
+		if (selectedIndex > 0) {
+			setSelectedIndex(selectedIndex - 1);
+		} else if (page > 0) {
+			setPage(page - 1);
+			setSelectedIndex(pageSize - 1);
+		}
+	};
+
+	const handleDownArrow = () => {
+		if (selectedIndex < pageItems.length - 1) {
+			setSelectedIndex(selectedIndex + 1);
+		} else if (page < totalPages - 1) {
+			setPage(page + 1);
+			setSelectedIndex(0);
+		}
+	};
+
 	useInput(async (_input, key) => {
 		if (key.escape) {
 			onBack();
@@ -26,21 +44,11 @@ export function GalleryScreen({ history, onBack }: GalleryScreenProps) {
 		}
 
 		if (key.upArrow) {
-			if (selectedIndex > 0) {
-				setSelectedIndex(selectedIndex - 1);
-			} else if (page > 0) {
-				setPage(page - 1);
-				setSelectedIndex(pageSize - 1);
-			}
+			handleUpArrow();
 		}
 
 		if (key.downArrow) {
-			if (selectedIndex < pageItems.length - 1) {
-				setSelectedIndex(selectedIndex + 1);
-			} else if (page < totalPages - 1) {
-				setPage(page + 1);
-				setSelectedIndex(0);
-			}
+			handleDownArrow();
 		}
 
 		if (key.leftArrow && page > 0) {
@@ -54,7 +62,6 @@ export function GalleryScreen({ history, onBack }: GalleryScreenProps) {
 		}
 
 		if (key.return && pageItems[selectedIndex]) {
-			// Open the selected image
 			try {
 				await openImage(pageItems[selectedIndex].output);
 			} catch {
@@ -91,7 +98,7 @@ export function GalleryScreen({ history, onBack }: GalleryScreenProps) {
 
 				return (
 					<Box key={gen.id} marginLeft={1}>
-						<Text color={isSelected ? "magenta" : undefined} bold={isSelected}>
+						<Text bold={isSelected} color={isSelected ? "magenta" : undefined}>
 							{isSelected ? "◆ " : "  "}
 						</Text>
 						<Box width={45}>

@@ -6,6 +6,7 @@ import { stripAnsi, waitUntil } from "../helpers/ink";
 const { Spinner } = await import("../../src/studio/components/spinner");
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+const SAFE_TEXT_REGEX = /^[A-Za-z0-9 ,.?!:_-]{1,50}$/;
 
 describe("Spinner", () => {
 	// Task 10.1: Unit tests for Spinner rendering
@@ -79,7 +80,7 @@ describe("Spinner", () => {
 		await fc.assert(
 			fc.asyncProperty(
 				fc
-					.stringMatching(/^[A-Za-z0-9 ,.?!:_-]{1,50}$/)
+					.stringMatching(SAFE_TEXT_REGEX)
 					.filter((text) => text.trim().length > 0 && text === text.trim()),
 				async (text) => {
 					const result = render(<Spinner text={text} />);
@@ -96,9 +97,9 @@ describe("Spinner", () => {
 					} finally {
 						result.unmount();
 					}
-				},
+				}
 			),
-			{ numRuns: 20 },
+			{ numRuns: 20 }
 		);
 	});
 });

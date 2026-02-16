@@ -1,10 +1,17 @@
 import { afterAll, beforeAll, describe, expect, it, mock } from "bun:test";
 import fc from "fast-check";
 import { render } from "ink-testing-library";
-import type { FalconConfig, Generation, History } from "../../src/studio/deps/config";
-import { registerStudioMocks, STUDIO_TEST_CONFIG } from "../helpers/studio-mocks";
+import type {
+	FalconConfig,
+	Generation,
+	History,
+} from "../../src/studio/deps/config";
 import { withMockFetch } from "../helpers/fetch";
 import { KEYS, stripAnsi, waitUntil, writeInput } from "../helpers/ink";
+import {
+	registerStudioMocks,
+	STUDIO_TEST_CONFIG,
+} from "../helpers/studio-mocks";
 
 // --- Test data factories ---
 
@@ -26,8 +33,8 @@ const createHistoryWithGenerations = (count: number): History => ({
 			id: `test-id-${i}`,
 			prompt: `test prompt ${i}`,
 			output: `/tmp/test-image-${i}.png`,
-			timestamp: new Date(Date.now() - i * 60000).toISOString(),
-		}),
+			timestamp: new Date(Date.now() - i * 60_000).toISOString(),
+		})
 	),
 	totalCost: { USD: { session: 0, today: 0, allTime: 0 } },
 	lastSessionDate: new Date().toISOString().split("T")[0],
@@ -36,7 +43,8 @@ const createHistoryWithGenerations = (count: number): History => ({
 const testHistory = createHistoryWithGenerations(3);
 
 // --- Module mocks ---
-let EditScreen = null as unknown as (typeof import("../../src/studio/screens/edit"))["EditScreen"];
+let EditScreen =
+	null as unknown as typeof import("../../src/studio/screens/edit")["EditScreen"];
 let originalFalKey: string | undefined;
 
 beforeAll(async () => {
@@ -48,7 +56,7 @@ beforeAll(async () => {
 
 afterAll(() => {
 	if (originalFalKey === undefined) {
-		delete process.env.FAL_KEY;
+		process.env.FAL_KEY = undefined;
 	} else {
 		process.env.FAL_KEY = originalFalKey;
 	}
@@ -80,21 +88,21 @@ const mockFetchImpl = (input: RequestInfo | URL) => {
 
 describe("edit screen", () => {
 	it("renders image selection list with history", async () => {
-		const onBack = mock(() => {});
-		const onComplete = mock(() => {});
-		const onError = mock(() => {});
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
 		const result = render(
 			<EditScreen
 				config={baseConfig}
 				onBack={onBack}
 				onComplete={onComplete}
 				onError={onError}
-			/>,
+			/>
 		);
 		try {
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			const output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("Select image");
@@ -106,28 +114,28 @@ describe("edit screen", () => {
 	});
 
 	it("tab toggles between history list and custom path input", async () => {
-		const onBack = mock(() => {});
-		const onComplete = mock(() => {});
-		const onError = mock(() => {});
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
 		const result = render(
 			<EditScreen
 				config={baseConfig}
 				onBack={onBack}
 				onComplete={onComplete}
 				onError={onError}
-			/>,
+			/>
 		);
 		try {
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			// Press tab to switch to custom path
 			await writeInput(result, KEYS.tab);
 			await waitUntil(
 				() =>
 					stripAnsi(result.lastFrame() ?? "").includes("Enter path or drag"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			let output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("Enter path or drag");
@@ -137,7 +145,7 @@ describe("edit screen", () => {
 			await writeInput(result, KEYS.tab);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("Select image");
@@ -147,21 +155,21 @@ describe("edit screen", () => {
 	});
 
 	it("selecting image and pressing enter shows operation selection", async () => {
-		const onBack = mock(() => {});
-		const onComplete = mock(() => {});
-		const onError = mock(() => {});
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
 		const result = render(
 			<EditScreen
 				config={baseConfig}
 				onBack={onBack}
 				onComplete={onComplete}
 				onError={onError}
-			/>,
+			/>
 		);
 		try {
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			// Press enter to select the first image
 			await writeInput(result, KEYS.enter);
@@ -170,7 +178,7 @@ describe("edit screen", () => {
 					const frame = stripAnsi(result.lastFrame() ?? "");
 					return frame.includes("Edit") && frame.includes("Variations");
 				},
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			const output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("Edit");
@@ -183,35 +191,35 @@ describe("edit screen", () => {
 	});
 
 	it("selecting Edit operation transitions to edit-model step", async () => {
-		const onBack = mock(() => {});
-		const onComplete = mock(() => {});
-		const onError = mock(() => {});
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
 		const result = render(
 			<EditScreen
 				config={baseConfig}
 				onBack={onBack}
 				onComplete={onComplete}
 				onError={onError}
-			/>,
+			/>
 		);
 		try {
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			await writeInput(result, KEYS.enter);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Variations"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			// Edit is the first operation, press enter
 			await writeInput(result, KEYS.enter);
 			await waitUntil(
 				() =>
 					stripAnsi(result.lastFrame() ?? "").includes(
-						"Select model for editing",
+						"Select model for editing"
 					),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			const output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("Select model for editing");
@@ -221,29 +229,29 @@ describe("edit screen", () => {
 	});
 
 	it("selecting Upscale operation transitions to scale step", async () => {
-		const onBack = mock(() => {});
-		const onComplete = mock(() => {});
-		const onError = mock(() => {});
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
 		const result = render(
 			<EditScreen
 				config={baseConfig}
 				onBack={onBack}
 				onComplete={onComplete}
 				onError={onError}
-			/>,
+			/>
 		);
 		try {
 			// Wait for initial image selection screen
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
-				{ timeoutMs: 5000 },
+				{ timeoutMs: 5000 }
 			);
 
 			// Select first image
 			await writeInput(result, KEYS.enter);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Variations"),
-				{ timeoutMs: 5000 },
+				{ timeoutMs: 5000 }
 			);
 
 			// Wait for operation menu to be fully rendered and interactive
@@ -252,7 +260,7 @@ describe("edit screen", () => {
 					const frame = stripAnsi(result.lastFrame() ?? "");
 					return frame.includes("Edit") && frame.includes("Variations");
 				},
-				{ timeoutMs: 5000 },
+				{ timeoutMs: 5000 }
 			);
 
 			// Navigate down to Upscale (index 2: Edit=0, Variations=1, Upscale=2)
@@ -263,7 +271,7 @@ describe("edit screen", () => {
 					const frame = stripAnsi(result.lastFrame() ?? "");
 					return frame.includes("◆") && frame.includes("Variations");
 				},
-				{ timeoutMs: 5000 },
+				{ timeoutMs: 5000 }
 			);
 
 			// Second down - move to Upscale
@@ -273,7 +281,7 @@ describe("edit screen", () => {
 					const frame = stripAnsi(result.lastFrame() ?? "");
 					return frame.includes("◆") && frame.includes("Upscale");
 				},
-				{ timeoutMs: 5000 },
+				{ timeoutMs: 5000 }
 			);
 
 			// Select Upscale
@@ -281,7 +289,7 @@ describe("edit screen", () => {
 			await waitUntil(
 				() =>
 					stripAnsi(result.lastFrame() ?? "").includes("Select upscale factor"),
-				{ timeoutMs: 5000 },
+				{ timeoutMs: 5000 }
 			);
 
 			const output = stripAnsi(result.lastFrame() ?? "");
@@ -289,29 +297,29 @@ describe("edit screen", () => {
 		} finally {
 			result.unmount();
 		}
-	}, 30000);
+	}, 30_000);
 
 	it("selecting Remove Background transitions to confirm step", async () => {
-		const onBack = mock(() => {});
-		const onComplete = mock(() => {});
-		const onError = mock(() => {});
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
 		const result = render(
 			<EditScreen
 				config={baseConfig}
 				onBack={onBack}
 				onComplete={onComplete}
 				onError={onError}
-			/>,
+			/>
 		);
 		try {
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			await writeInput(result, KEYS.enter);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Variations"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			// Navigate down to Remove Background (index 3)
 			await writeInput(result, KEYS.down);
@@ -320,7 +328,7 @@ describe("edit screen", () => {
 					const frame = stripAnsi(result.lastFrame() ?? "");
 					return frame.includes("◆") && frame.includes("Variations");
 				},
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			await writeInput(result, KEYS.down);
 			await waitUntil(
@@ -328,7 +336,7 @@ describe("edit screen", () => {
 					const frame = stripAnsi(result.lastFrame() ?? "");
 					return frame.includes("◆") && frame.includes("Upscale");
 				},
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			await writeInput(result, KEYS.down);
 			await waitUntil(
@@ -336,12 +344,12 @@ describe("edit screen", () => {
 					const frame = stripAnsi(result.lastFrame() ?? "");
 					return frame.includes("◆") && frame.includes("Remove Background");
 				},
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			await writeInput(result, KEYS.enter);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Ready to process"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			const output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("Ready to process");
@@ -352,32 +360,32 @@ describe("edit screen", () => {
 	});
 
 	it("escape on operation step returns to image selection", async () => {
-		const onBack = mock(() => {});
-		const onComplete = mock(() => {});
-		const onError = mock(() => {});
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
 		const result = render(
 			<EditScreen
 				config={baseConfig}
 				onBack={onBack}
 				onComplete={onComplete}
 				onError={onError}
-			/>,
+			/>
 		);
 		try {
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			await writeInput(result, KEYS.enter);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Variations"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			// Press escape to go back to image selection
 			await writeInput(result, KEYS.escape);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			const output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("Select image");
@@ -388,28 +396,28 @@ describe("edit screen", () => {
 
 	// Task 1.2: Custom path input flow
 	it("custom path input: type path and submit transitions to operation", async () => {
-		const onBack = mock(() => {});
-		const onComplete = mock(() => {});
-		const onError = mock(() => {});
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
 		const result = render(
 			<EditScreen
 				config={baseConfig}
 				onBack={onBack}
 				onComplete={onComplete}
 				onError={onError}
-			/>,
+			/>
 		);
 		try {
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			// Tab to custom path input
 			await writeInput(result, KEYS.tab);
 			await waitUntil(
 				() =>
 					stripAnsi(result.lastFrame() ?? "").includes("Enter path or drag"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			// Type a valid path and submit
 			await writeInput(result, "/tmp/test-image.png");
@@ -419,7 +427,7 @@ describe("edit screen", () => {
 					const frame = stripAnsi(result.lastFrame() ?? "");
 					return frame.includes("Edit") && frame.includes("Variations");
 				},
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			const output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("Edit");
@@ -433,44 +441,44 @@ describe("edit screen", () => {
 
 	// Task 1.3: Prompt input step
 	it("prompt input step: type prompt and submit transitions to confirm", async () => {
-		const onBack = mock(() => {});
-		const onComplete = mock(() => {});
-		const onError = mock(() => {});
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
 		const result = render(
 			<EditScreen
 				config={baseConfig}
 				onBack={onBack}
 				onComplete={onComplete}
 				onError={onError}
-			/>,
+			/>
 		);
 		try {
 			// Select image
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			await writeInput(result, KEYS.enter);
 			// Select Edit operation (first item)
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Variations"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			await writeInput(result, KEYS.enter);
 			// Wait for model selection step
 			await waitUntil(
 				() =>
 					stripAnsi(result.lastFrame() ?? "").includes(
-						"Select model for editing",
+						"Select model for editing"
 					),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			// Select first model
 			await writeInput(result, KEYS.enter);
 			// Wait for prompt step
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Describe the edit"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			const promptFrame = stripAnsi(result.lastFrame() ?? "");
 			expect(promptFrame).toContain("Describe the edit");
@@ -480,7 +488,7 @@ describe("edit screen", () => {
 			// Verify transition to confirm step
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Ready to process"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			const output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("Ready to process");
@@ -492,28 +500,28 @@ describe("edit screen", () => {
 
 	// Task 1.4: Scale step adjustment
 	it("scale step: up arrow increases factor and enter confirms", async () => {
-		const onBack = mock(() => {});
-		const onComplete = mock(() => {});
-		const onError = mock(() => {});
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
 		const result = render(
 			<EditScreen
 				config={baseConfig}
 				onBack={onBack}
 				onComplete={onComplete}
 				onError={onError}
-			/>,
+			/>
 		);
 		try {
 			// Select image
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			await writeInput(result, KEYS.enter);
 			// Navigate to Upscale (index 2)
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Variations"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			await writeInput(result, KEYS.down);
 			await waitUntil(
@@ -521,7 +529,7 @@ describe("edit screen", () => {
 					const frame = stripAnsi(result.lastFrame() ?? "");
 					return frame.includes("◆") && frame.includes("Variations");
 				},
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			await writeInput(result, KEYS.down);
 			await waitUntil(
@@ -529,14 +537,14 @@ describe("edit screen", () => {
 					const frame = stripAnsi(result.lastFrame() ?? "");
 					return frame.includes("◆") && frame.includes("Upscale");
 				},
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			await writeInput(result, KEYS.enter);
 			// Wait for scale step
 			await waitUntil(
 				() =>
 					stripAnsi(result.lastFrame() ?? "").includes("Select upscale factor"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			// Default is 2x, press up to increase to 4x
 			let frame = stripAnsi(result.lastFrame() ?? "");
@@ -544,7 +552,7 @@ describe("edit screen", () => {
 			await writeInput(result, KEYS.up);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("4x"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			frame = stripAnsi(result.lastFrame() ?? "");
 			expect(frame).toContain("4x");
@@ -552,7 +560,7 @@ describe("edit screen", () => {
 			await writeInput(result, KEYS.enter);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Ready to process"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			const output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("Ready to process");
@@ -564,28 +572,28 @@ describe("edit screen", () => {
 
 	// Task 1.5: Confirm step y and n
 	it("confirm step n returns to operation selection", async () => {
-		const onBack = mock(() => {});
-		const onComplete = mock(() => {});
-		const onError = mock(() => {});
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
 		const result = render(
 			<EditScreen
 				config={baseConfig}
 				onBack={onBack}
 				onComplete={onComplete}
 				onError={onError}
-			/>,
+			/>
 		);
 		try {
 			// Select image
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			await writeInput(result, KEYS.enter);
 			// Navigate to Remove Background (index 3)
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Variations"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			await writeInput(result, KEYS.down);
 			await waitUntil(
@@ -593,7 +601,7 @@ describe("edit screen", () => {
 					const frame = stripAnsi(result.lastFrame() ?? "");
 					return frame.includes("◆") && frame.includes("Variations");
 				},
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			await writeInput(result, KEYS.down);
 			await waitUntil(
@@ -601,7 +609,7 @@ describe("edit screen", () => {
 					const frame = stripAnsi(result.lastFrame() ?? "");
 					return frame.includes("◆") && frame.includes("Upscale");
 				},
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			await writeInput(result, KEYS.down);
 			await waitUntil(
@@ -609,13 +617,13 @@ describe("edit screen", () => {
 					const frame = stripAnsi(result.lastFrame() ?? "");
 					return frame.includes("◆") && frame.includes("Remove Background");
 				},
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			await writeInput(result, KEYS.enter);
 			// Wait for confirm step
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Ready to process"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			// Press n to cancel
 			await writeInput(result, "n");
@@ -628,7 +636,7 @@ describe("edit screen", () => {
 						!frame.includes("Ready to process")
 					);
 				},
-				{ timeoutMs: 5000 },
+				{ timeoutMs: 5000 }
 			);
 			const output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("Upscale");
@@ -639,9 +647,9 @@ describe("edit screen", () => {
 	});
 
 	it("confirm step y starts processing", async () => {
-		const onBack = mock(() => {});
-		const onComplete = mock(() => {});
-		const onError = mock(() => {});
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
 
 		await withMockFetch(mockFetchImpl, async () => {
 			const result = render(
@@ -650,19 +658,19 @@ describe("edit screen", () => {
 					onBack={onBack}
 					onComplete={onComplete}
 					onError={onError}
-				/>,
+				/>
 			);
 			try {
 				// Select image
 				await waitUntil(
 					() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
-					{ timeoutMs: 3000 },
+					{ timeoutMs: 3000 }
 				);
 				await writeInput(result, KEYS.enter);
 				// Navigate to Remove Background (index 3)
 				await waitUntil(
 					() => stripAnsi(result.lastFrame() ?? "").includes("Variations"),
-					{ timeoutMs: 3000 },
+					{ timeoutMs: 3000 }
 				);
 				await writeInput(result, KEYS.down);
 				await waitUntil(
@@ -670,7 +678,7 @@ describe("edit screen", () => {
 						const frame = stripAnsi(result.lastFrame() ?? "");
 						return frame.includes("◆") && frame.includes("Variations");
 					},
-					{ timeoutMs: 3000 },
+					{ timeoutMs: 3000 }
 				);
 				await writeInput(result, KEYS.down);
 				await waitUntil(
@@ -678,7 +686,7 @@ describe("edit screen", () => {
 						const frame = stripAnsi(result.lastFrame() ?? "");
 						return frame.includes("◆") && frame.includes("Upscale");
 					},
-					{ timeoutMs: 3000 },
+					{ timeoutMs: 3000 }
 				);
 				await writeInput(result, KEYS.down);
 				await waitUntil(
@@ -686,14 +694,14 @@ describe("edit screen", () => {
 						const frame = stripAnsi(result.lastFrame() ?? "");
 						return frame.includes("◆") && frame.includes("Remove Background");
 					},
-					{ timeoutMs: 3000 },
+					{ timeoutMs: 3000 }
 				);
 				await writeInput(result, KEYS.enter);
 				// Wait for confirm step
 				await waitUntil(
 					() =>
 						stripAnsi(result.lastFrame() ?? "").includes("Ready to process"),
-					{ timeoutMs: 3000 },
+					{ timeoutMs: 3000 }
 				);
 				// Press y to start processing
 				await writeInput(result, "y");
@@ -707,7 +715,7 @@ describe("edit screen", () => {
 							frame.includes("Complete")
 						);
 					},
-					{ timeoutMs: 5000 },
+					{ timeoutMs: 5000 }
 				);
 			} finally {
 				result.unmount();
@@ -717,9 +725,9 @@ describe("edit screen", () => {
 
 	// Task 1.6: Done step enter
 	it("done step enter invokes onComplete", async () => {
-		const onBack = mock(() => {});
-		const onComplete = mock(() => {});
-		const onError = mock(() => {});
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
 
 		await withMockFetch(mockFetchImpl, async () => {
 			const result = render(
@@ -728,19 +736,19 @@ describe("edit screen", () => {
 					onBack={onBack}
 					onComplete={onComplete}
 					onError={onError}
-				/>,
+				/>
 			);
 			try {
 				// Select image
 				await waitUntil(
 					() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
-					{ timeoutMs: 3000 },
+					{ timeoutMs: 3000 }
 				);
 				await writeInput(result, KEYS.enter);
 				// Navigate to Remove Background (index 3)
 				await waitUntil(
 					() => stripAnsi(result.lastFrame() ?? "").includes("Variations"),
-					{ timeoutMs: 3000 },
+					{ timeoutMs: 3000 }
 				);
 				await writeInput(result, KEYS.down);
 				await waitUntil(
@@ -748,7 +756,7 @@ describe("edit screen", () => {
 						const frame = stripAnsi(result.lastFrame() ?? "");
 						return frame.includes("◆") && frame.includes("Variations");
 					},
-					{ timeoutMs: 3000 },
+					{ timeoutMs: 3000 }
 				);
 				await writeInput(result, KEYS.down);
 				await waitUntil(
@@ -756,7 +764,7 @@ describe("edit screen", () => {
 						const frame = stripAnsi(result.lastFrame() ?? "");
 						return frame.includes("◆") && frame.includes("Upscale");
 					},
-					{ timeoutMs: 3000 },
+					{ timeoutMs: 3000 }
 				);
 				await writeInput(result, KEYS.down);
 				await waitUntil(
@@ -764,21 +772,21 @@ describe("edit screen", () => {
 						const frame = stripAnsi(result.lastFrame() ?? "");
 						return frame.includes("◆") && frame.includes("Remove Background");
 					},
-					{ timeoutMs: 3000 },
+					{ timeoutMs: 3000 }
 				);
 				await writeInput(result, KEYS.enter);
 				// Wait for confirm step
 				await waitUntil(
 					() =>
 						stripAnsi(result.lastFrame() ?? "").includes("Ready to process"),
-					{ timeoutMs: 3000 },
+					{ timeoutMs: 3000 }
 				);
 				// Press y to start processing
 				await writeInput(result, "y");
 				// Wait for done step
 				await waitUntil(
 					() => stripAnsi(result.lastFrame() ?? "").includes("Complete"),
-					{ timeoutMs: 5000 },
+					{ timeoutMs: 5000 }
 				);
 				const output = stripAnsi(result.lastFrame() ?? "");
 				expect(output).toContain("Complete");
@@ -797,28 +805,28 @@ describe("edit screen", () => {
 	it("property: upscale factor selection displays correct factor on confirm", async () => {
 		await fc.assert(
 			fc.asyncProperty(fc.constantFrom(2, 4, 6, 8), async (factor) => {
-				const onBack = mock(() => {});
-				const onComplete = mock(() => {});
-				const onError = mock(() => {});
+				const onBack = mock(() => undefined);
+				const onComplete = mock(() => undefined);
+				const onError = mock(() => undefined);
 				const result = render(
 					<EditScreen
 						config={baseConfig}
 						onBack={onBack}
 						onComplete={onComplete}
 						onError={onError}
-					/>,
+					/>
 				);
 				try {
 					// Select image
 					await waitUntil(
 						() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
-						{ timeoutMs: 3000 },
+						{ timeoutMs: 3000 }
 					);
 					await writeInput(result, KEYS.enter);
 					// Navigate to Upscale (index 2)
 					await waitUntil(
 						() => stripAnsi(result.lastFrame() ?? "").includes("Variations"),
-						{ timeoutMs: 3000 },
+						{ timeoutMs: 3000 }
 					);
 					await writeInput(result, KEYS.down);
 					await waitUntil(
@@ -826,7 +834,7 @@ describe("edit screen", () => {
 							const frame = stripAnsi(result.lastFrame() ?? "");
 							return frame.includes("◆") && frame.includes("Variations");
 						},
-						{ timeoutMs: 3000 },
+						{ timeoutMs: 3000 }
 					);
 					await writeInput(result, KEYS.down);
 					await waitUntil(
@@ -834,16 +842,16 @@ describe("edit screen", () => {
 							const frame = stripAnsi(result.lastFrame() ?? "");
 							return frame.includes("◆") && frame.includes("Upscale");
 						},
-						{ timeoutMs: 3000 },
+						{ timeoutMs: 3000 }
 					);
 					await writeInput(result, KEYS.enter);
 					// Wait for scale step
 					await waitUntil(
 						() =>
 							stripAnsi(result.lastFrame() ?? "").includes(
-								"Select upscale factor",
+								"Select upscale factor"
 							),
-						{ timeoutMs: 3000 },
+						{ timeoutMs: 3000 }
 					);
 					// Default is 2x. Navigate up to reach the desired factor.
 					// UPSCALE_FACTORS = [2, 4, 6, 8], up arrow increases
@@ -854,9 +862,9 @@ describe("edit screen", () => {
 						await waitUntil(
 							() =>
 								stripAnsi(result.lastFrame() ?? "").includes(
-									`${expectedFactor}x`,
+									`${expectedFactor}x`
 								),
-							{ timeoutMs: 3000 },
+							{ timeoutMs: 3000 }
 						);
 					}
 					// Confirm
@@ -864,7 +872,7 @@ describe("edit screen", () => {
 					await waitUntil(
 						() =>
 							stripAnsi(result.lastFrame() ?? "").includes("Ready to process"),
-						{ timeoutMs: 3000 },
+						{ timeoutMs: 3000 }
 					);
 					const output = stripAnsi(result.lastFrame() ?? "");
 					expect(output).toContain(`${factor}x`);
@@ -872,7 +880,7 @@ describe("edit screen", () => {
 					result.unmount();
 				}
 			}),
-			{ numRuns: 10 },
+			{ numRuns: 10 }
 		);
 	}, 60_000);
 
@@ -887,30 +895,30 @@ describe("edit screen", () => {
 					maxLength: 4,
 				}),
 				async (digits) => {
-					const onBack = mock(() => {});
-					const onComplete = mock(() => {});
-					const onError = mock(() => {});
+					const onBack = mock(() => undefined);
+					const onComplete = mock(() => undefined);
+					const onError = mock(() => undefined);
 					const result = render(
 						<EditScreen
 							config={baseConfig}
 							onBack={onBack}
 							onComplete={onComplete}
 							onError={onError}
-						/>,
+						/>
 					);
 					try {
 						// Select image
 						await waitUntil(
 							() =>
 								stripAnsi(result.lastFrame() ?? "").includes("Select image"),
-							{ timeoutMs: 5000 },
+							{ timeoutMs: 5000 }
 						);
 						await writeInput(result, KEYS.enter);
 
 						// Navigate to Upscale (index 2)
 						await waitUntil(
 							() => stripAnsi(result.lastFrame() ?? "").includes("Variations"),
-							{ timeoutMs: 5000 },
+							{ timeoutMs: 5000 }
 						);
 
 						// Wait for operation menu to be fully rendered
@@ -919,7 +927,7 @@ describe("edit screen", () => {
 								const frame = stripAnsi(result.lastFrame() ?? "");
 								return frame.includes("Edit") && frame.includes("Variations");
 							},
-							{ timeoutMs: 5000 },
+							{ timeoutMs: 5000 }
 						);
 
 						await writeInput(result, KEYS.down);
@@ -928,7 +936,7 @@ describe("edit screen", () => {
 								const frame = stripAnsi(result.lastFrame() ?? "");
 								return frame.includes("◆") && frame.includes("Variations");
 							},
-							{ timeoutMs: 5000 },
+							{ timeoutMs: 5000 }
 						);
 
 						await writeInput(result, KEYS.down);
@@ -937,7 +945,7 @@ describe("edit screen", () => {
 								const frame = stripAnsi(result.lastFrame() ?? "");
 								return frame.includes("◆") && frame.includes("Upscale");
 							},
-							{ timeoutMs: 5000 },
+							{ timeoutMs: 5000 }
 						);
 
 						await writeInput(result, KEYS.enter);
@@ -946,9 +954,9 @@ describe("edit screen", () => {
 						await waitUntil(
 							() =>
 								stripAnsi(result.lastFrame() ?? "").includes(
-									"Select upscale factor",
+									"Select upscale factor"
 								),
-							{ timeoutMs: 5000 },
+							{ timeoutMs: 5000 }
 						);
 
 						// Confirm scale to get to confirm step
@@ -956,9 +964,9 @@ describe("edit screen", () => {
 						await waitUntil(
 							() =>
 								stripAnsi(result.lastFrame() ?? "").includes(
-									"Ready to process",
+									"Ready to process"
 								),
-							{ timeoutMs: 5000 },
+							{ timeoutMs: 5000 }
 						);
 
 						// Type each digit
@@ -973,7 +981,7 @@ describe("edit screen", () => {
 								const frame = stripAnsi(result.lastFrame() ?? "");
 								return frame.includes(`Seed: ${expectedSeed}`);
 							},
-							{ timeoutMs: 5000 },
+							{ timeoutMs: 5000 }
 						);
 
 						const output = stripAnsi(result.lastFrame() ?? "");
@@ -981,11 +989,11 @@ describe("edit screen", () => {
 					} finally {
 						result.unmount();
 					}
-				},
+				}
 			),
-			{ numRuns: 8 }, // Reduced from 15 to prevent timeout under load
+			{ numRuns: 8 } // Reduced from 15 to prevent timeout under load
 		);
-	}, 90000); // Increased overall timeout
+	}, 90_000); // Increased overall timeout
 
 	// Feature: studio-ui-tests, Property 5: Edit skipToOperation routes to correct step
 	// **Validates: Requirements 3.8**
@@ -1004,32 +1012,32 @@ describe("edit screen", () => {
 			fc.asyncProperty(
 				fc.constantFrom(...operationToExpected),
 				async ({ op, expected }) => {
-					const onBack = mock(() => {});
-					const onComplete = mock(() => {});
-					const onError = mock(() => {});
+					const onBack = mock(() => undefined);
+					const onComplete = mock(() => undefined);
+					const onError = mock(() => undefined);
 					const result = render(
 						<EditScreen
 							config={baseConfig}
+							initialOperation={op}
 							onBack={onBack}
 							onComplete={onComplete}
 							onError={onError}
 							skipToOperation={true}
-							initialOperation={op}
-						/>,
+						/>
 					);
 					try {
 						await waitUntil(
 							() => stripAnsi(result.lastFrame() ?? "").includes(expected),
-							{ timeoutMs: 3000 },
+							{ timeoutMs: 3000 }
 						);
 						const output = stripAnsi(result.lastFrame() ?? "");
 						expect(output).toContain(expected);
 					} finally {
 						result.unmount();
 					}
-				},
+				}
 			),
-			{ numRuns: 10 },
+			{ numRuns: 10 }
 		);
 	}, 30_000);
 });

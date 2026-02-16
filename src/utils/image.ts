@@ -10,7 +10,7 @@ const DIMENSION_REGEX = /(\d+)\s*x\s*(\d+)/;
  */
 export async function downloadImage(
 	url: string,
-	outputPath: string,
+	outputPath: string
 ): Promise<void> {
 	// Support fixture-based testing: copy a local file instead of fetching from URL
 	const downloadFixture = process.env.FALCON_DOWNLOAD_FIXTURE;
@@ -20,7 +20,7 @@ export async function downloadImage(
 				`[image] fixture:download ${JSON.stringify({
 					from: downloadFixture,
 					to: outputPath,
-				})}`,
+				})}`
 			);
 		}
 		try {
@@ -33,7 +33,7 @@ export async function downloadImage(
 						error: error instanceof Error ? error.message : String(error),
 						from: downloadFixture,
 						to: outputPath,
-					})}`,
+					})}`
 				);
 			}
 			throw error;
@@ -86,7 +86,7 @@ export async function imageToDataUrl(imagePath: string): Promise<string> {
  */
 export async function resizeImage(
 	imagePath: string,
-	maxSize: number = 1024,
+	maxSize = 1024
 ): Promise<string> {
 	// Use cryptographically random UUID for temp file to prevent race conditions
 	const tempPath = `${tmpdir()}/falcon-resize-${randomUUID()}.png`;
@@ -98,7 +98,7 @@ export async function resizeImage(
 			{
 				stdout: "pipe",
 				stderr: "pipe",
-			},
+			}
 		);
 		await proc.exited;
 
@@ -117,7 +117,7 @@ export async function resizeImage(
  * Get image dimensions from a file
  */
 export async function getImageDimensions(
-	imagePath: string,
+	imagePath: string
 ): Promise<{ width: number; height: number } | null> {
 	try {
 		// Try using file command to get dimensions
@@ -144,22 +144,24 @@ export async function getImageDimensions(
 /**
  * Get file size in human-readable format
  */
+// biome-ignore lint/suspicious/useAwait: Call sites intentionally await this helper for API consistency.
 export async function getFileSize(filePath: string): Promise<string> {
 	const file = Bun.file(filePath);
 	const bytes = file.size;
 
-	if (bytes < 1024) return `${bytes}B`;
-	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+	if (bytes < 1024) {
+		return `${bytes}B`;
+	}
+	if (bytes < 1024 * 1024) {
+		return `${(bytes / 1024).toFixed(1)}KB`;
+	}
 	return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
 }
 
 /**
  * Generate a timestamped filename
  */
-export function generateFilename(
-	prefix: string = "falcon",
-	format: string = "png",
-): string {
+export function generateFilename(prefix = "falcon", format = "png"): string {
 	const now = new Date();
 	const timestamp = now.toISOString().slice(0, 19).replace(/[-:T]/g, "");
 	return `${prefix}-${timestamp}.${format}`;
@@ -169,6 +171,7 @@ export function generateFilename(
  * Open an image in Preview
  * Uses 'open' command for a clean experience without debug output
  */
+// biome-ignore lint/suspicious/useAwait: Keeping async preserves existing call-site behavior.
 export async function openImage(imagePath: string): Promise<void> {
 	// Validate the path exists to provide better error messages
 	if (!existsSync(imagePath)) {
@@ -178,7 +181,9 @@ export async function openImage(imagePath: string): Promise<void> {
 	const absolutePath = resolve(imagePath);
 	const debugEnabled = process.env.FALCON_CLI_TEST_DEBUG === "1";
 	const debugLog = (message: string, meta?: Record<string, unknown>) => {
-		if (!debugEnabled) return;
+		if (!debugEnabled) {
+			return;
+		}
 		const payload = meta ? ` ${JSON.stringify(meta)}` : "";
 		console.error(`[openImage] ${message}${payload}`);
 	};

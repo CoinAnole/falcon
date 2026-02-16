@@ -32,9 +32,9 @@ const createHistoryWithLastGeneration = (): History => ({
 
 describe("home screen", () => {
 	it("renders all four menu items", async () => {
-		const onNavigate = mock(() => {});
+		const onNavigate = mock(() => undefined);
 		const result = render(
-			<HomeScreen history={createEmptyHistory()} onNavigate={onNavigate} />,
+			<HomeScreen history={createEmptyHistory()} onNavigate={onNavigate} />
 		);
 		try {
 			await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
@@ -51,9 +51,9 @@ describe("home screen", () => {
 	});
 
 	it("down arrow moves selection to next item", async () => {
-		const onNavigate = mock(() => {});
+		const onNavigate = mock(() => undefined);
 		const result = render(
-			<HomeScreen history={createEmptyHistory()} onNavigate={onNavigate} />,
+			<HomeScreen history={createEmptyHistory()} onNavigate={onNavigate} />
 		);
 		try {
 			await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
@@ -66,7 +66,7 @@ describe("home screen", () => {
 			await writeInput(result, KEYS.down);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Edit"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("◆ Edit");
@@ -76,9 +76,9 @@ describe("home screen", () => {
 	});
 
 	it("up arrow on first item wraps to last item", async () => {
-		const onNavigate = mock(() => {});
+		const onNavigate = mock(() => undefined);
 		const result = render(
-			<HomeScreen history={createEmptyHistory()} onNavigate={onNavigate} />,
+			<HomeScreen history={createEmptyHistory()} onNavigate={onNavigate} />
 		);
 		try {
 			await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
@@ -88,7 +88,7 @@ describe("home screen", () => {
 			await writeInput(result, KEYS.up);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Settings"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			const output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("◆ Settings");
@@ -98,9 +98,9 @@ describe("home screen", () => {
 	});
 
 	it("down arrow on last item wraps to first item", async () => {
-		const onNavigate = mock(() => {});
+		const onNavigate = mock(() => undefined);
 		const result = render(
-			<HomeScreen history={createEmptyHistory()} onNavigate={onNavigate} />,
+			<HomeScreen history={createEmptyHistory()} onNavigate={onNavigate} />
 		);
 		try {
 			await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
@@ -110,13 +110,13 @@ describe("home screen", () => {
 			await writeInput(result, KEYS.up);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Settings"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			// Press down to wrap to first
 			await writeInput(result, KEYS.down);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Generate"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			const output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("◆ Generate");
@@ -126,12 +126,12 @@ describe("home screen", () => {
 	});
 
 	it("displays last generation prompt and model with non-empty history", async () => {
-		const onNavigate = mock(() => {});
+		const onNavigate = mock(() => undefined);
 		const result = render(
 			<HomeScreen
 				history={createHistoryWithLastGeneration()}
 				onNavigate={onNavigate}
-			/>,
+			/>
 		);
 		try {
 			await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
@@ -152,9 +152,9 @@ describe("home screen", () => {
 
 		await fc.assert(
 			fc.asyncProperty(fc.integer({ min: 0, max: 3 }), async (index) => {
-				const onNavigate = mock(() => {});
+				const onNavigate = mock(() => undefined);
 				const result = render(
-					<HomeScreen history={createEmptyHistory()} onNavigate={onNavigate} />,
+					<HomeScreen history={createEmptyHistory()} onNavigate={onNavigate} />
 				);
 				try {
 					await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
@@ -170,7 +170,7 @@ describe("home screen", () => {
 					result.unmount();
 				}
 			}),
-			{ numRuns: 10 },
+			{ numRuns: 10 }
 		);
 	});
 });

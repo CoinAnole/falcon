@@ -2,11 +2,15 @@ import { afterAll, beforeAll, describe, expect, it, mock } from "bun:test";
 import fc from "fast-check";
 import { render } from "ink-testing-library";
 import type { FalconConfig } from "../../src/studio/deps/config";
-import { registerStudioMocks, STUDIO_TEST_CONFIG } from "../helpers/studio-mocks";
 import { withMockFetch } from "../helpers/fetch";
 import { KEYS, stripAnsi, waitUntil, writeInput } from "../helpers/ink";
+import {
+	registerStudioMocks,
+	STUDIO_TEST_CONFIG,
+} from "../helpers/studio-mocks";
 
-let GenerateScreen = null as unknown as (typeof import("../../src/studio/screens/generate"))["GenerateScreen"];
+let GenerateScreen =
+	null as unknown as typeof import("../../src/studio/screens/generate")["GenerateScreen"];
 let originalFalKey: string | undefined;
 
 beforeAll(async () => {
@@ -19,7 +23,7 @@ beforeAll(async () => {
 
 afterAll(() => {
 	if (originalFalKey === undefined) {
-		delete process.env.FAL_KEY;
+		process.env.FAL_KEY = undefined;
 	} else {
 		process.env.FAL_KEY = originalFalKey;
 	}
@@ -56,22 +60,22 @@ const mockFetchImpl = (input: RequestInfo | URL) => {
 
 describe("generate screen", () => {
 	it("renders prompt input with 'Enter your prompt:'", async () => {
-		const onBack = mock(() => {});
-		const onComplete = mock(() => {});
-		const onError = mock(() => {});
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
 		const result = render(
 			<GenerateScreen
 				config={baseConfig}
 				onBack={onBack}
 				onComplete={onComplete}
 				onError={onError}
-			/>,
+			/>
 		);
 		try {
 			await waitUntil(
 				() =>
 					stripAnsi(result.lastFrame() ?? "").includes("Enter your prompt:"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			const output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("Enter your prompt:");
@@ -81,29 +85,29 @@ describe("generate screen", () => {
 	});
 
 	it("prompt submission transitions to preset step", async () => {
-		const onBack = mock(() => {});
-		const onComplete = mock(() => {});
-		const onError = mock(() => {});
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
 		const result = render(
 			<GenerateScreen
 				config={baseConfig}
 				onBack={onBack}
 				onComplete={onComplete}
 				onError={onError}
-			/>,
+			/>
 		);
 		try {
 			await waitUntil(
 				() =>
 					stripAnsi(result.lastFrame() ?? "").includes("Enter your prompt:"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			// Type a prompt and submit
 			await writeInput(result, "a beautiful sunset");
 			await writeInput(result, KEYS.enter);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Quick presets"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			const output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("Quick presets");
@@ -115,28 +119,28 @@ describe("generate screen", () => {
 	});
 
 	it("preset selection transitions to confirm step", async () => {
-		const onBack = mock(() => {});
-		const onComplete = mock(() => {});
-		const onError = mock(() => {});
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
 		const result = render(
 			<GenerateScreen
 				config={baseConfig}
 				onBack={onBack}
 				onComplete={onComplete}
 				onError={onError}
-			/>,
+			/>
 		);
 		try {
 			await waitUntil(
 				() =>
 					stripAnsi(result.lastFrame() ?? "").includes("Enter your prompt:"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			await writeInput(result, "a cat");
 			await writeInput(result, KEYS.enter);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Quick presets"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			// Select first preset (Square 1:1)
 			await withMockFetch(mockFetchImpl, async () => {
@@ -144,7 +148,7 @@ describe("generate screen", () => {
 				await waitUntil(
 					() =>
 						stripAnsi(result.lastFrame() ?? "").includes("Ready to generate"),
-					{ timeoutMs: 3000 },
+					{ timeoutMs: 3000 }
 				);
 			});
 			const output = stripAnsi(result.lastFrame() ?? "");
@@ -156,34 +160,34 @@ describe("generate screen", () => {
 	});
 
 	it("tab on preset step transitions to model selection", async () => {
-		const onBack = mock(() => {});
-		const onComplete = mock(() => {});
-		const onError = mock(() => {});
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
 		const result = render(
 			<GenerateScreen
 				config={baseConfig}
 				onBack={onBack}
 				onComplete={onComplete}
 				onError={onError}
-			/>,
+			/>
 		);
 		try {
 			await waitUntil(
 				() =>
 					stripAnsi(result.lastFrame() ?? "").includes("Enter your prompt:"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			await writeInput(result, "a dog");
 			await writeInput(result, KEYS.enter);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Quick presets"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			// Press tab to go to model selection
 			await writeInput(result, KEYS.tab);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Select model"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			const output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("Select model");
@@ -194,22 +198,22 @@ describe("generate screen", () => {
 	});
 
 	it("escape on prompt step invokes onBack", async () => {
-		const onBack = mock(() => {});
-		const onComplete = mock(() => {});
-		const onError = mock(() => {});
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
 		const result = render(
 			<GenerateScreen
 				config={baseConfig}
 				onBack={onBack}
 				onComplete={onComplete}
 				onError={onError}
-			/>,
+			/>
 		);
 		try {
 			await waitUntil(
 				() =>
 					stripAnsi(result.lastFrame() ?? "").includes("Enter your prompt:"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			await writeInput(result, KEYS.escape);
 			expect(onBack).toHaveBeenCalledTimes(1);
@@ -219,9 +223,9 @@ describe("generate screen", () => {
 	});
 
 	it("'y' on confirm step triggers generation (fetch called)", async () => {
-		const onBack = mock(() => {});
-		const onComplete = mock(() => {});
-		const onError = mock(() => {});
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
 
 		// Wrap the entire test in withMockFetch so pricing + generation calls are intercepted
 		const { calls } = await withMockFetch(mockFetchImpl, async () => {
@@ -231,25 +235,25 @@ describe("generate screen", () => {
 					onBack={onBack}
 					onComplete={onComplete}
 					onError={onError}
-				/>,
+				/>
 			);
 			try {
 				await waitUntil(
 					() =>
 						stripAnsi(result.lastFrame() ?? "").includes("Enter your prompt:"),
-					{ timeoutMs: 3000 },
+					{ timeoutMs: 3000 }
 				);
 				await writeInput(result, "a mountain");
 				await writeInput(result, KEYS.enter);
 				await waitUntil(
 					() => stripAnsi(result.lastFrame() ?? "").includes("Quick presets"),
-					{ timeoutMs: 3000 },
+					{ timeoutMs: 3000 }
 				);
 				await writeInput(result, KEYS.enter);
 				await waitUntil(
 					() =>
 						stripAnsi(result.lastFrame() ?? "").includes("Ready to generate"),
-					{ timeoutMs: 3000 },
+					{ timeoutMs: 3000 }
 				);
 				// Press 'y' to confirm generation
 				await writeInput(result, "y");
@@ -263,7 +267,7 @@ describe("generate screen", () => {
 							frame.includes("Image ready")
 						);
 					},
-					{ timeoutMs: 5000 },
+					{ timeoutMs: 5000 }
 				);
 			} finally {
 				result.unmount();
@@ -274,9 +278,9 @@ describe("generate screen", () => {
 	});
 
 	it("done step shows post-action menu after generation", async () => {
-		const onBack = mock(() => {});
-		const onComplete = mock(() => {});
-		const onError = mock(() => {});
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
 
 		await withMockFetch(mockFetchImpl, async () => {
 			const result = render(
@@ -285,30 +289,30 @@ describe("generate screen", () => {
 					onBack={onBack}
 					onComplete={onComplete}
 					onError={onError}
-				/>,
+				/>
 			);
 			try {
 				await waitUntil(
 					() =>
 						stripAnsi(result.lastFrame() ?? "").includes("Enter your prompt:"),
-					{ timeoutMs: 3000 },
+					{ timeoutMs: 3000 }
 				);
 				await writeInput(result, "a mountain");
 				await writeInput(result, KEYS.enter);
 				await waitUntil(
 					() => stripAnsi(result.lastFrame() ?? "").includes("Quick presets"),
-					{ timeoutMs: 3000 },
+					{ timeoutMs: 3000 }
 				);
 				await writeInput(result, KEYS.enter); // select preset → confirm
 				await waitUntil(
 					() =>
 						stripAnsi(result.lastFrame() ?? "").includes("Ready to generate"),
-					{ timeoutMs: 3000 },
+					{ timeoutMs: 3000 }
 				);
 				await writeInput(result, "y");
 				await waitUntil(
 					() => stripAnsi(result.lastFrame() ?? "").includes("Image ready"),
-					{ timeoutMs: 5000 },
+					{ timeoutMs: 5000 }
 				);
 				const output = stripAnsi(result.lastFrame() ?? "");
 				expect(output).toContain("Image ready");
@@ -327,35 +331,35 @@ describe("generate screen", () => {
 	}, 10_000);
 
 	it("n on confirm step invokes onBack", async () => {
-		const onBack = mock(() => {});
-		const onComplete = mock(() => {});
-		const onError = mock(() => {});
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
 		const result = render(
 			<GenerateScreen
 				config={baseConfig}
 				onBack={onBack}
 				onComplete={onComplete}
 				onError={onError}
-			/>,
+			/>
 		);
 		try {
 			await waitUntil(
 				() =>
 					stripAnsi(result.lastFrame() ?? "").includes("Enter your prompt:"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			await writeInput(result, "a cat");
 			await writeInput(result, KEYS.enter);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Quick presets"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			await withMockFetch(mockFetchImpl, async () => {
 				await writeInput(result, KEYS.enter); // select preset → confirm
 				await waitUntil(
 					() =>
 						stripAnsi(result.lastFrame() ?? "").includes("Ready to generate"),
-					{ timeoutMs: 3000 },
+					{ timeoutMs: 3000 }
 				);
 			});
 			// Press 'n' to cancel
@@ -367,33 +371,33 @@ describe("generate screen", () => {
 	});
 
 	it("resolution selection step: navigate and select transitions to confirm", async () => {
-		const onBack = mock(() => {});
-		const onComplete = mock(() => {});
-		const onError = mock(() => {});
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
 		const result = render(
 			<GenerateScreen
 				config={baseConfig}
 				onBack={onBack}
 				onComplete={onComplete}
 				onError={onError}
-			/>,
+			/>
 		);
 		try {
 			await waitUntil(
 				() =>
 					stripAnsi(result.lastFrame() ?? "").includes("Enter your prompt:"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			await writeInput(result, "mountains");
 			await writeInput(result, KEYS.enter);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Quick presets"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			await writeInput(result, KEYS.tab);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Select model"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			// Find a model that supports both aspect and resolution by navigating
 			// The model order may vary; navigate until we find one that leads to aspect step
@@ -408,7 +412,7 @@ describe("generate screen", () => {
 						frame.includes("Ready to generate")
 					);
 				},
-				{ timeoutMs: 5000 },
+				{ timeoutMs: 5000 }
 			);
 			let frame = stripAnsi(result.lastFrame() ?? "");
 			if (frame.includes("Ready to generate")) {
@@ -416,12 +420,12 @@ describe("generate screen", () => {
 				await writeInput(result, KEYS.escape);
 				await waitUntil(
 					() => stripAnsi(result.lastFrame() ?? "").includes("Quick presets"),
-					{ timeoutMs: 3000 },
+					{ timeoutMs: 3000 }
 				);
 				await writeInput(result, KEYS.tab);
 				await waitUntil(
 					() => stripAnsi(result.lastFrame() ?? "").includes("Select model"),
-					{ timeoutMs: 3000 },
+					{ timeoutMs: 3000 }
 				);
 				await writeInput(result, KEYS.down);
 				await writeInput(result, KEYS.enter);
@@ -433,7 +437,7 @@ describe("generate screen", () => {
 							f.includes("Ready to generate")
 						);
 					},
-					{ timeoutMs: 5000 },
+					{ timeoutMs: 5000 }
 				);
 			}
 			frame = stripAnsi(result.lastFrame() ?? "");
@@ -451,7 +455,7 @@ describe("generate screen", () => {
 						f.includes("Select resolution") || f.includes("Ready to generate")
 					);
 				},
-				{ timeoutMs: 5000 },
+				{ timeoutMs: 5000 }
 			);
 			frame = stripAnsi(result.lastFrame() ?? "");
 			if (frame.includes("Select resolution")) {
@@ -461,7 +465,7 @@ describe("generate screen", () => {
 				await waitUntil(
 					() =>
 						stripAnsi(result.lastFrame() ?? "").includes("Ready to generate"),
-					{ timeoutMs: 5000 },
+					{ timeoutMs: 5000 }
 				);
 			}
 			const output = stripAnsi(result.lastFrame() ?? "");
@@ -472,34 +476,34 @@ describe("generate screen", () => {
 	}, 15_000);
 
 	it("aspect ratio grid: arrow key navigation and selection", async () => {
-		const onBack = mock(() => {});
-		const onComplete = mock(() => {});
-		const onError = mock(() => {});
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
 		const result = render(
 			<GenerateScreen
 				config={baseConfig}
 				onBack={onBack}
 				onComplete={onComplete}
 				onError={onError}
-			/>,
+			/>
 		);
 		try {
 			await waitUntil(
 				() =>
 					stripAnsi(result.lastFrame() ?? "").includes("Enter your prompt:"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			await writeInput(result, "landscape");
 			await writeInput(result, KEYS.enter);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Quick presets"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			// Tab to model step
 			await writeInput(result, KEYS.tab);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Select model"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			// Select the currently highlighted model (index 0)
 			// Model order may vary across test runs
@@ -512,7 +516,7 @@ describe("generate screen", () => {
 						frame.includes("Ready to generate")
 					);
 				},
-				{ timeoutMs: 5000 },
+				{ timeoutMs: 5000 }
 			);
 			let frame = stripAnsi(result.lastFrame() ?? "");
 			if (frame.includes("Ready to generate")) {
@@ -520,12 +524,12 @@ describe("generate screen", () => {
 				await writeInput(result, KEYS.escape);
 				await waitUntil(
 					() => stripAnsi(result.lastFrame() ?? "").includes("Quick presets"),
-					{ timeoutMs: 3000 },
+					{ timeoutMs: 3000 }
 				);
 				await writeInput(result, KEYS.tab);
 				await waitUntil(
 					() => stripAnsi(result.lastFrame() ?? "").includes("Select model"),
-					{ timeoutMs: 3000 },
+					{ timeoutMs: 3000 }
 				);
 				await writeInput(result, KEYS.down);
 				await writeInput(result, KEYS.enter);
@@ -537,7 +541,7 @@ describe("generate screen", () => {
 							f.includes("Ready to generate")
 						);
 					},
-					{ timeoutMs: 5000 },
+					{ timeoutMs: 5000 }
 				);
 			}
 			frame = stripAnsi(result.lastFrame() ?? "");
@@ -557,12 +561,12 @@ describe("generate screen", () => {
 						f.includes("Select resolution") || f.includes("Ready to generate")
 					);
 				},
-				{ timeoutMs: 5000 },
+				{ timeoutMs: 5000 }
 			);
 			const output = stripAnsi(result.lastFrame() ?? "");
 			expect(
 				output.includes("Select resolution") ||
-					output.includes("Ready to generate"),
+					output.includes("Ready to generate")
 			).toBe(true);
 		} finally {
 			result.unmount();
@@ -570,34 +574,34 @@ describe("generate screen", () => {
 	}, 15_000);
 
 	it("model selection step: navigate and select transitions to aspect step", async () => {
-		const onBack = mock(() => {});
-		const onComplete = mock(() => {});
-		const onError = mock(() => {});
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
 		const result = render(
 			<GenerateScreen
 				config={baseConfig}
 				onBack={onBack}
 				onComplete={onComplete}
 				onError={onError}
-			/>,
+			/>
 		);
 		try {
 			await waitUntil(
 				() =>
 					stripAnsi(result.lastFrame() ?? "").includes("Enter your prompt:"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			await writeInput(result, "a dog");
 			await writeInput(result, KEYS.enter);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Quick presets"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			// Tab to model selection
 			await writeInput(result, KEYS.tab);
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Select model"),
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			// Navigate down to select a different model and press enter
 			await writeInput(result, KEYS.down);
@@ -612,12 +616,12 @@ describe("generate screen", () => {
 						frame.includes("Ready to generate")
 					);
 				},
-				{ timeoutMs: 3000 },
+				{ timeoutMs: 3000 }
 			);
 			const output = stripAnsi(result.lastFrame() ?? "");
 			expect(
 				output.includes("Select aspect ratio") ||
-					output.includes("Ready to generate"),
+					output.includes("Ready to generate")
 			).toBe(true);
 		} finally {
 			result.unmount();
@@ -637,7 +641,7 @@ describe("generate screen", () => {
 					await writeInput(r, KEYS.enter);
 					await waitUntil(
 						() => stripAnsi(r.lastFrame() ?? "").includes("Quick presets"),
-						{ timeoutMs: 3000 },
+						{ timeoutMs: 3000 }
 					);
 				},
 				expectedAfterEscape: "Enter your prompt:",
@@ -649,12 +653,12 @@ describe("generate screen", () => {
 					await writeInput(r, KEYS.enter);
 					await waitUntil(
 						() => stripAnsi(r.lastFrame() ?? "").includes("Quick presets"),
-						{ timeoutMs: 3000 },
+						{ timeoutMs: 3000 }
 					);
 					await writeInput(r, KEYS.tab);
 					await waitUntil(
 						() => stripAnsi(r.lastFrame() ?? "").includes("Select model"),
-						{ timeoutMs: 3000 },
+						{ timeoutMs: 3000 }
 					);
 				},
 				expectedAfterEscape: "Quick presets",
@@ -663,33 +667,33 @@ describe("generate screen", () => {
 
 		await fc.assert(
 			fc.asyncProperty(fc.constantFrom(...stepSequences), async (stepSeq) => {
-				const onBack = mock(() => {});
-				const onComplete = mock(() => {});
-				const onError = mock(() => {});
+				const onBack = mock(() => undefined);
+				const onComplete = mock(() => undefined);
+				const onError = mock(() => undefined);
 				const result = render(
 					<GenerateScreen
 						config={baseConfig}
 						onBack={onBack}
 						onComplete={onComplete}
 						onError={onError}
-					/>,
+					/>
 				);
 				try {
 					await waitUntil(
 						() =>
 							stripAnsi(result.lastFrame() ?? "").includes(
-								"Enter your prompt:",
+								"Enter your prompt:"
 							),
-						{ timeoutMs: 3000 },
+						{ timeoutMs: 3000 }
 					);
 					await stepSeq.setup(result);
 					await writeInput(result, KEYS.escape);
 					await waitUntil(
 						() =>
 							stripAnsi(result.lastFrame() ?? "").includes(
-								stepSeq.expectedAfterEscape,
+								stepSeq.expectedAfterEscape
 							),
-						{ timeoutMs: 3000 },
+						{ timeoutMs: 3000 }
 					);
 					const output = stripAnsi(result.lastFrame() ?? "");
 					expect(output).toContain(stepSeq.expectedAfterEscape);
@@ -697,7 +701,7 @@ describe("generate screen", () => {
 					result.unmount();
 				}
 			}),
-			{ numRuns: 10 },
+			{ numRuns: 10 }
 		);
 	}, 30_000);
 
@@ -710,36 +714,38 @@ describe("generate screen", () => {
 					.string({ minLength: 1, maxLength: 60 })
 					.filter((s) => s.trim().length > 0),
 				async (promptText) => {
-					const onBack = mock(() => {});
-					const onComplete = mock(() => {});
-					const onError = mock(() => {});
+					const onBack = mock(() => undefined);
+					const onComplete = mock(() => undefined);
+					const onError = mock(() => undefined);
 					const result = render(
 						<GenerateScreen
 							config={baseConfig}
 							onBack={onBack}
 							onComplete={onComplete}
 							onError={onError}
-						/>,
+						/>
 					);
 					try {
 						await waitUntil(
 							() =>
 								stripAnsi(result.lastFrame() ?? "").includes(
-									"Enter your prompt:",
+									"Enter your prompt:"
 								),
-							{ timeoutMs: 3000 },
+							{ timeoutMs: 3000 }
 						);
 						// Type prompt and submit
 						await writeInput(result, promptText);
 						await writeInput(result, KEYS.enter);
 						// Check if we transitioned (prompt must be non-empty after trim)
 						const trimmed = promptText.trim();
-						if (!trimmed) return; // skip empty prompts
+						if (!trimmed) {
+							return; // skip empty prompts
+						}
 
 						await waitUntil(
 							() =>
 								stripAnsi(result.lastFrame() ?? "").includes("Quick presets"),
-							{ timeoutMs: 3000 },
+							{ timeoutMs: 3000 }
 						);
 						// Select first preset (Square) to go to confirm
 						await withMockFetch(mockFetchImpl, async () => {
@@ -747,9 +753,9 @@ describe("generate screen", () => {
 							await waitUntil(
 								() =>
 									stripAnsi(result.lastFrame() ?? "").includes(
-										"Ready to generate",
+										"Ready to generate"
 									),
-								{ timeoutMs: 3000 },
+								{ timeoutMs: 3000 }
 							);
 						});
 						const output = stripAnsi(result.lastFrame() ?? "");
@@ -766,9 +772,9 @@ describe("generate screen", () => {
 					} finally {
 						result.unmount();
 					}
-				},
+				}
 			),
-			{ numRuns: 20 },
+			{ numRuns: 20 }
 		);
 	}, 60_000);
 
@@ -786,40 +792,40 @@ describe("generate screen", () => {
 			fc.asyncProperty(
 				fc.constantFrom(...fieldConfigs),
 				async (fieldConfig) => {
-					const onBack = mock(() => {});
-					const onComplete = mock(() => {});
-					const onError = mock(() => {});
+					const onBack = mock(() => undefined);
+					const onComplete = mock(() => undefined);
+					const onError = mock(() => undefined);
 					const result = render(
 						<GenerateScreen
 							config={baseConfig}
 							onBack={onBack}
 							onComplete={onComplete}
 							onError={onError}
-						/>,
+						/>
 					);
 					try {
 						await waitUntil(
 							() =>
 								stripAnsi(result.lastFrame() ?? "").includes(
-									"Enter your prompt:",
+									"Enter your prompt:"
 								),
-							{ timeoutMs: 3000 },
+							{ timeoutMs: 3000 }
 						);
 						await writeInput(result, "test cycling");
 						await writeInput(result, KEYS.enter);
 						await waitUntil(
 							() =>
 								stripAnsi(result.lastFrame() ?? "").includes("Quick presets"),
-							{ timeoutMs: 3000 },
+							{ timeoutMs: 3000 }
 						);
 						await withMockFetch(mockFetchImpl, async () => {
 							await writeInput(result, KEYS.enter); // select preset → confirm
 							await waitUntil(
 								() =>
 									stripAnsi(result.lastFrame() ?? "").includes(
-										"Ready to generate",
+										"Ready to generate"
 									),
-								{ timeoutMs: 3000 },
+								{ timeoutMs: 3000 }
 							);
 						});
 						// Navigate down to the target field
@@ -835,18 +841,18 @@ describe("generate screen", () => {
 						await waitUntil(
 							() =>
 								stripAnsi(result.lastFrame() ?? "").includes(
-									"Ready to generate",
+									"Ready to generate"
 								),
-							{ timeoutMs: 3000 },
+							{ timeoutMs: 3000 }
 						);
 						const output = stripAnsi(result.lastFrame() ?? "");
 						expect(output).toContain("Ready to generate");
 					} finally {
 						result.unmount();
 					}
-				},
+				}
 			),
-			{ numRuns: 10 },
+			{ numRuns: 10 }
 		);
 	}, 60_000);
 
@@ -860,24 +866,24 @@ describe("generate screen", () => {
 					maxLength: 3,
 				}),
 				async (digits) => {
-					const onBack = mock(() => {});
-					const onComplete = mock(() => {});
-					const onError = mock(() => {});
+					const onBack = mock(() => undefined);
+					const onComplete = mock(() => undefined);
+					const onError = mock(() => undefined);
 					const result = render(
 						<GenerateScreen
 							config={baseConfig}
 							onBack={onBack}
 							onComplete={onComplete}
 							onError={onError}
-						/>,
+						/>
 					);
 					try {
 						await waitUntil(
 							() =>
 								stripAnsi(result.lastFrame() ?? "").includes(
-									"Enter your prompt:",
+									"Enter your prompt:"
 								),
-							{ timeoutMs: 1000 },
+							{ timeoutMs: 1000 }
 						);
 						// Navigate to confirm step
 						await writeInput(result, "test seed");
@@ -885,16 +891,16 @@ describe("generate screen", () => {
 						await waitUntil(
 							() =>
 								stripAnsi(result.lastFrame() ?? "").includes("Quick presets"),
-							{ timeoutMs: 1000 },
+							{ timeoutMs: 1000 }
 						);
 						await withMockFetch(mockFetchImpl, async () => {
 							await writeInput(result, KEYS.enter);
 							await waitUntil(
 								() =>
 									stripAnsi(result.lastFrame() ?? "").includes(
-										"Ready to generate",
+										"Ready to generate"
 									),
-								{ timeoutMs: 1000 },
+								{ timeoutMs: 1000 }
 							);
 						});
 						// Navigate to seed field. For banana model (supportsResolution=true),
@@ -916,16 +922,16 @@ describe("generate screen", () => {
 								const frame = stripAnsi(result.lastFrame() ?? "");
 								return frame.includes(String(expectedSeed));
 							},
-							{ timeoutMs: 1000 },
+							{ timeoutMs: 1000 }
 						);
 						const output = stripAnsi(result.lastFrame() ?? "");
 						expect(output).toContain(String(expectedSeed));
 					} finally {
 						result.unmount();
 					}
-				},
+				}
 			),
-			{ numRuns: 5 },
+			{ numRuns: 5 }
 		);
 	}, 15_000);
 
@@ -979,9 +985,9 @@ describe("generate screen", () => {
 
 		await fc.assert(
 			fc.asyncProperty(fc.constantFrom(...postActions), async (action) => {
-				const onBack = mock(() => {});
-				const onComplete = mock(() => {});
-				const onError = mock(() => {});
+				const onBack = mock(() => undefined);
+				const onComplete = mock(() => undefined);
+				const onError = mock(() => undefined);
 
 				await withMockFetch(mockFetchImpl, async () => {
 					const result = render(
@@ -990,35 +996,35 @@ describe("generate screen", () => {
 							onBack={onBack}
 							onComplete={onComplete}
 							onError={onError}
-						/>,
+						/>
 					);
 					try {
 						await waitUntil(
 							() =>
 								stripAnsi(result.lastFrame() ?? "").includes(
-									"Enter your prompt:",
+									"Enter your prompt:"
 								),
-							{ timeoutMs: 3000 },
+							{ timeoutMs: 3000 }
 						);
 						await writeInput(result, "test post-action");
 						await writeInput(result, KEYS.enter);
 						await waitUntil(
 							() =>
 								stripAnsi(result.lastFrame() ?? "").includes("Quick presets"),
-							{ timeoutMs: 3000 },
+							{ timeoutMs: 3000 }
 						);
 						await writeInput(result, KEYS.enter);
 						await waitUntil(
 							() =>
 								stripAnsi(result.lastFrame() ?? "").includes(
-									"Ready to generate",
+									"Ready to generate"
 								),
-							{ timeoutMs: 3000 },
+							{ timeoutMs: 3000 }
 						);
 						await writeInput(result, "y");
 						await waitUntil(
 							() => stripAnsi(result.lastFrame() ?? "").includes("Image ready"),
-							{ timeoutMs: 5000 },
+							{ timeoutMs: 5000 }
 						);
 						// Navigate to the target action
 						for (let i = 0; i < action.index; i++) {
@@ -1036,9 +1042,9 @@ describe("generate screen", () => {
 							await waitUntil(
 								() =>
 									stripAnsi(result.lastFrame() ?? "").includes(
-										action.expectStep,
+										action.expectStep
 									),
-								{ timeoutMs: 3000 },
+								{ timeoutMs: 3000 }
 							);
 							const output = stripAnsi(result.lastFrame() ?? "");
 							expect(output).toContain(action.expectStep);
@@ -1048,7 +1054,7 @@ describe("generate screen", () => {
 					}
 				});
 			}),
-			{ numRuns: 10 },
+			{ numRuns: 10 }
 		);
 	}, 60_000);
 });

@@ -38,7 +38,7 @@ describe("image utils", () => {
 
 	it("throws for missing image path", async () => {
 		await expect(imageToDataUrl("/missing.png")).rejects.toThrow(
-			"Image not found",
+			"Image not found"
 		);
 	});
 
@@ -71,7 +71,7 @@ describe("downloadImage", () => {
 
 	afterEach(() => {
 		if (savedFixture === undefined) {
-			delete process.env.FALCON_DOWNLOAD_FIXTURE;
+			process.env.FALCON_DOWNLOAD_FIXTURE = undefined;
 		} else {
 			process.env.FALCON_DOWNLOAD_FIXTURE = savedFixture;
 		}
@@ -96,12 +96,12 @@ describe("downloadImage", () => {
 		const outputPath = join(tempDir, "output.png");
 
 		await expect(
-			downloadImage("https://example.com/image.png", outputPath),
+			downloadImage("https://example.com/image.png", outputPath)
 		).rejects.toThrow();
 	});
 
 	it("writes response body to output path on successful fetch", async () => {
-		delete process.env.FALCON_DOWNLOAD_FIXTURE;
+		process.env.FALCON_DOWNLOAD_FIXTURE = undefined;
 		const outputPath = join(tempDir, "fetched.png");
 		const fakeContent = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
 
@@ -109,7 +109,7 @@ describe("downloadImage", () => {
 			() => new Response(fakeContent, { status: 200 }),
 			async () => {
 				await downloadImage("https://example.com/image.png", outputPath);
-			},
+			}
 		);
 
 		expect(existsSync(outputPath)).toBe(true);
@@ -118,7 +118,7 @@ describe("downloadImage", () => {
 	});
 
 	it("throws on non-OK response with status text", async () => {
-		delete process.env.FALCON_DOWNLOAD_FIXTURE;
+		process.env.FALCON_DOWNLOAD_FIXTURE = undefined;
 		const outputPath = join(tempDir, "fail.png");
 
 		await expect(
@@ -126,8 +126,8 @@ describe("downloadImage", () => {
 				() => new Response(null, { status: 404, statusText: "Not Found" }),
 				async () => {
 					await downloadImage("https://example.com/missing.png", outputPath);
-				},
-			),
+				}
+			)
 		).rejects.toThrow("Not Found");
 	});
 });
@@ -143,55 +143,69 @@ describe("imageToDataUrl — MIME types", () => {
 		rmSync(tempDir, { recursive: true, force: true });
 	});
 
-	it("returns image/jpeg MIME for .jpg files", async () => {
+	it("returns image/jpeg MIME for JPEG magic bytes", async () => {
 		const filePath = join(tempDir, "test.jpg");
 		writeFileSync(filePath, Buffer.from([0xff, 0xd8, 0xff, 0xe0]));
 		const dataUrl = await imageToDataUrl(filePath);
 		expect(dataUrl.startsWith("data:image/jpeg;base64,")).toBe(true);
 	});
 
-	it("returns image/jpeg MIME for .jpeg files", async () => {
-		const filePath = join(tempDir, "test.jpeg");
-		writeFileSync(filePath, Buffer.from([0xff, 0xd8, 0xff, 0xe0]));
-		const dataUrl = await imageToDataUrl(filePath);
-		expect(dataUrl.startsWith("data:image/jpeg;base64,")).toBe(true);
-	});
-
-	it("returns image/webp MIME for .webp files", async () => {
+	it("returns image/webp MIME for RIFF magic bytes", async () => {
 		const filePath = join(tempDir, "test.webp");
 		writeFileSync(filePath, Buffer.from([0x52, 0x49, 0x46, 0x46]));
 		const dataUrl = await imageToDataUrl(filePath);
 		expect(dataUrl.startsWith("data:image/webp;base64,")).toBe(true);
 	});
 
-	// Feature: phase5-config-integration-tests, Property 4: MIME type detection correctness
-	// **Validates: Requirements 6.1, 6.2, 6.3, 6.4**
-	it("property: MIME type matches extension for all supported formats", async () => {
-		const extToMime: Record<string, string> = {
-			".png": "image/png",
-			".jpg": "image/jpeg",
-			".jpeg": "image/jpeg",
-			".webp": "image/webp",
-		};
-		const extensions = Object.keys(extToMime);
+	it("falls back to image/png when bytes do not match JPEG/WEBP signatures", async () => {
+		const filePath = join(tempDir, "test.png");
+		writeFileSync(filePath, Buffer.from([0x00, 0x11, 0x22, 0x33]));
+		const dataUrl = await imageToDataUrl(filePath);
+		expect(dataUrl.startsWith("data:image/png;base64,")).toBe(true);
+	});
+
+	it("uses byte signatures even when extension is misleading", async () => {
+		const filePath = join(tempDir, "misleading.png");
+		writeFileSync(filePath, Buffer.from([0xff, 0xd8, 0xff, 0xe0]));
+		const dataUrl = await imageToDataUrl(filePath);
+		expect(dataUrl.startsWith("data:image/jpeg;base64,")).toBe(true);
+	});
+
+	it("property: MIME type follows bytes, not extension", async () => {
+		const signatures = [
+			{
+				mime: "image/jpeg",
+				header: Uint8Array.from([0xff, 0xd8, 0x00, 0x00]),
+			},
+			{
+				mime: "image/webp",
+				header: Uint8Array.from([0x52, 0x49, 0x46, 0x46]),
+			},
+			{
+				mime: "image/png",
+				header: Uint8Array.from([0x11, 0x22, 0x33, 0x44]),
+			},
+		] as const;
 
 		await fc.assert(
 			fc.asyncProperty(
-				fc.constantFrom(...extensions),
-				fc.uint8Array({ minLength: 1, maxLength: 64 }),
-				async (ext, content) => {
+				fc.constantFrom(".png", ".jpg", ".jpeg", ".webp"),
+				fc.constantFrom(...signatures),
+				fc.uint8Array({ minLength: 0, maxLength: 60 }),
+				async (ext, signature, tail) => {
 					const filePath = join(tempDir, `prop-test${ext}`);
-					writeFileSync(filePath, content);
+					writeFileSync(filePath, Buffer.concat([signature.header, tail]));
 					try {
 						const dataUrl = await imageToDataUrl(filePath);
-						const expectedPrefix = `data:${extToMime[ext]};base64,`;
-						expect(dataUrl.startsWith(expectedPrefix)).toBe(true);
+						expect(dataUrl.startsWith(`data:${signature.mime};base64,`)).toBe(
+							true
+						);
 					} finally {
 						rmSync(filePath, { force: true });
 					}
-				},
+				}
 			),
-			{ numRuns: 50 },
+			{ numRuns: 50 }
 		);
 	});
 });
@@ -269,9 +283,9 @@ describe("getFileSize", () => {
 					} finally {
 						rmSync(filePath, { force: true });
 					}
-				},
+				}
 			),
-			{ numRuns: 50 },
+			{ numRuns: 50 }
 		);
 	});
 });
@@ -285,7 +299,7 @@ describe("openImage", () => {
 
 	afterEach(() => {
 		if (savedTestMode === undefined) {
-			delete process.env.FALCON_TEST_MODE;
+			process.env.FALCON_TEST_MODE = undefined;
 		} else {
 			process.env.FALCON_TEST_MODE = savedTestMode;
 		}
@@ -299,9 +313,9 @@ describe("openImage", () => {
 	});
 
 	it("throws for nonexistent file path", async () => {
-		delete process.env.FALCON_TEST_MODE;
+		process.env.FALCON_TEST_MODE = undefined;
 		await expect(openImage("/nonexistent/image.png")).rejects.toThrow(
-			"Image not found",
+			"Image not found"
 		);
 	});
 });
