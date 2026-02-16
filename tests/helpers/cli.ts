@@ -234,6 +234,9 @@ async function runCliAttempt(
 		!isSubcommand && !hasOutputFlag && (hasPrompt || isPostProcess);
 
 	const testArgs = [...args];
+	// Test files can clean up the shared helper output directory in parallel
+	// (via afterAll hooks), so make sure it exists before every spawn.
+	mkdirSync(testOutputDir, { recursive: true });
 	if (isImageProducing) {
 		outputCounter++;
 		const outputPath = join(testOutputDir, `test-gen-${outputCounter}.png`);
