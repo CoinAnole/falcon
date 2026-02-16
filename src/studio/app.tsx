@@ -1,4 +1,4 @@
-import { Box, Text, useApp, useInput } from "ink";
+import { Box, Text, useApp } from "ink";
 import { useEffect, useRef, useState } from "react";
 import type { FalconConfig, History } from "./deps/config";
 import { logger } from "./deps/logger";
@@ -31,6 +31,9 @@ export function App({
 		"edit" | "variations" | "upscale" | "rmbg" | undefined
 	>(undefined);
 	const errorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const handleQuit = () => {
+		exit();
+	};
 
 	// Clean up error timeout on unmount
 	useEffect(() => {
@@ -40,15 +43,6 @@ export function App({
 			}
 		};
 	}, []);
-
-	useInput((input, key) => {
-		if (input === "q" && screen === "home") {
-			exit();
-		}
-		if (key.escape && screen !== "home") {
-			setScreen("home");
-		}
-	});
 
 	const handleError = (err: Error) => {
 		// Clear any existing timeout
@@ -67,7 +61,13 @@ export function App({
 	const renderScreen = () => {
 		switch (screen) {
 			case "home":
-				return <HomeScreen history={history} onNavigate={setScreen} />;
+				return (
+					<HomeScreen
+						history={history}
+						onNavigate={setScreen}
+						onQuit={handleQuit}
+					/>
+				);
 			case "generate":
 				return (
 					<GenerateScreen
@@ -85,6 +85,7 @@ export function App({
 							setScreen(nextScreen || "home");
 						}}
 						onError={handleError}
+						onQuit={handleQuit}
 					/>
 				);
 			case "edit":
@@ -104,18 +105,24 @@ export function App({
 							setScreen("home");
 						}}
 						onError={handleError}
+						onQuit={handleQuit}
 						skipToOperation={editFromGenerate}
 					/>
 				);
 			case "gallery":
 				return (
-					<GalleryScreen history={history} onBack={() => setScreen("home")} />
+					<GalleryScreen
+						history={history}
+						onBack={() => setScreen("home")}
+						onQuit={handleQuit}
+					/>
 				);
 			case "settings":
 				return (
 					<SettingsScreen
 						config={config}
 						onBack={() => setScreen("home")}
+						onQuit={handleQuit}
 						onSave={async (newConfig) => {
 							await onConfigChange(newConfig);
 							setScreen("home");
@@ -123,7 +130,13 @@ export function App({
 					/>
 				);
 			default:
-				return <HomeScreen history={history} onNavigate={setScreen} />;
+				return (
+					<HomeScreen
+						history={history}
+						onNavigate={setScreen}
+						onQuit={handleQuit}
+					/>
+				);
 		}
 	};
 

@@ -197,6 +197,47 @@ describe("generate screen", () => {
 		}
 	});
 
+	it("preset step up/down arrows wrap selection", async () => {
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
+		const result = render(
+			<GenerateScreen
+				config={baseConfig}
+				onBack={onBack}
+				onComplete={onComplete}
+				onError={onError}
+			/>
+		);
+		try {
+			await waitUntil(
+				() =>
+					stripAnsi(result.lastFrame() ?? "").includes("Enter your prompt:"),
+				{ timeoutMs: 3000 }
+			);
+			await writeInput(result, "wrap test");
+			await writeInput(result, KEYS.enter);
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Quick presets"),
+				{ timeoutMs: 3000 }
+			);
+
+			await writeInput(result, KEYS.up);
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Social Share"),
+				{ timeoutMs: 3000 }
+			);
+
+			await writeInput(result, KEYS.down);
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Square"),
+				{ timeoutMs: 3000 }
+			);
+		} finally {
+			result.unmount();
+		}
+	});
+
 	it("escape on prompt step invokes onBack", async () => {
 		const onBack = mock(() => undefined);
 		const onComplete = mock(() => undefined);
@@ -217,6 +258,36 @@ describe("generate screen", () => {
 			);
 			await writeInput(result, KEYS.escape);
 			expect(onBack).toHaveBeenCalledTimes(1);
+		} finally {
+			result.unmount();
+		}
+	});
+
+	it("q in prompt step is treated as text input (does not quit)", async () => {
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
+		const onQuit = mock(() => undefined);
+		const result = render(
+			<GenerateScreen
+				config={baseConfig}
+				onBack={onBack}
+				onComplete={onComplete}
+				onError={onError}
+				onQuit={onQuit}
+			/>
+		);
+		try {
+			await waitUntil(
+				() =>
+					stripAnsi(result.lastFrame() ?? "").includes("Enter your prompt:"),
+				{ timeoutMs: 3000 }
+			);
+			await writeInput(result, "q");
+			expect(onQuit).not.toHaveBeenCalled();
+			expect(stripAnsi(result.lastFrame() ?? "")).toContain(
+				"Enter your prompt:"
+			);
 		} finally {
 			result.unmount();
 		}
@@ -274,6 +345,57 @@ describe("generate screen", () => {
 			}
 		});
 		// Pricing + generation calls should have been made
+		expect(calls.length).toBeGreaterThan(0);
+	});
+
+	it("'Y' on confirm step triggers generation (fetch called)", async () => {
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
+
+		const { calls } = await withMockFetch(mockFetchImpl, async () => {
+			const result = render(
+				<GenerateScreen
+					config={baseConfig}
+					onBack={onBack}
+					onComplete={onComplete}
+					onError={onError}
+				/>
+			);
+			try {
+				await waitUntil(
+					() =>
+						stripAnsi(result.lastFrame() ?? "").includes("Enter your prompt:"),
+					{ timeoutMs: 3000 }
+				);
+				await writeInput(result, "a mountain");
+				await writeInput(result, KEYS.enter);
+				await waitUntil(
+					() => stripAnsi(result.lastFrame() ?? "").includes("Quick presets"),
+					{ timeoutMs: 3000 }
+				);
+				await writeInput(result, KEYS.enter);
+				await waitUntil(
+					() =>
+						stripAnsi(result.lastFrame() ?? "").includes("Ready to generate"),
+					{ timeoutMs: 3000 }
+				);
+				await writeInput(result, "Y");
+				await waitUntil(
+					() => {
+						const frame = stripAnsi(result.lastFrame() ?? "");
+						return (
+							frame.includes("Generating") ||
+							frame.includes("Downloading") ||
+							frame.includes("Image ready")
+						);
+					},
+					{ timeoutMs: 5000 }
+				);
+			} finally {
+				result.unmount();
+			}
+		});
 		expect(calls.length).toBeGreaterThan(0);
 	});
 
@@ -364,6 +486,45 @@ describe("generate screen", () => {
 			});
 			// Press 'n' to cancel
 			await writeInput(result, "n");
+			expect(onBack).toHaveBeenCalledTimes(1);
+		} finally {
+			result.unmount();
+		}
+	});
+
+	it("N on confirm step invokes onBack", async () => {
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
+		const result = render(
+			<GenerateScreen
+				config={baseConfig}
+				onBack={onBack}
+				onComplete={onComplete}
+				onError={onError}
+			/>
+		);
+		try {
+			await waitUntil(
+				() =>
+					stripAnsi(result.lastFrame() ?? "").includes("Enter your prompt:"),
+				{ timeoutMs: 3000 }
+			);
+			await writeInput(result, "a cat");
+			await writeInput(result, KEYS.enter);
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Quick presets"),
+				{ timeoutMs: 3000 }
+			);
+			await withMockFetch(mockFetchImpl, async () => {
+				await writeInput(result, KEYS.enter); // select preset → confirm
+				await waitUntil(
+					() =>
+						stripAnsi(result.lastFrame() ?? "").includes("Ready to generate"),
+					{ timeoutMs: 3000 }
+				);
+			});
+			await writeInput(result, "N");
 			expect(onBack).toHaveBeenCalledTimes(1);
 		} finally {
 			result.unmount();

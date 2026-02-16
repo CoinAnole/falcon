@@ -165,6 +165,7 @@ function isSeedEditableMode(
 interface EditScreenProps {
 	config: FalconConfig;
 	onBack: () => void;
+	onQuit?: () => void;
 	onComplete: () => void;
 	onError: (err: Error) => void;
 	skipToOperation?: boolean;
@@ -174,6 +175,7 @@ interface EditScreenProps {
 export function EditScreen({
 	config,
 	onBack,
+	onQuit = () => undefined,
 	onComplete,
 	onError,
 	skipToOperation = false,
@@ -371,15 +373,27 @@ export function EditScreen({
 	};
 
 	const handleSelectHistoryInput = (input: string, key: InputKey): void => {
-		if (key.upArrow && selectedIndex > 0) {
-			setSelectedIndex(selectedIndex - 1);
-			setSelectedGen(generations[selectedIndex - 1]);
+		const visibleCount = Math.min(
+			generations.length,
+			MAX_VISIBLE_HISTORY_ITEMS
+		);
+		if (visibleCount === 0) {
 			return;
 		}
 
-		if (key.downArrow && selectedIndex < generations.length - 1) {
-			setSelectedIndex(selectedIndex + 1);
-			setSelectedGen(generations[selectedIndex + 1]);
+		if (key.upArrow) {
+			const nextIndex =
+				selectedIndex > 0 ? selectedIndex - 1 : visibleCount - 1;
+			setSelectedIndex(nextIndex);
+			setSelectedGen(generations[nextIndex]);
+			return;
+		}
+
+		if (key.downArrow) {
+			const nextIndex =
+				selectedIndex < visibleCount - 1 ? selectedIndex + 1 : 0;
+			setSelectedIndex(nextIndex);
+			setSelectedGen(generations[nextIndex]);
 			return;
 		}
 
@@ -408,13 +422,17 @@ export function EditScreen({
 	};
 
 	const handleOperationInput = (key: InputKey): void => {
-		if (key.upArrow && operationIndex > 0) {
-			setOperationIndex(operationIndex - 1);
+		if (key.upArrow) {
+			setOperationIndex((index) =>
+				index > 0 ? index - 1 : OPERATIONS.length - 1
+			);
 			return;
 		}
 
-		if (key.downArrow && operationIndex < OPERATIONS.length - 1) {
-			setOperationIndex(operationIndex + 1);
+		if (key.downArrow) {
+			setOperationIndex((index) =>
+				index < OPERATIONS.length - 1 ? index + 1 : 0
+			);
 			return;
 		}
 
@@ -424,13 +442,17 @@ export function EditScreen({
 	};
 
 	const handleEditModelInput = (key: InputKey): void => {
-		if (key.upArrow && editModelIndex > 0) {
-			setEditModelIndex(editModelIndex - 1);
+		if (key.upArrow) {
+			setEditModelIndex((index) =>
+				index > 0 ? index - 1 : EDIT_MODELS.length - 1
+			);
 			return;
 		}
 
-		if (key.downArrow && editModelIndex < EDIT_MODELS.length - 1) {
-			setEditModelIndex(editModelIndex + 1);
+		if (key.downArrow) {
+			setEditModelIndex((index) =>
+				index < EDIT_MODELS.length - 1 ? index + 1 : 0
+			);
 			return;
 		}
 
@@ -465,12 +487,14 @@ export function EditScreen({
 	};
 
 	const handleConfirmInput = (input: string, key: InputKey): void => {
-		if (key.return || input === "y") {
+		const lowerInput = input.toLowerCase();
+
+		if (key.return || lowerInput === "y") {
 			runProcess();
 			return;
 		}
 
-		if (input === "n") {
+		if (lowerInput === "n") {
 			setStep("operation");
 			return;
 		}
@@ -712,6 +736,13 @@ export function EditScreen({
 	};
 
 	useInput((input, key) => {
+		const isTextInputStep =
+			step === "prompt" || (step === "select" && useCustomPath);
+		if (input === "q" && !isTextInputStep) {
+			onQuit();
+			return;
+		}
+
 		if (key.escape) {
 			handleEscapeInput();
 			return;
@@ -949,10 +980,16 @@ export function EditScreen({
 								</Text>
 							</Text>
 						)}
-						<Text>
-							Seed: <Text color="cyan">{seed ?? "random"}</Text>
-							<Text dimColor> (type digits to set)</Text>
-						</Text>
+						{isSeedEditableMode(mode) ? (
+							<Text>
+								Seed: <Text color="cyan">{seed ?? "random"}</Text>
+								<Text dimColor> (type digits to set)</Text>
+							</Text>
+						) : (
+							<Text>
+								Seed: <Text dimColor>n/a</Text>
+							</Text>
+						)}
 					</Box>
 					<Box marginTop={1}>
 						<Text>Proceed? </Text>

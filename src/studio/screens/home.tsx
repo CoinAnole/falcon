@@ -50,14 +50,24 @@ const MENU_ITEMS: MenuItem[] = [
 interface HomeScreenProps {
 	history: History;
 	onNavigate: (screen: Screen) => void;
+	onQuit?: () => void;
 }
 
-export function HomeScreen({ history, onNavigate }: HomeScreenProps) {
+export function HomeScreen({
+	history,
+	onNavigate,
+	onQuit = () => undefined,
+}: HomeScreenProps) {
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const hasLast = history.generations.length > 0;
 	const last = history.generations.at(-1);
 
-	useInput((_input, key) => {
+	useInput((input, key) => {
+		if (input === "q") {
+			onQuit();
+			return;
+		}
+
 		if (key.upArrow) {
 			setSelectedIndex((i) => (i > 0 ? i - 1 : MENU_ITEMS.length - 1));
 		}

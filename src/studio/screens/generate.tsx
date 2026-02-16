@@ -120,6 +120,7 @@ const SINGLE_DIGIT_REGEX = /^\d$/;
 interface GenerateScreenProps {
 	config: FalconConfig;
 	onBack: () => void;
+	onQuit?: () => void;
 	onComplete: (
 		nextScreen?: "home" | "edit" | "generate",
 		operation?: "edit" | "variations" | "upscale" | "rmbg"
@@ -130,6 +131,7 @@ interface GenerateScreenProps {
 export function GenerateScreen({
 	config,
 	onBack,
+	onQuit = () => undefined,
 	onComplete,
 	onError,
 }: GenerateScreenProps) {
@@ -247,10 +249,10 @@ export function GenerateScreen({
 		return?: boolean;
 		tab?: boolean;
 	}) => {
-		if (key.upArrow && selectedIndex > 0) {
-			setSelectedIndex(selectedIndex - 1);
-		} else if (key.downArrow && selectedIndex < PRESETS.length - 1) {
-			setSelectedIndex(selectedIndex + 1);
+		if (key.upArrow) {
+			setSelectedIndex((i) => (i > 0 ? i - 1 : PRESETS.length - 1));
+		} else if (key.downArrow) {
+			setSelectedIndex((i) => (i < PRESETS.length - 1 ? i + 1 : 0));
 		} else if (key.return) {
 			const preset = PRESETS[selectedIndex];
 			setAspect(preset.aspect);
@@ -438,6 +440,8 @@ export function GenerateScreen({
 			backspace?: boolean;
 		}
 	) => {
+		const lowerInput = input.toLowerCase();
+
 		if (confirmField) {
 			handleConfirmFieldEdit(input, key);
 			return;
@@ -451,9 +455,9 @@ export function GenerateScreen({
 			setConfirmIndex((i) => (i < fields.length - 1 ? i + 1 : 0));
 		} else if (key.return) {
 			selectConfirmField(fields[confirmIndex]);
-		} else if (input === "y") {
+		} else if (lowerInput === "y") {
 			runGeneration();
-		} else if (input === "n") {
+		} else if (lowerInput === "n") {
 			onBack();
 		}
 	};
@@ -496,6 +500,11 @@ export function GenerateScreen({
 	};
 
 	useInput((input, key) => {
+		if (input === "q" && step !== "prompt") {
+			onQuit();
+			return;
+		}
+
 		if (key.escape) {
 			handleEscapeKey();
 			return;

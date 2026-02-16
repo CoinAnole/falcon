@@ -182,6 +182,31 @@ describe("gallery screen", () => {
 		}
 	});
 
+	it("up arrow on first overall item wraps to the last overall item", async () => {
+		const onBack = mock(() => undefined);
+		const history = createHistoryWithGenerations(12);
+		const result = render(<GalleryScreen history={history} onBack={onBack} />);
+		try {
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Page 1/2"),
+				{ timeoutMs: 3000 }
+			);
+			await writeInput(result, KEYS.up);
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Page 2/2"),
+				{ timeoutMs: 3000 }
+			);
+			const output = stripAnsi(result.lastFrame() ?? "");
+			const selectedLines = output
+				.split("\n")
+				.filter((line) => line.includes("◆"));
+			expect(selectedLines.length).toBe(1);
+			expect(selectedLines[0]).toContain("test prompt 0");
+		} finally {
+			result.unmount();
+		}
+	});
+
 	it("escape invokes onBack callback", async () => {
 		const onBack = mock(() => undefined);
 		const history = createHistoryWithGenerations(3);
@@ -192,6 +217,25 @@ describe("gallery screen", () => {
 			});
 			await writeInput(result, KEYS.escape);
 			expect(onBack).toHaveBeenCalledTimes(1);
+		} finally {
+			result.unmount();
+		}
+	});
+
+	it("q invokes onQuit callback", async () => {
+		const onBack = mock(() => undefined);
+		const onQuit = mock(() => undefined);
+		const history = createHistoryWithGenerations(3);
+		const result = render(
+			<GalleryScreen history={history} onBack={onBack} onQuit={onQuit} />
+		);
+		try {
+			await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
+				timeoutMs: 3000,
+			});
+			await writeInput(result, "q");
+			expect(onQuit).toHaveBeenCalledTimes(1);
+			expect(onBack).not.toHaveBeenCalled();
 		} finally {
 			result.unmount();
 		}

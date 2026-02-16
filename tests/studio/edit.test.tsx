@@ -354,6 +354,8 @@ describe("edit screen", () => {
 			const output = stripAnsi(result.lastFrame() ?? "");
 			expect(output).toContain("Ready to process");
 			expect(output).toContain("BiRefNet");
+			expect(output).toContain("Seed: n/a");
+			expect(output).not.toContain("type digits to set");
 		} finally {
 			result.unmount();
 		}
@@ -706,6 +708,180 @@ describe("edit screen", () => {
 				// Press y to start processing
 				await writeInput(result, "y");
 				// Verify processing starts
+				await waitUntil(
+					() => {
+						const frame = stripAnsi(result.lastFrame() ?? "");
+						return (
+							frame.includes("Uploading") ||
+							frame.includes("Removing") ||
+							frame.includes("Complete")
+						);
+					},
+					{ timeoutMs: 5000 }
+				);
+			} finally {
+				result.unmount();
+			}
+		});
+	});
+
+	it("operation selection up/down arrows wrap at list boundaries", async () => {
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
+		const result = render(
+			<EditScreen
+				config={baseConfig}
+				onBack={onBack}
+				onComplete={onComplete}
+				onError={onError}
+			/>
+		);
+		try {
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
+				{ timeoutMs: 3000 }
+			);
+			await writeInput(result, KEYS.enter);
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Variations"),
+				{ timeoutMs: 3000 }
+			);
+
+			await writeInput(result, KEYS.up);
+			await waitUntil(
+				() =>
+					stripAnsi(result.lastFrame() ?? "").includes("◆ Remove Background"),
+				{ timeoutMs: 3000 }
+			);
+
+			await writeInput(result, KEYS.down);
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Edit"),
+				{ timeoutMs: 3000 }
+			);
+		} finally {
+			result.unmount();
+		}
+	});
+
+	it("q in custom path input is treated as text input (does not quit)", async () => {
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
+		const onQuit = mock(() => undefined);
+		const result = render(
+			<EditScreen
+				config={baseConfig}
+				onBack={onBack}
+				onComplete={onComplete}
+				onError={onError}
+				onQuit={onQuit}
+			/>
+		);
+		try {
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
+				{ timeoutMs: 3000 }
+			);
+			await writeInput(result, KEYS.tab);
+			await waitUntil(
+				() =>
+					stripAnsi(result.lastFrame() ?? "").includes("Enter path or drag"),
+				{ timeoutMs: 3000 }
+			);
+			await writeInput(result, "q");
+			expect(onQuit).not.toHaveBeenCalled();
+		} finally {
+			result.unmount();
+		}
+	});
+
+	it("confirm step N returns to operation selection", async () => {
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
+		const result = render(
+			<EditScreen
+				config={baseConfig}
+				onBack={onBack}
+				onComplete={onComplete}
+				onError={onError}
+			/>
+		);
+		try {
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
+				{ timeoutMs: 3000 }
+			);
+			await writeInput(result, KEYS.enter);
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Variations"),
+				{ timeoutMs: 3000 }
+			);
+			await writeInput(result, KEYS.down);
+			await writeInput(result, KEYS.down);
+			await writeInput(result, KEYS.down);
+			await waitUntil(
+				() =>
+					stripAnsi(result.lastFrame() ?? "").includes("◆ Remove Background"),
+				{ timeoutMs: 3000 }
+			);
+			await writeInput(result, KEYS.enter);
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Ready to process"),
+				{ timeoutMs: 3000 }
+			);
+			await writeInput(result, "N");
+			await waitUntil(
+				() =>
+					stripAnsi(result.lastFrame() ?? "").includes("◆ Remove Background"),
+				{ timeoutMs: 3000 }
+			);
+		} finally {
+			result.unmount();
+		}
+	});
+
+	it("confirm step Y starts processing", async () => {
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
+
+		await withMockFetch(mockFetchImpl, async () => {
+			const result = render(
+				<EditScreen
+					config={baseConfig}
+					onBack={onBack}
+					onComplete={onComplete}
+					onError={onError}
+				/>
+			);
+			try {
+				await waitUntil(
+					() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
+					{ timeoutMs: 3000 }
+				);
+				await writeInput(result, KEYS.enter);
+				await waitUntil(
+					() => stripAnsi(result.lastFrame() ?? "").includes("Variations"),
+					{ timeoutMs: 3000 }
+				);
+				await writeInput(result, KEYS.down);
+				await writeInput(result, KEYS.down);
+				await writeInput(result, KEYS.down);
+				await waitUntil(
+					() =>
+						stripAnsi(result.lastFrame() ?? "").includes("◆ Remove Background"),
+					{ timeoutMs: 3000 }
+				);
+				await writeInput(result, KEYS.enter);
+				await waitUntil(
+					() =>
+						stripAnsi(result.lastFrame() ?? "").includes("Ready to process"),
+					{ timeoutMs: 3000 }
+				);
+				await writeInput(result, "Y");
 				await waitUntil(
 					() => {
 						const frame = stripAnsi(result.lastFrame() ?? "");

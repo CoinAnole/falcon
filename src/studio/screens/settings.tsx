@@ -60,12 +60,14 @@ interface SettingsScreenProps {
 	config: FalconConfig;
 	onSave: (config: Partial<FalconConfig>) => Promise<void>;
 	onBack: () => void;
+	onQuit?: () => void;
 }
 
 export function SettingsScreen({
 	config,
 	onSave,
 	onBack,
+	onQuit = () => undefined,
 }: SettingsScreenProps) {
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const [editing, setEditing] = useState(false);
@@ -74,18 +76,63 @@ export function SettingsScreen({
 
 	const currentSetting = SETTINGS[selectedIndex];
 
+	const handleEscape = () => {
+		if (editing) {
+			setEditing(false);
+			return;
+		}
+		onBack();
+	};
+
+	const handleSettingChange = () => {
+		const setting = SETTINGS[selectedIndex];
+		if (setting.type === "toggle") {
+			// Toggle boolean value
+			setLocalConfig((c) => ({
+				...c,
+				[setting.key]: !c[setting.key],
+			}));
+			return;
+		}
+
+		if (setting.type === "text") {
+			setEditValue((localConfig[setting.key] as string) || "");
+			setEditing(true);
+			return;
+		}
+
+		const options = setting.options;
+		if (setting.type === "select" && options) {
+			// Cycle through options
+			const currentValue = localConfig[setting.key] as string;
+			const currentIdx = options.indexOf(currentValue);
+			const nextIdx = (currentIdx + 1) % options.length;
+			setLocalConfig((c) => ({
+				...c,
+				[setting.key]: options[nextIdx],
+			}));
+		}
+	};
+
+	const saveSettings = () => {
+		onSave(localConfig).catch(() => {
+			// Error handled by parent
+		});
+	};
+
 	useInput((input, key) => {
 		if (key.escape) {
-			if (editing) {
-				setEditing(false);
-			} else {
-				onBack();
-			}
+			handleEscape();
 			return;
 		}
 
 		if (editing) {
 			return; // Let TextInput handle input
+		}
+
+		if (input === "q") {
+			onQuit();
+			return;
 		}
 
 		if (key.upArrow) {
@@ -97,34 +144,12 @@ export function SettingsScreen({
 		}
 
 		if (key.return) {
-			const setting = SETTINGS[selectedIndex];
-			if (setting.type === "toggle") {
-				// Toggle boolean value
-				setLocalConfig((c) => ({
-					...c,
-					[setting.key]: !c[setting.key],
-				}));
-			} else if (setting.type === "text") {
-				setEditValue((localConfig[setting.key] as string) || "");
-				setEditing(true);
-			} else if (setting.type === "select" && setting.options) {
-				// Cycle through options
-				const currentValue = localConfig[setting.key] as string;
-				const currentIdx = setting.options.indexOf(currentValue);
-				const nextIdx = (currentIdx + 1) % setting.options.length;
-				setLocalConfig((c) => ({
-					...c,
-					[setting.key]: setting.options?.[nextIdx],
-				}));
-			}
+			handleSettingChange();
+			return;
 		}
 
 		if (input === "s" || input === "S") {
-			// Save settings
-			onSave(localConfig).catch(() => {
-				// Error handled by parent
-			});
-			return;
+			saveSettings();
 		}
 	});
 

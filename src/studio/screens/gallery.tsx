@@ -7,37 +7,45 @@ import { openImage } from "../deps/image";
 interface GalleryScreenProps {
 	history: History;
 	onBack: () => void;
+	onQuit?: () => void;
 }
 
-export function GalleryScreen({ history, onBack }: GalleryScreenProps) {
-	const [selectedIndex, setSelectedIndex] = useState(0);
-	const [page, setPage] = useState(0);
+export function GalleryScreen({
+	history,
+	onBack,
+	onQuit = () => undefined,
+}: GalleryScreenProps) {
+	const [selectedGlobalIndex, setSelectedGlobalIndex] = useState(0);
 	const pageSize = 8;
 
 	// Reverse to display newest-first (storage is oldest-first for O(1) push)
 	const generations = [...history.generations].reverse();
+	const totalItems = generations.length;
+	const page = Math.floor(selectedGlobalIndex / pageSize);
 	const totalPages = Math.ceil(generations.length / pageSize);
+	const selectedIndex = selectedGlobalIndex - page * pageSize;
 	const pageItems = generations.slice(page * pageSize, (page + 1) * pageSize);
 
 	const handleUpArrow = () => {
-		if (selectedIndex > 0) {
-			setSelectedIndex(selectedIndex - 1);
-		} else if (page > 0) {
-			setPage(page - 1);
-			setSelectedIndex(pageSize - 1);
+		if (totalItems === 0) {
+			return;
 		}
+		setSelectedGlobalIndex((index) => (index > 0 ? index - 1 : totalItems - 1));
 	};
 
 	const handleDownArrow = () => {
-		if (selectedIndex < pageItems.length - 1) {
-			setSelectedIndex(selectedIndex + 1);
-		} else if (page < totalPages - 1) {
-			setPage(page + 1);
-			setSelectedIndex(0);
+		if (totalItems === 0) {
+			return;
 		}
+		setSelectedGlobalIndex((index) => (index < totalItems - 1 ? index + 1 : 0));
 	};
 
-	useInput((_input, key) => {
+	useInput((input, key) => {
+		if (input === "q") {
+			onQuit();
+			return;
+		}
+
 		if (key.escape) {
 			onBack();
 			return;
@@ -52,18 +60,16 @@ export function GalleryScreen({ history, onBack }: GalleryScreenProps) {
 		}
 
 		if (key.leftArrow && page > 0) {
-			setPage(page - 1);
-			setSelectedIndex(0);
+			setSelectedGlobalIndex((page - 1) * pageSize);
 		}
 
 		if (key.rightArrow && page < totalPages - 1) {
-			setPage(page + 1);
-			setSelectedIndex(0);
+			setSelectedGlobalIndex((page + 1) * pageSize);
 		}
 
-		if (key.return && pageItems[selectedIndex]) {
+		if (key.return && generations[selectedGlobalIndex]) {
 			try {
-				openImage(pageItems[selectedIndex].output);
+				openImage(generations[selectedGlobalIndex].output);
 			} catch {
 				// Image may have been deleted; silently ignore
 			}

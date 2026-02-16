@@ -124,7 +124,7 @@ describe("studio app routing", () => {
 	);
 
 	it(
-		"q key on home screen exits the app",
+		"q key exits from home",
 		async () => {
 			const result = renderApp();
 			try {
@@ -146,6 +146,81 @@ describe("studio app routing", () => {
 				const frameCountAfterInput = result.frames.length;
 
 				expect(frameCountAfterInput).toBe(frameCountAfterQuit);
+			} finally {
+				result.unmount();
+			}
+		},
+		APP_TEST_TIMEOUT_MS
+	);
+
+	it(
+		"q key exits from non-home screens",
+		async () => {
+			const result = renderApp();
+			try {
+				await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
+					timeoutMs: 3000,
+				});
+				await writeInput(result, KEYS.down);
+				await writeInput(result, KEYS.down);
+				await writeInput(result, KEYS.down);
+				await writeInput(result, KEYS.enter);
+				await waitUntil(
+					() => stripAnsi(result.lastFrame() ?? "").includes("Settings"),
+					{ timeoutMs: 3000 }
+				);
+
+				await writeInput(result, "q");
+				await new Promise((r) => setTimeout(r, 200));
+				const frameCountAfterQuit = result.frames.length;
+				await writeInput(result, KEYS.down);
+				await new Promise((r) => setTimeout(r, 200));
+				const frameCountAfterInput = result.frames.length;
+				expect(frameCountAfterInput).toBe(frameCountAfterQuit);
+			} finally {
+				result.unmount();
+			}
+		},
+		APP_TEST_TIMEOUT_MS
+	);
+
+	it(
+		"escape in generate screen follows local step-back before returning home",
+		async () => {
+			const result = renderApp();
+			try {
+				await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
+					timeoutMs: 3000,
+				});
+				await writeInput(result, KEYS.enter);
+				await waitUntil(
+					() =>
+						stripAnsi(result.lastFrame() ?? "").includes("Enter your prompt:"),
+					{ timeoutMs: 3000 }
+				);
+				await writeInput(result, "test prompt");
+				await writeInput(result, KEYS.enter);
+				await waitUntil(
+					() => stripAnsi(result.lastFrame() ?? "").includes("Quick presets"),
+					{ timeoutMs: 3000 }
+				);
+
+				await writeInput(result, KEYS.escape);
+				await waitUntil(
+					() =>
+						stripAnsi(result.lastFrame() ?? "").includes("Enter your prompt:"),
+					{ timeoutMs: 3000 }
+				);
+				expect(stripAnsi(result.lastFrame() ?? "")).toContain(
+					"Enter your prompt:"
+				);
+
+				await writeInput(result, KEYS.escape);
+				await waitUntil(
+					() => stripAnsi(result.lastFrame() ?? "").includes("Generate"),
+					{ timeoutMs: 3000 }
+				);
+				expect(stripAnsi(result.lastFrame() ?? "")).toContain("Generate");
 			} finally {
 				result.unmount();
 			}

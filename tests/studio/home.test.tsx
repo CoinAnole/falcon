@@ -145,6 +145,27 @@ describe("home screen", () => {
 		}
 	});
 
+	it("q invokes onQuit callback", async () => {
+		const onNavigate = mock(() => undefined);
+		const onQuit = mock(() => undefined);
+		const result = render(
+			<HomeScreen
+				history={createEmptyHistory()}
+				onNavigate={onNavigate}
+				onQuit={onQuit}
+			/>
+		);
+		try {
+			await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
+				timeoutMs: 3000,
+			});
+			await writeInput(result, "q");
+			expect(onQuit).toHaveBeenCalledTimes(1);
+		} finally {
+			result.unmount();
+		}
+	});
+
 	// Feature: studio-ui-tests, Property 1: Home menu enter navigates to correct screen
 	// **Validates: Requirements 1.5**
 	it("property: enter navigates to correct screen for any menu index", async () => {

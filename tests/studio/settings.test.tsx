@@ -195,6 +195,66 @@ describe("settings screen", () => {
 		}
 	});
 
+	it("q while not editing invokes onQuit", async () => {
+		const onSave = mock(async () => undefined);
+		const onBack = mock(() => undefined);
+		const onQuit = mock(() => undefined);
+		const result = render(
+			<SettingsScreen
+				config={baseConfig}
+				onBack={onBack}
+				onQuit={onQuit}
+				onSave={onSave}
+			/>
+		);
+		try {
+			await waitUntil(() => (result.lastFrame() ?? "").length > 0, {
+				timeoutMs: 3000,
+			});
+			await writeInput(result, "q");
+			expect(onQuit).toHaveBeenCalledTimes(1);
+			expect(onBack).not.toHaveBeenCalled();
+		} finally {
+			result.unmount();
+		}
+	});
+
+	it("q while editing API key does not invoke onQuit", async () => {
+		const onSave = mock(async () => undefined);
+		const onBack = mock(() => undefined);
+		const onQuit = mock(() => undefined);
+		const result = render(
+			<SettingsScreen
+				config={baseConfig}
+				onBack={onBack}
+				onQuit={onQuit}
+				onSave={onSave}
+			/>
+		);
+		try {
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Default Model"),
+				{ timeoutMs: 3000 }
+			);
+			for (let i = 0; i < 7; i++) {
+				await writeInput(result, KEYS.down);
+			}
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("◆ API Key"),
+				{ timeoutMs: 3000 }
+			);
+			await writeInput(result, KEYS.enter);
+			await waitUntil(
+				() => !stripAnsi(result.lastFrame() ?? "").includes("Not set"),
+				{ timeoutMs: 3000 }
+			);
+			await writeInput(result, "q");
+			expect(onQuit).not.toHaveBeenCalled();
+		} finally {
+			result.unmount();
+		}
+	});
+
 	it("Default Aspect cycling shows valid aspect ratio strings", async () => {
 		const onSave = mock(async () => undefined);
 		const onBack = mock(() => undefined);
