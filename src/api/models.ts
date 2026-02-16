@@ -272,10 +272,12 @@ export function aspectToFlux2Size(aspect: AspectRatio): string {
 export function estimateCost(
 	model: string,
 	resolution?: CliResolution,
-	numImages: number = 1,
+	numImages = 1
 ): number {
 	const config = MODELS[model];
-	if (!config) return 0;
+	if (!config) {
+		return 0;
+	}
 
 	let baseCost = 0;
 	switch (model) {

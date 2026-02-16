@@ -228,9 +228,9 @@ describe("property tests", () => {
 					expect(content).toContain(safeVal);
 					// The sensitive raw value should NOT appear
 					expect(content).not.toContain(sensitiveVal);
-				},
+				}
 			),
-			{ numRuns: 50 },
+			{ numRuns: 50 }
 		);
 	});
 
@@ -261,9 +261,9 @@ describe("property tests", () => {
 					expect(content).toContain("[REDACTED]");
 					expect(content).toContain("visible");
 					expect(content).toContain("safe-value");
-				},
+				}
 			),
-			{ numRuns: 50 },
+			{ numRuns: 50 }
 		);
 	});
 });

@@ -36,7 +36,9 @@ describe("property tests", () => {
 	it("Property 5: isValidUpscaleFactor rejects non-members", () => {
 		const validSet = new Set([2, 4, 6, 8]);
 		for (let value = -1000; value <= 1000; value++) {
-			if (validSet.has(value)) continue;
+			if (validSet.has(value)) {
+				continue;
+			}
 			expect(isValidUpscaleFactor(value)).toBe(false);
 		}
 	});

@@ -11,7 +11,7 @@ import type { CostMetadata, EstimateType } from "../types/pricing";
 import { FALCON_DIR } from "../utils/config";
 import { logger } from "../utils/logger";
 import { getApiKey } from "./fal";
-import { estimateCost, MODELS, type CliResolution } from "./models";
+import { type CliResolution, estimateCost, MODELS } from "./models";
 
 const PRICING_BASE_URL = "https://api.fal.ai/v1";
 const PRICING_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
@@ -62,7 +62,9 @@ async function atomicWrite(filePath: string, data: string): Promise<void> {
 
 async function loadPricingCache(): Promise<PricingCache | null> {
 	const cachePath = getPricingCachePath();
-	if (!existsSync(cachePath)) return null;
+	if (!existsSync(cachePath)) {
+		return null;
+	}
 	try {
 		const file = Bun.file(cachePath);
 		return (await file.json()) as PricingCache;
@@ -78,9 +80,13 @@ async function savePricingCache(cache: PricingCache): Promise<void> {
 }
 
 function isCacheFresh(cache: PricingCache | null): boolean {
-	if (!cache?.fetchedAt) return false;
+	if (!cache?.fetchedAt) {
+		return false;
+	}
 	const fetchedAtMs = Date.parse(cache.fetchedAt);
-	if (Number.isNaN(fetchedAtMs)) return false;
+	if (Number.isNaN(fetchedAtMs)) {
+		return false;
+	}
 	return Date.now() - fetchedAtMs < PRICING_CACHE_TTL_MS;
 }
 
@@ -93,7 +99,9 @@ function chunk<T>(items: T[], size: number): T[][] {
 }
 
 function isComputeUnit(unit: string | undefined): boolean {
-	if (!unit) return false;
+	if (!unit) {
+		return false;
+	}
 	const normalized = unit.toLowerCase();
 	return (
 		normalized.includes("gpu") ||
@@ -103,15 +111,19 @@ function isComputeUnit(unit: string | undefined): boolean {
 }
 
 function isMegapixelUnit(unit: string | undefined): boolean {
-	if (!unit) return false;
+	if (!unit) {
+		return false;
+	}
 	const normalized = unit.toLowerCase();
 	return normalized.includes("megapixel") || normalized.includes("mp");
 }
 
 async function fetchPricingForEndpoints(
-	endpointIds: string[],
+	endpointIds: string[]
 ): Promise<Record<string, PriceEntry>> {
-	if (endpointIds.length === 0) return {};
+	if (endpointIds.length === 0) {
+		return {};
+	}
 
 	const fixturePath = process.env.FALCON_PRICING_FIXTURE;
 	if (fixturePath) {
@@ -128,7 +140,7 @@ async function fetchPricingForEndpoints(
 			const results: Record<string, PriceEntry> = {};
 			for (const endpointId of endpointIds) {
 				const price = data.prices?.find(
-					(entry) => entry.endpoint_id === endpointId,
+					(entry) => entry.endpoint_id === endpointId
 				);
 				if (!price) {
 					throw new Error(`Pricing fixture missing endpoint: ${endpointId}`);
@@ -144,7 +156,7 @@ async function fetchPricingForEndpoints(
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err);
 			throw new Error(
-				`Failed to load pricing fixture: ${fixturePath}. ${message}`,
+				`Failed to load pricing fixture: ${fixturePath}. ${message}`
 			);
 		}
 	}
@@ -154,7 +166,7 @@ async function fetchPricingForEndpoints(
 
 	// Add timeout to prevent hanging
 	const controller = new AbortController();
-	const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+	const timeoutId = setTimeout(() => controller.abort(), 10_000); // 10 second timeout
 
 	try {
 		for (const batch of chunk(endpointIds, 50)) {
@@ -170,7 +182,7 @@ async function fetchPricingForEndpoints(
 						Authorization: `Key ${apiKey}`,
 					},
 					signal: controller.signal,
-				},
+				}
 			);
 
 			if (!response.ok) {
@@ -212,7 +224,7 @@ async function fetchPricingForEndpoints(
 
 async function getPricingEntries(
 	endpointIds: string[],
-	refresh = false,
+	refresh = false
 ): Promise<Record<string, PriceEntry>> {
 	const cache = await loadPricingCache();
 	const cacheFresh = isCacheFresh(cache);
@@ -243,7 +255,7 @@ async function estimateWithApi(
 	endpointId: string,
 	quantity: number,
 	unitPrice?: number,
-	currency?: string,
+	currency?: string
 ): Promise<{ cost: number; currency: string }> {
 	// Skip API call in test mode with fixtures - use fixture pricing directly
 	if (process.env.FALCON_PRICING_FIXTURE && unitPrice !== undefined) {
@@ -254,7 +266,7 @@ async function estimateWithApi(
 
 	// Add timeout to prevent hanging
 	const controller = new AbortController();
-	const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+	const timeoutId = setTimeout(() => controller.abort(), 10_000); // 10 second timeout
 
 	try {
 		const response = await fetch(
@@ -275,7 +287,7 @@ async function estimateWithApi(
 					},
 				}),
 				signal: controller.signal,
-			},
+			}
 		);
 
 		if (!response.ok) {
@@ -304,7 +316,7 @@ function fallbackEstimate(
 	resolution: CliResolution | undefined,
 	numImages: number,
 	endpointId: string,
-	estimateType: EstimateType,
+	estimateType: EstimateType
 ): PricingEstimate {
 	const cost = estimateCost(model, resolution, numImages);
 	return {
@@ -320,9 +332,11 @@ function fallbackEstimate(
 }
 
 export async function refreshPricingCache(
-	endpointIds: string[],
+	endpointIds: string[]
 ): Promise<void> {
-	if (endpointIds.length === 0) return;
+	if (endpointIds.length === 0) {
+		return;
+	}
 	logger.debug("Refreshing pricing cache", {
 		endpointCount: endpointIds.length,
 	});
@@ -358,7 +372,7 @@ export async function estimateGenerationCost(options: {
 			resolution,
 			numImages,
 			endpointId,
-			"unit_price",
+			"unit_price"
 		);
 	}
 
@@ -373,7 +387,7 @@ export async function estimateGenerationCost(options: {
 			endpointId,
 			unitQuantity,
 			pricing?.unitPrice,
-			pricing?.currency,
+			pricing?.currency
 		);
 		logger.debug("Cost estimated from API", {
 			model,
@@ -416,7 +430,7 @@ export async function estimateGenerationCost(options: {
 			resolution,
 			numImages,
 			endpointId,
-			estimateType,
+			estimateType
 		);
 	}
 }
@@ -464,7 +478,7 @@ export async function estimateUpscaleCost(options: {
 			endpointId,
 			unitQuantity,
 			pricing?.unitPrice,
-			pricing?.currency,
+			pricing?.currency
 		);
 		return {
 			cost: estimate.cost,
@@ -527,7 +541,7 @@ export async function estimateBackgroundRemovalCost(options: {
 			endpointId,
 			unitQuantity,
 			pricing?.unitPrice,
-			pricing?.currency,
+			pricing?.currency
 		);
 		return {
 			cost: estimate.cost,

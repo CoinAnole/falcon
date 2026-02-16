@@ -27,7 +27,7 @@ export async function waitUntil(
 		timeoutMs?: number;
 		intervalMs?: number;
 		initialDelayMs?: number;
-	} = {},
+	} = {}
 ): Promise<void> {
 	const { timeoutMs = 5000, intervalMs = 50, initialDelayMs = 50 } = options;
 	const startedAt = Date.now();
@@ -38,7 +38,9 @@ export async function waitUntil(
 	}
 
 	while (Date.now() - startedAt < timeoutMs) {
-		if (check()) return;
+		if (check()) {
+			return;
+		}
 		await waitForRender(intervalMs);
 	}
 
@@ -51,7 +53,7 @@ export { stripAnsi };
 
 export async function writeInput(
 	result: InkRenderResult,
-	input: string,
+	input: string
 ): Promise<void> {
 	result.stdin.write(input);
 	await waitForRender();

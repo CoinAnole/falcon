@@ -144,8 +144,7 @@ export async function getImageDimensions(
 /**
  * Get file size in human-readable format
  */
-// biome-ignore lint/suspicious/useAwait: Call sites intentionally await this helper for API consistency.
-export async function getFileSize(filePath: string): Promise<string> {
+export function getFileSize(filePath: string): string {
 	const file = Bun.file(filePath);
 	const bytes = file.size;
 
@@ -171,8 +170,7 @@ export function generateFilename(prefix = "falcon", format = "png"): string {
  * Open an image in Preview
  * Uses 'open' command for a clean experience without debug output
  */
-// biome-ignore lint/suspicious/useAwait: Keeping async preserves existing call-site behavior.
-export async function openImage(imagePath: string): Promise<void> {
+export function openImage(imagePath: string): void {
 	// Validate the path exists to provide better error messages
 	if (!existsSync(imagePath)) {
 		throw new Error(`Image not found: ${imagePath}`);

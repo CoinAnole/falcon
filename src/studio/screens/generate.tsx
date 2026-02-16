@@ -15,11 +15,8 @@ import {
 	estimateGenerationCost,
 	type PricingEstimate,
 } from "../../api/pricing";
-import {
-	addGeneration,
-	type FalconConfig,
-	generateId,
-} from "../deps/config";
+import { Spinner } from "../components/spinner";
+import { addGeneration, type FalconConfig, generateId } from "../deps/config";
 import {
 	downloadImage,
 	generateFilename,
@@ -29,7 +26,6 @@ import {
 } from "../deps/image";
 import { logger } from "../deps/logger";
 import { validateOutputPath } from "../deps/paths";
-import { Spinner } from "../components/spinner";
 
 type Step =
 	| "prompt"
@@ -126,7 +122,7 @@ interface GenerateScreenProps {
 	onBack: () => void;
 	onComplete: (
 		nextScreen?: "home" | "edit" | "generate",
-		operation?: "edit" | "variations" | "upscale" | "rmbg",
+		operation?: "edit" | "variations" | "upscale" | "rmbg"
 	) => void;
 	onError: (err: Error) => void;
 }
@@ -142,7 +138,7 @@ export function GenerateScreen({
 	const [model, setModel] = useState(config.defaultModel);
 	const [aspect, setAspect] = useState<AspectRatio>(config.defaultAspect);
 	const [resolution, setResolution] = useState<Resolution>(
-		config.defaultResolution,
+		config.defaultResolution
 	);
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const [seed, setSeed] = useState<number | undefined>(undefined);
@@ -203,7 +199,7 @@ export function GenerateScreen({
 	const handleListNavigation = <T extends string>(
 		items: readonly T[],
 		onSelect: (item: T) => void,
-		key: { upArrow?: boolean; downArrow?: boolean; return?: boolean },
+		key: { upArrow?: boolean; downArrow?: boolean; return?: boolean }
 	) => {
 		if (key.upArrow) {
 			setSelectedIndex((i) => (i > 0 ? i - 1 : items.length - 1));
@@ -284,7 +280,7 @@ export function GenerateScreen({
 				setConfirmField(null);
 				setStep(MODELS[selectedModel]?.supportsAspect ? "aspect" : "confirm");
 			},
-			key,
+			key
 		);
 	};
 
@@ -334,7 +330,7 @@ export function GenerateScreen({
 				setConfirmField(null);
 				setStep("confirm");
 			},
-			key,
+			key
 		);
 	};
 
@@ -346,7 +342,7 @@ export function GenerateScreen({
 			downArrow?: boolean;
 			return?: boolean;
 			backspace?: boolean;
-		},
+		}
 	) => {
 		if (key.escape) {
 			setConfirmField(null);
@@ -362,7 +358,7 @@ export function GenerateScreen({
 					setConfirmField(null);
 					setSelectedIndex(0);
 				},
-				key,
+				key
 			);
 			return;
 		}
@@ -376,7 +372,7 @@ export function GenerateScreen({
 					setConfirmField(null);
 					setSelectedIndex(0);
 				},
-				key,
+				key
 			);
 			return;
 		}
@@ -389,7 +385,7 @@ export function GenerateScreen({
 					setConfirmField(null);
 					setSelectedIndex(0);
 				},
-				key,
+				key
 			);
 			return;
 		}
@@ -440,7 +436,7 @@ export function GenerateScreen({
 			return?: boolean;
 			escape?: boolean;
 			backspace?: boolean;
-		},
+		}
 	) => {
 		if (confirmField) {
 			handleConfirmFieldEdit(input, key);
@@ -548,7 +544,7 @@ export function GenerateScreen({
 			await downloadImage(result.images[0].url, outputPath);
 
 			const dims = await getImageDimensions(outputPath);
-			const size = await getFileSize(outputPath);
+			const size = getFileSize(outputPath);
 
 			await addGeneration({
 				id: generateId(),
@@ -572,7 +568,7 @@ export function GenerateScreen({
 			});
 
 			if (config.openAfterGenerate) {
-				await openImage(fullPath);
+				openImage(fullPath);
 			}
 
 			setSelectedIndex(0);
@@ -609,10 +605,10 @@ export function GenerateScreen({
 			<Box flexDirection="column">
 				<Text bold>Select aspect ratio:</Text>
 				<Text dimColor>↑↓←→ to navigate</Text>
-				<Box marginTop={1} flexDirection="column">
+				<Box flexDirection="column" marginTop={1}>
 					{Array.from({ length: rows }, (_, row) => (
 						// biome-ignore lint/suspicious/noArrayIndexKey: Row index is stable for static grid layout
-						<Box key={`row-${row}`} flexDirection="row">
+						<Box flexDirection="row" key={`row-${row}`}>
 							{aspectRatios
 								.slice(row * cols, row * cols + cols)
 								.map((a: AspectRatio, colIdx: number) => {
@@ -620,8 +616,8 @@ export function GenerateScreen({
 									return (
 										<Box key={a} width={12}>
 											<Text
-												color={i === selectedIndex ? "magenta" : undefined}
 												bold={i === selectedIndex}
+												color={i === selectedIndex ? "magenta" : undefined}
 											>
 												{i === selectedIndex ? "◆" : " "}
 												{a.padEnd(6)}
@@ -643,8 +639,8 @@ export function GenerateScreen({
 					{GENERATION_MODELS.map((m, i) => (
 						<Box key={m}>
 							<Text
-								color={i === selectedIndex ? "magenta" : undefined}
 								bold={i === selectedIndex}
+								color={i === selectedIndex ? "magenta" : undefined}
 							>
 								{i === selectedIndex ? "◆ " : "  "}
 								{MODELS[m].name}
@@ -659,7 +655,8 @@ export function GenerateScreen({
 		return (
 			<Text>
 				{isActive ? "◆ " : "  "}
-				Model: <Text color={isActive ? "magenta" : "green"}>{MODELS[model].name}</Text>
+				Model:{" "}
+				<Text color={isActive ? "magenta" : "green"}>{MODELS[model].name}</Text>
 			</Text>
 		);
 	};
@@ -671,8 +668,8 @@ export function GenerateScreen({
 					{getAspectRatiosForModel(model).map((a: AspectRatio, i: number) => (
 						<Box key={a}>
 							<Text
-								color={i === selectedIndex ? "magenta" : undefined}
 								bold={i === selectedIndex}
+								color={i === selectedIndex ? "magenta" : undefined}
 							>
 								{i === selectedIndex ? "◆ " : "  "}
 								{a}
@@ -703,8 +700,8 @@ export function GenerateScreen({
 					{RESOLUTIONS.map((r, i) => (
 						<Box key={r}>
 							<Text
-								color={i === selectedIndex ? "magenta" : undefined}
 								bold={i === selectedIndex}
+								color={i === selectedIndex ? "magenta" : undefined}
 							>
 								{i === selectedIndex ? "◆ " : "  "}
 								{r}
@@ -719,7 +716,8 @@ export function GenerateScreen({
 		return (
 			<Text>
 				{isActive ? "◆ " : "  "}
-				Resolution: <Text color={isActive ? "magenta" : undefined}>{resolution}</Text>
+				Resolution:{" "}
+				<Text color={isActive ? "magenta" : undefined}>{resolution}</Text>
 			</Text>
 		);
 	};
@@ -746,7 +744,7 @@ export function GenerateScreen({
 			<Box flexDirection="column">
 				<Text bold>Ready to generate:</Text>
 				{confirmField && <Text dimColor>esc cancel</Text>}
-				<Box marginTop={1} flexDirection="column" marginLeft={2}>
+				<Box flexDirection="column" marginLeft={2} marginTop={1}>
 					<Text>
 						Prompt:{" "}
 						<Text color="cyan">
@@ -763,11 +761,11 @@ export function GenerateScreen({
 					</Text>
 				</Box>
 				{!confirmField && (
-					<Box marginTop={1} flexDirection="column">
+					<Box flexDirection="column" marginTop={1}>
 						<Text dimColor>↑↓ select, enter to edit</Text>
 						<Box>
 							<Text>Generate? </Text>
-							<Text color="green" bold>
+							<Text bold color="green">
 								[Y]es
 							</Text>
 							<Text> / </Text>
@@ -782,10 +780,10 @@ export function GenerateScreen({
 	const renderDoneStep = () => {
 		return (
 			<Box flexDirection="column">
-				<Text color="green" bold>
+				<Text bold color="green">
 					◆ Image ready
 				</Text>
-				<Box marginTop={1} flexDirection="column" marginLeft={2}>
+				<Box flexDirection="column" marginLeft={2} marginTop={1}>
 					<Text>
 						Saved: <Text color="cyan">{result?.path}</Text>
 					</Text>
@@ -794,14 +792,14 @@ export function GenerateScreen({
 					</Text>
 				</Box>
 
-				<Box marginTop={1} flexDirection="column">
+				<Box flexDirection="column" marginTop={1}>
 					<Text bold>Continue</Text>
 					{POST_ACTIONS.map((action, i) => (
 						<Box key={action.key} marginLeft={1}>
 							<Box width={20}>
 								<Text
-									color={i === selectedIndex ? "magenta" : undefined}
 									bold={i === selectedIndex}
+									color={i === selectedIndex ? "magenta" : undefined}
 								>
 									{i === selectedIndex ? "◆ " : "  "}
 									{action.label}
@@ -823,10 +821,10 @@ export function GenerateScreen({
 					<Box marginTop={1}>
 						<Text color="magenta">◆ </Text>
 						<TextInput
-							value={prompt}
 							onChange={setPrompt}
 							onSubmit={handlePromptSubmit}
 							placeholder="A cat sitting on a windowsill..."
+							value={prompt}
 						/>
 					</Box>
 				</Box>
@@ -836,12 +834,12 @@ export function GenerateScreen({
 				<Box flexDirection="column">
 					<Text bold>Quick presets</Text>
 					<Text dimColor>↑↓ select, enter apply, tab for manual</Text>
-					<Box marginTop={1} flexDirection="column">
+					<Box flexDirection="column" marginTop={1}>
 						{PRESETS.map((preset, i) => (
 							<Box key={preset.key} marginLeft={1}>
 								<Text
-									color={i === selectedIndex ? "magenta" : undefined}
 									bold={i === selectedIndex}
+									color={i === selectedIndex ? "magenta" : undefined}
 								>
 									{i === selectedIndex ? "◆ " : "  "}
 									{preset.label.padEnd(14)}
@@ -856,12 +854,12 @@ export function GenerateScreen({
 			{step === "model" && (
 				<Box flexDirection="column">
 					<Text bold>Select model:</Text>
-					<Box marginTop={1} flexDirection="column">
+					<Box flexDirection="column" marginTop={1}>
 						{GENERATION_MODELS.map((m, i) => (
 							<Box key={m}>
 								<Text
-									color={i === selectedIndex ? "magenta" : undefined}
 									bold={i === selectedIndex}
+									color={i === selectedIndex ? "magenta" : undefined}
 								>
 									{i === selectedIndex ? "◆ " : "  "}
 									{MODELS[m].name.padEnd(20)}
@@ -878,12 +876,12 @@ export function GenerateScreen({
 			{step === "resolution" && (
 				<Box flexDirection="column">
 					<Text bold>Select resolution:</Text>
-					<Box marginTop={1} flexDirection="column">
+					<Box flexDirection="column" marginTop={1}>
 						{RESOLUTIONS.map((r, i) => (
 							<Box key={r}>
 								<Text
-									color={i === selectedIndex ? "magenta" : undefined}
 									bold={i === selectedIndex}
+									color={i === selectedIndex ? "magenta" : undefined}
 								>
 									{i === selectedIndex ? "◆ " : "  "}
 									{r}

@@ -142,13 +142,13 @@ describe("model arrays", () => {
 				"flux2Flash",
 				"flux2Turbo",
 				"imagine",
-			].sort(),
+			].sort()
 		);
 	});
 
 	it("UTILITY_MODELS contains exactly the expected keys", () => {
 		expect([...UTILITY_MODELS].sort()).toEqual(
-			["clarity", "crystal", "rmbg", "bria"].sort(),
+			["clarity", "crystal", "rmbg", "bria"].sort()
 		);
 	});
 });
@@ -176,9 +176,9 @@ describe("Property 6: estimateCost scales linearly with numImages", () => {
 					const baseCost = estimateCost(model, resolution, 1);
 					const scaledCost = estimateCost(model, resolution, numImages);
 					return Math.abs(scaledCost - baseCost * numImages) < 1e-10;
-				},
+				}
 			),
-			{ numRuns: 50 },
+			{ numRuns: 50 }
 		);
 	});
 });
@@ -212,7 +212,7 @@ describe("Property 7: aspectToGptSize always returns a valid GPT size", () => {
 			fc.property(fc.constantFrom(...allAspectRatios), (ratio) => {
 				return validGptSizes.includes(aspectToGptSize(ratio));
 			}),
-			{ numRuns: 50 },
+			{ numRuns: 50 }
 		);
 	});
 });

@@ -1,7 +1,7 @@
 import { basename, resolve } from "node:path";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { generate, removeBackground, upscale } from "../../api/fal";
 import {
 	type AspectRatio,
@@ -15,6 +15,8 @@ import {
 	estimateUpscaleCost,
 	type PricingEstimate,
 } from "../../api/pricing";
+import { isValidUpscaleFactor, UPSCALE_FACTORS } from "../../utils/constants";
+import { Spinner } from "../components/spinner";
 import {
 	addGeneration,
 	type FalconConfig,
@@ -22,7 +24,6 @@ import {
 	generateId,
 	loadHistory,
 } from "../deps/config";
-import { isValidUpscaleFactor, UPSCALE_FACTORS } from "../../utils/constants";
 import {
 	downloadImage,
 	generateFilename,
@@ -37,7 +38,6 @@ import {
 	validateImagePath,
 	validateOutputPath,
 } from "../deps/paths";
-import { Spinner } from "../components/spinner";
 
 type Mode = "edit" | "variations" | "upscale" | "rmbg";
 type Step =
@@ -49,6 +49,43 @@ type Step =
 	| "confirm"
 	| "processing"
 	| "done";
+
+type InitialOperation = "edit" | "variations" | "upscale" | "rmbg";
+
+interface InputKey {
+	escape?: boolean;
+	upArrow?: boolean;
+	downArrow?: boolean;
+	tab?: boolean;
+	return?: boolean;
+	ctrl?: boolean;
+	meta?: boolean;
+	backspace?: boolean;
+}
+
+interface SourceImage {
+	output: string;
+	prompt: string;
+	model: string;
+	aspect: AspectRatio;
+	resolution: CliResolution;
+}
+
+interface ProcessResult {
+	outputPath: string;
+	cost: number;
+	costDetails?: PricingEstimate["costDetails"];
+	promptLabel: string;
+	resultSeed?: number;
+}
+
+const IMAGE_EXT_REGEX = /\.(png|jpg|jpeg|webp)$/i;
+const SEED_INPUT_REGEX = /^\d+$/;
+
+const HISTORY_PROMPT_PREVIEW_LEN = 32;
+const HISTORY_FILE_PREVIEW_LEN = 20;
+const CONFIRM_PROMPT_PREVIEW_LEN = 40;
+const MAX_VISIBLE_HISTORY_ITEMS = 8;
 
 const OPERATIONS: { key: Mode; label: string; description: string }[] = [
 	{ key: "edit", label: "Edit", description: "Modify with a new prompt" },
@@ -65,13 +102,73 @@ const OPERATIONS: { key: Mode; label: string; description: string }[] = [
 	},
 ];
 
+const EDIT_MODELS = GENERATION_MODELS.filter((modelName) =>
+	Boolean(MODELS[modelName]?.supportsEdit)
+);
+
+function truncateWithEllipsis(text: string, maxLength: number): string {
+	if (text.length <= maxLength) {
+		return text;
+	}
+	return `${text.slice(0, maxLength)}...`;
+}
+
+function getPreferredEditModel(
+	sourceModel: string | undefined,
+	fallbackModel = "gpt"
+): string {
+	if (sourceModel && MODELS[sourceModel]?.supportsEdit) {
+		return sourceModel;
+	}
+	return fallbackModel;
+}
+
+function getEditModelIndex(modelName: string): number {
+	const idx = EDIT_MODELS.indexOf(modelName);
+	return idx >= 0 ? idx : 0;
+}
+
+function getHistoryModelForMode(
+	mode: Mode,
+	config: FalconConfig,
+	sourceModel: string
+): string {
+	switch (mode) {
+		case "upscale":
+			return config.upscaler;
+		case "rmbg":
+			return config.backgroundRemover;
+		default:
+			return sourceModel;
+	}
+}
+
+function buildPostProcessOutputPath(
+	sourceOutput: string,
+	sourceInCwd: boolean,
+	suffix: string,
+	fallbackPrefix: string
+): string {
+	if (sourceInCwd) {
+		return validateOutputPath(sourceOutput.replace(IMAGE_EXT_REGEX, suffix));
+	}
+
+	return validateOutputPath(generateFilename(fallbackPrefix));
+}
+
+function isSeedEditableMode(
+	mode: Mode | null
+): mode is "edit" | "variations" | "upscale" {
+	return mode === "edit" || mode === "variations" || mode === "upscale";
+}
+
 interface EditScreenProps {
 	config: FalconConfig;
 	onBack: () => void;
 	onComplete: () => void;
 	onError: (err: Error) => void;
 	skipToOperation?: boolean;
-	initialOperation?: "edit" | "variations" | "upscale" | "rmbg";
+	initialOperation?: InitialOperation;
 }
 
 export function EditScreen({
@@ -102,17 +199,7 @@ export function EditScreen({
 		size: string;
 	} | null>(null);
 
-	// Get models that support editing
-	const EDIT_MODELS = GENERATION_MODELS.filter((m) => MODELS[m]?.supportsEdit);
-
-	// For custom path mode, create a pseudo-generation object
-	const getSourceImage = (): {
-		output: string;
-		prompt: string;
-		model: string;
-		aspect: AspectRatio;
-		resolution: CliResolution;
-	} => {
+	const getSourceImage = (): SourceImage => {
 		if (useCustomPath && customPath) {
 			return {
 				output: customPath.trim(),
@@ -122,62 +209,121 @@ export function EditScreen({
 				resolution: config.defaultResolution,
 			};
 		}
+
 		return selectedGen as Generation;
 	};
 
+	const setStepForOperation = (
+		selectedMode: Mode,
+		source: SourceImage
+	): void => {
+		setMode(selectedMode);
+
+		switch (selectedMode) {
+			case "edit": {
+				const preferredModel = getPreferredEditModel(source.model);
+				setEditModel(preferredModel);
+				setEditModelIndex(getEditModelIndex(preferredModel));
+				setStep("edit-model");
+				return;
+			}
+			case "variations":
+				setPrompt(source.prompt);
+				setStep("confirm");
+				return;
+			case "upscale":
+				setStep("scale");
+				return;
+			case "rmbg":
+				setStep("confirm");
+				return;
+			default:
+				setStep("operation");
+		}
+	};
+
+	const applyInitialOperation = useCallback(
+		(requestedOperation: InitialOperation, latest: Generation): void => {
+			switch (requestedOperation) {
+				case "edit": {
+					const preferredModel = getPreferredEditModel(latest.model);
+					setEditModel(preferredModel);
+					setEditModelIndex(getEditModelIndex(preferredModel));
+					setStep("edit-model");
+					return;
+				}
+				case "variations":
+					setMode("variations");
+					setPrompt(latest.prompt);
+					setStep("confirm");
+					return;
+				case "upscale":
+					setMode("upscale");
+					setStep("scale");
+					return;
+				case "rmbg":
+					setMode("rmbg");
+					setStep("confirm");
+					return;
+				default:
+					setStep("operation");
+			}
+		},
+		[]
+	);
+
 	useEffect(() => {
 		let cancelled = false;
-		const loadGenerations = async () => {
+
+		const loadGenerationsFromHistory = async () => {
 			const history = await loadHistory();
-			if (cancelled) return;
+			if (cancelled) {
+				return;
+			}
+
 			if (history.generations.length === 0) {
 				setUseCustomPath(true);
-			} else {
-				const latest = history.generations[history.generations.length - 1];
-				setGenerations([...history.generations].reverse());
-				setSelectedGen(latest);
-				if (skipToOperation) {
-					if (initialOperation) {
-						// Skip directly to the specific operation
-						setMode(initialOperation);
-						const opIndex = OPERATIONS.findIndex(
-							(op) => op.key === initialOperation,
-						);
-						setOperationIndex(opIndex >= 0 ? opIndex : 0);
-						// Set the appropriate step based on operation
-						if (initialOperation === "edit") {
-							// Initialize edit model selection
-							const preferredModel =
-								latest.model && MODELS[latest.model]?.supportsEdit
-									? latest.model
-									: "gpt";
-							setEditModel(preferredModel);
-							setEditModelIndex(EDIT_MODELS.indexOf(preferredModel));
-							setStep("edit-model");
-						} else if (initialOperation === "variations") {
-							setPrompt(latest.prompt);
-							setStep("confirm");
-						} else if (initialOperation === "upscale") {
-							setStep("scale");
-						} else if (initialOperation === "rmbg") {
-							setStep("confirm");
-						}
-					} else {
-						setStep("operation");
-					}
-				}
+				return;
 			}
+
+			const latest = history.generations.at(-1);
+			if (!latest) {
+				setUseCustomPath(true);
+				return;
+			}
+			setGenerations([...history.generations].reverse());
+			setSelectedGen(latest);
+
+			if (!skipToOperation) {
+				return;
+			}
+
+			if (initialOperation) {
+				const opIndex = OPERATIONS.findIndex(
+					(op) => op.key === initialOperation
+				);
+				setOperationIndex(opIndex >= 0 ? opIndex : 0);
+				applyInitialOperation(initialOperation, latest);
+				return;
+			}
+
+			setStep("operation");
 		};
-		loadGenerations();
+
+		loadGenerationsFromHistory();
+
 		return () => {
 			cancelled = true;
 		};
-	}, [skipToOperation, initialOperation]);
+	}, [skipToOperation, initialOperation, applyInitialOperation]);
 
-	const proceedFromSelect = () => {
+	const proceedFromSelect = (): void => {
 		if (useCustomPath) {
 			const path = customPath.trim();
-			if (!path) return;
+			if (!path) {
+				return;
+			}
+
 			try {
 				validateImagePath(path);
 			} catch (err) {
@@ -187,291 +333,360 @@ export function EditScreen({
 		} else if (!selectedGen) {
 			return;
 		}
+
 		setStep("operation");
 		setOperationIndex(0);
 	};
 
-	const proceedFromOperation = () => {
-		const selectedMode = OPERATIONS[operationIndex].key;
-		setMode(selectedMode);
-
-		if (selectedMode === "edit") {
-			// Initialize edit model selection - prefer source model if it supports edit
-			const source = getSourceImage();
-			const preferredModel =
-				source?.model && MODELS[source.model]?.supportsEdit
-					? source.model
-					: "gpt";
-			setEditModel(preferredModel);
-			setEditModelIndex(EDIT_MODELS.indexOf(preferredModel));
-			setStep("edit-model");
-		} else if (selectedMode === "variations") {
-			const source = getSourceImage();
-			setPrompt(source.prompt);
-			setStep("confirm");
-		} else if (selectedMode === "upscale") {
-			setStep("scale");
-		} else if (selectedMode === "rmbg") {
-			setStep("confirm");
-		}
-	};
-
-	useInput((input, key) => {
-		if (key.escape) {
-			if (step === "processing") return;
-			if (step === "done") {
-				onComplete();
-			} else if (step === "select") {
-				onBack();
-			} else if (step === "operation") {
-				setStep("select");
-			} else {
-				// Go back to operation step
-				setStep("operation");
-			}
+	const proceedFromOperation = (): void => {
+		const selectedMode = OPERATIONS[operationIndex]?.key;
+		if (!selectedMode) {
 			return;
 		}
 
-		if (step === "select" && !useCustomPath) {
-			if (key.upArrow && selectedIndex > 0) {
-				setSelectedIndex(selectedIndex - 1);
-				setSelectedGen(generations[selectedIndex - 1]);
-			} else if (key.downArrow && selectedIndex < generations.length - 1) {
-				setSelectedIndex(selectedIndex + 1);
-				setSelectedGen(generations[selectedIndex + 1]);
-			} else if (key.tab) {
-				setUseCustomPath(true);
-			} else if (key.return) {
-				proceedFromSelect();
-			} else if (input && !key.ctrl && !key.meta) {
-				// User typed/pasted text (e.g. dragged a file) - switch to custom path mode
-				setCustomPath(input);
-				setUseCustomPath(true);
-			}
-		} else if (step === "select" && useCustomPath) {
-			if (key.tab && generations.length > 0) {
-				setUseCustomPath(false);
-			}
-			// TextInput handles the rest
-		} else if (step === "operation") {
-			if (key.upArrow && operationIndex > 0) {
-				setOperationIndex(operationIndex - 1);
-			} else if (key.downArrow && operationIndex < OPERATIONS.length - 1) {
-				setOperationIndex(operationIndex + 1);
-			} else if (key.return) {
-				proceedFromOperation();
-			}
-		} else if (step === "edit-model") {
-			if (key.upArrow && editModelIndex > 0) {
-				setEditModelIndex(editModelIndex - 1);
-			} else if (key.downArrow && editModelIndex < EDIT_MODELS.length - 1) {
-				setEditModelIndex(editModelIndex + 1);
-			} else if (key.return) {
-				setEditModel(EDIT_MODELS[editModelIndex]);
-				setStep("prompt");
-			}
-		} else if (step === "scale") {
-			if (key.upArrow) {
-				const currentIdx = UPSCALE_FACTORS.indexOf(
-					scale as (typeof UPSCALE_FACTORS)[number],
-				);
-				if (currentIdx < UPSCALE_FACTORS.length - 1) {
-					setScale(UPSCALE_FACTORS[currentIdx + 1]);
-				}
-			} else if (key.downArrow) {
-				const currentIdx = UPSCALE_FACTORS.indexOf(
-					scale as (typeof UPSCALE_FACTORS)[number],
-				);
-				if (currentIdx > 0) {
-					setScale(UPSCALE_FACTORS[currentIdx - 1]);
-				}
-			} else if (key.return) {
-				setStep("confirm");
-			}
-		} else if (step === "confirm") {
-			if (key.return || input === "y") {
-				runProcess();
-			} else if (input === "n") {
-				setStep("operation");
-			} else if (
-				(mode === "upscale" || mode === "variations" || mode === "edit") &&
-				/^\d+$/.test(input)
-			) {
-				setSeed((s) => Number(`${s ?? ""}${input}`));
-			} else if (
-				(mode === "upscale" || mode === "variations" || mode === "edit") &&
-				key.backspace
-			) {
-				setSeed((s) => {
-					const str = String(s ?? "");
-					return str.length > 1 ? Number(str.slice(0, -1)) : undefined;
-				});
-			}
-		} else if (step === "done") {
-			if (key.return) {
-				onComplete();
-			}
-		}
-	});
+		setStepForOperation(selectedMode, getSourceImage());
+	};
 
-	const handlePromptSubmit = (value: string) => {
-		if (value.trim()) {
-			setPrompt(value.trim());
+	const handleEscapeInput = (): void => {
+		if (step === "processing") {
+			return;
+		}
+
+		if (step === "done") {
+			onComplete();
+			return;
+		}
+
+		if (step === "select") {
+			onBack();
+			return;
+		}
+
+		if (step === "operation") {
+			setStep("select");
+			return;
+		}
+
+		setStep("operation");
+	};
+
+	const handleSelectHistoryInput = (input: string, key: InputKey): void => {
+		if (key.upArrow && selectedIndex > 0) {
+			setSelectedIndex(selectedIndex - 1);
+			setSelectedGen(generations[selectedIndex - 1]);
+			return;
+		}
+
+		if (key.downArrow && selectedIndex < generations.length - 1) {
+			setSelectedIndex(selectedIndex + 1);
+			setSelectedGen(generations[selectedIndex + 1]);
+			return;
+		}
+
+		if (key.tab) {
+			setUseCustomPath(true);
+			return;
+		}
+
+		if (key.return) {
+			proceedFromSelect();
+			return;
+		}
+
+		if (input && !key.ctrl && !key.meta) {
+			// User typed/pasted text (e.g. dragged a file) - switch to custom path mode.
+			setCustomPath(input);
+			setUseCustomPath(true);
+		}
+	};
+
+	const handleSelectCustomPathInput = (key: InputKey): void => {
+		if (key.tab && generations.length > 0) {
+			setUseCustomPath(false);
+		}
+		// TextInput handles the rest.
+	};
+
+	const handleOperationInput = (key: InputKey): void => {
+		if (key.upArrow && operationIndex > 0) {
+			setOperationIndex(operationIndex - 1);
+			return;
+		}
+
+		if (key.downArrow && operationIndex < OPERATIONS.length - 1) {
+			setOperationIndex(operationIndex + 1);
+			return;
+		}
+
+		if (key.return) {
+			proceedFromOperation();
+		}
+	};
+
+	const handleEditModelInput = (key: InputKey): void => {
+		if (key.upArrow && editModelIndex > 0) {
+			setEditModelIndex(editModelIndex - 1);
+			return;
+		}
+
+		if (key.downArrow && editModelIndex < EDIT_MODELS.length - 1) {
+			setEditModelIndex(editModelIndex + 1);
+			return;
+		}
+
+		if (key.return) {
+			const selectedEditModel = EDIT_MODELS[editModelIndex];
+			if (!selectedEditModel) {
+				return;
+			}
+			setEditModel(selectedEditModel);
+			setStep("prompt");
+		}
+	};
+
+	const handleScaleInput = (key: InputKey): void => {
+		const currentIdx = UPSCALE_FACTORS.indexOf(
+			scale as (typeof UPSCALE_FACTORS)[number]
+		);
+
+		if (key.upArrow && currentIdx < UPSCALE_FACTORS.length - 1) {
+			setScale(UPSCALE_FACTORS[currentIdx + 1]);
+			return;
+		}
+
+		if (key.downArrow && currentIdx > 0) {
+			setScale(UPSCALE_FACTORS[currentIdx - 1]);
+			return;
+		}
+
+		if (key.return) {
 			setStep("confirm");
 		}
 	};
 
-	const runProcess = async () => {
+	const handleConfirmInput = (input: string, key: InputKey): void => {
+		if (key.return || input === "y") {
+			runProcess();
+			return;
+		}
+
+		if (input === "n") {
+			setStep("operation");
+			return;
+		}
+
+		if (isSeedEditableMode(mode) && SEED_INPUT_REGEX.test(input)) {
+			setSeed((currentSeed) => Number(`${currentSeed ?? ""}${input}`));
+			return;
+		}
+
+		if (isSeedEditableMode(mode) && key.backspace) {
+			setSeed((currentSeed) => {
+				const asString = String(currentSeed ?? "");
+				return asString.length > 1 ? Number(asString.slice(0, -1)) : undefined;
+			});
+		}
+	};
+
+	const handlePromptSubmit = (value: string): void => {
+		const trimmed = value.trim();
+		if (!trimmed) {
+			return;
+		}
+
+		setPrompt(trimmed);
+		setStep("confirm");
+	};
+
+	const runEditOperation = async (
+		source: SourceImage
+	): Promise<ProcessResult> => {
+		setStatus("Preparing image...");
+		const imageData = await imageToDataUrl(source.output);
+
+		setStatus("Generating edit...");
+		const result = await generate({
+			prompt,
+			model: editModel,
+			editImage: imageData,
+			enablePromptExpansion: config.promptExpansion,
+			seed,
+		});
+
+		const outputPath = validateOutputPath(generateFilename("falcon-edit"));
+		await downloadImage(result.images[0].url, outputPath);
+
+		const estimate = await estimateGenerationCost({
+			model: editModel,
+			resolution: source.resolution,
+			numImages: 1,
+		});
+
+		return {
+			outputPath,
+			cost: estimate.cost,
+			costDetails: estimate.costDetails,
+			promptLabel: prompt,
+			resultSeed: result.seed,
+		};
+	};
+
+	const runVariationOperation = async (
+		source: SourceImage
+	): Promise<ProcessResult> => {
+		setStatus("Generating variations...");
+		const result = await generate({
+			prompt: source.prompt,
+			model: source.model,
+			aspect: source.aspect,
+			resolution: source.resolution,
+			numImages: 1,
+			enablePromptExpansion: config.promptExpansion,
+			seed,
+		});
+
+		const outputPath = validateOutputPath(generateFilename("falcon-edit"));
+		await downloadImage(result.images[0].url, outputPath);
+
+		const estimate = await estimateGenerationCost({
+			model: source.model,
+			resolution: source.resolution,
+			numImages: 1,
+		});
+
+		return {
+			outputPath,
+			cost: estimate.cost,
+			costDetails: estimate.costDetails,
+			promptLabel: source.prompt,
+			resultSeed: result.seed,
+		};
+	};
+
+	const runUpscaleOperation = async (
+		source: SourceImage
+	): Promise<ProcessResult> => {
+		if (!isValidUpscaleFactor(scale)) {
+			throw new Error(
+				`Invalid upscale factor. Choose ${UPSCALE_FACTORS.join(", ")}.`
+			);
+		}
+
+		setStatus("Uploading image...");
+		const imageData = await imageToDataUrl(source.output);
+
+		setStatus("Upscaling...");
+		const result = await upscale({
+			imageUrl: imageData,
+			model: config.upscaler,
+			scaleFactor: scale,
+			seed,
+		});
+
+		const outputPath = buildPostProcessOutputPath(
+			source.output,
+			isPathWithinCwd(source.output),
+			`-up${scale}x.png`,
+			"falcon-upscale"
+		);
+		await downloadImage(result.images[0].url, outputPath);
+
+		const dims = await getImageDimensions(source.output);
+		const estimate = await estimateUpscaleCost({
+			model: config.upscaler,
+			inputWidth: dims?.width,
+			inputHeight: dims?.height,
+			scaleFactor: scale,
+		});
+
+		return {
+			outputPath,
+			cost: estimate.cost,
+			costDetails: estimate.costDetails,
+			promptLabel: `[upscale ${scale}x] ${source.prompt}`,
+			resultSeed: result.seed,
+		};
+	};
+
+	const runBackgroundRemovalOperation = async (
+		source: SourceImage
+	): Promise<ProcessResult> => {
+		setStatus("Uploading image...");
+		const imageData = await imageToDataUrl(source.output);
+
+		setStatus("Removing background...");
+		const result = await removeBackground({
+			imageUrl: imageData,
+			model: config.backgroundRemover,
+		});
+
+		const outputPath = buildPostProcessOutputPath(
+			source.output,
+			isPathWithinCwd(source.output),
+			"-nobg.png",
+			"falcon-nobg"
+		);
+		await downloadImage(result.images[0].url, outputPath);
+
+		const estimate = await estimateBackgroundRemovalCost({
+			model: config.backgroundRemover,
+		});
+
+		return {
+			outputPath,
+			cost: estimate.cost,
+			costDetails: estimate.costDetails,
+			promptLabel: `[rmbg] ${source.prompt}`,
+			resultSeed: result.seed,
+		};
+	};
+
+	const runProcess = async (): Promise<void> => {
 		const source = getSourceImage();
-		if (!source || !mode) return;
+		if (!(source && mode)) {
+			return;
+		}
 
 		setStep("processing");
 
 		try {
-			let outputPath: string;
-			let cost = 0;
-			let costDetails: PricingEstimate["costDetails"] | undefined;
-			let promptLabel = "";
-			let resultSeed: number | undefined;
-
-			if (mode === "edit") {
-				setStatus("Preparing image...");
-				const imageData = await imageToDataUrl(source.output);
-
-				setStatus("Generating edit...");
-				const result = await generate({
-					prompt,
-					model: editModel,
-					editImage: imageData,
-					enablePromptExpansion: config.promptExpansion,
-					seed,
-				});
-				resultSeed = result.seed;
-
-				outputPath = validateOutputPath(generateFilename("falcon-edit"));
-				await downloadImage(result.images[0].url, outputPath);
-				const estimate = await estimateGenerationCost({
-					model: editModel,
-					resolution: source.resolution,
-					numImages: 1,
-				});
-				cost = estimate.cost;
-				costDetails = estimate.costDetails;
-				promptLabel = prompt;
-			} else if (mode === "variations") {
-				setStatus("Generating variations...");
-				const result = await generate({
-					prompt: source.prompt,
-					model: source.model,
-					aspect: source.aspect,
-					resolution: source.resolution,
-					numImages: 1,
-					enablePromptExpansion: config.promptExpansion,
-					seed,
-				});
-				resultSeed = result.seed;
-
-				outputPath = validateOutputPath(generateFilename("falcon-edit"));
-				await downloadImage(result.images[0].url, outputPath);
-				const estimate = await estimateGenerationCost({
-					model: source.model,
-					resolution: source.resolution,
-					numImages: 1,
-				});
-				cost = estimate.cost;
-				costDetails = estimate.costDetails;
-				promptLabel = source.prompt;
-			} else if (mode === "upscale") {
-				if (!isValidUpscaleFactor(scale)) {
-					throw new Error(
-						`Invalid upscale factor. Choose ${UPSCALE_FACTORS.join(", ")}.`,
-					);
-				}
-				setStatus("Uploading image...");
-				const imageData = await imageToDataUrl(source.output);
-
-				setStatus("Upscaling...");
-				const result = await upscale({
-					imageUrl: imageData,
-					model: config.upscaler,
-					scaleFactor: scale,
-					seed,
-				});
-				resultSeed = result.seed;
-
-				const sourceInCwd = isPathWithinCwd(source.output);
-				outputPath = sourceInCwd
-					? validateOutputPath(
-							source.output.replace(
-								/\.(png|jpg|jpeg|webp)$/i,
-								`-up${scale}x.png`,
-							),
-						)
-					: validateOutputPath(generateFilename("falcon-upscale"));
-				await downloadImage(result.images[0].url, outputPath);
-				const dims = await getImageDimensions(source.output);
-				const estimate = await estimateUpscaleCost({
-					model: config.upscaler,
-					inputWidth: dims?.width,
-					inputHeight: dims?.height,
-					scaleFactor: scale,
-				});
-				cost = estimate.cost;
-				costDetails = estimate.costDetails;
-				promptLabel = `[upscale ${scale}x] ${source.prompt}`;
-			} else {
-				// rmbg
-				setStatus("Uploading image...");
-				const imageData = await imageToDataUrl(source.output);
-
-				setStatus("Removing background...");
-				const result = await removeBackground({
-					imageUrl: imageData,
-					model: config.backgroundRemover,
-				});
-				resultSeed = result.seed;
-
-				const sourceInCwd = isPathWithinCwd(source.output);
-				outputPath = sourceInCwd
-					? validateOutputPath(
-							source.output.replace(/\.(png|jpg|jpeg|webp)$/i, "-nobg.png"),
-						)
-					: validateOutputPath(generateFilename("falcon-nobg"));
-				await downloadImage(result.images[0].url, outputPath);
-				const estimate = await estimateBackgroundRemovalCost({
-					model: config.backgroundRemover,
-				});
-				cost = estimate.cost;
-				costDetails = estimate.costDetails;
-				promptLabel = `[rmbg] ${source.prompt}`;
+			let processResult: ProcessResult;
+			switch (mode) {
+				case "edit":
+					processResult = await runEditOperation(source);
+					break;
+				case "variations":
+					processResult = await runVariationOperation(source);
+					break;
+				case "upscale":
+					processResult = await runUpscaleOperation(source);
+					break;
+				case "rmbg":
+					processResult = await runBackgroundRemovalOperation(source);
+					break;
+				default:
+					return;
 			}
 
 			setStatus("Saving...");
-
-			const dims = await getImageDimensions(outputPath);
-			const size = await getFileSize(outputPath);
+			const dims = await getImageDimensions(processResult.outputPath);
+			const size = getFileSize(processResult.outputPath);
 
 			await addGeneration({
 				id: generateId(),
-				prompt: promptLabel,
-				model:
-					mode === "upscale"
-						? config.upscaler
-						: mode === "rmbg"
-							? config.backgroundRemover
-							: source.model,
+				prompt: processResult.promptLabel,
+				model: getHistoryModelForMode(mode, config, source.model),
 				aspect: source.aspect,
 				resolution: source.resolution,
-				output: resolve(outputPath),
-				cost,
-				costDetails,
+				output: resolve(processResult.outputPath),
+				cost: processResult.cost,
+				costDetails: processResult.costDetails,
 				timestamp: new Date().toISOString(),
-				seed: resultSeed || seed,
+				seed: processResult.resultSeed || seed,
 				editedFrom: source.output,
 			});
 
-			const fullPath = resolve(outputPath);
-
+			const fullPath = resolve(processResult.outputPath);
 			setResult({
 				path: fullPath,
 				dims: dims ? `${dims.width}x${dims.height}` : "?",
@@ -479,14 +694,14 @@ export function EditScreen({
 			});
 
 			if (config.openAfterGenerate) {
-				await openImage(fullPath);
+				openImage(fullPath);
 			}
 
 			setStep("done");
 		} catch (err) {
 			logger.errorWithStack("Edit operation failed", err as Error, {
 				mode,
-				sourcePath: source?.output,
+				sourcePath: source.output,
 				editModel,
 				scale,
 				seed,
@@ -495,6 +710,42 @@ export function EditScreen({
 			onBack();
 		}
 	};
+
+	useInput((input, key) => {
+		if (key.escape) {
+			handleEscapeInput();
+			return;
+		}
+
+		switch (step) {
+			case "select":
+				if (useCustomPath) {
+					handleSelectCustomPathInput(key);
+				} else {
+					handleSelectHistoryInput(input, key);
+				}
+				return;
+			case "operation":
+				handleOperationInput(key);
+				return;
+			case "edit-model":
+				handleEditModelInput(key);
+				return;
+			case "scale":
+				handleScaleInput(key);
+				return;
+			case "confirm":
+				handleConfirmInput(input, key);
+				return;
+			case "done":
+				if (key.return) {
+					onComplete();
+				}
+				return;
+			default:
+				return;
+		}
+	});
 
 	const source = step !== "select" ? getSourceImage() : null;
 
@@ -505,42 +756,7 @@ export function EditScreen({
 			{/* Image selection step */}
 			{step === "select" && (
 				<Box flexDirection="column" marginTop={1}>
-					{!useCustomPath ? (
-						<>
-							<Text dimColor>
-								Select image (↑↓ navigate, tab for custom path)
-							</Text>
-							<Box marginTop={1} flexDirection="column">
-								{generations.slice(0, 8).map((gen, index) => {
-									const isSelected = index === selectedIndex;
-									return (
-										<Box key={gen.id} marginLeft={1}>
-											<Text
-												color={isSelected ? "magenta" : undefined}
-												bold={isSelected}
-											>
-												{isSelected ? "◆ " : "  "}
-											</Text>
-											<Box width={40}>
-												<Text color={isSelected ? "cyan" : undefined}>
-													{gen.prompt.slice(0, 32)}
-													{gen.prompt.length > 32 ? "..." : ""}
-												</Text>
-											</Box>
-											<Text dimColor>{basename(gen.output).slice(0, 20)}</Text>
-										</Box>
-									);
-								})}
-							</Box>
-							{generations.length > 8 && (
-								<Box marginTop={1} marginLeft={1}>
-									<Text dimColor>
-										+{generations.length - 8} more in gallery
-									</Text>
-								</Box>
-							)}
-						</>
-					) : (
+					{useCustomPath ? (
 						<>
 							<Text dimColor>
 								Enter path or drag file
@@ -549,12 +765,57 @@ export function EditScreen({
 							<Box marginTop={1}>
 								<Text color="magenta">◆ </Text>
 								<TextInput
-									value={customPath}
 									onChange={setCustomPath}
 									onSubmit={proceedFromSelect}
 									placeholder="/path/to/image.png"
+									value={customPath}
 								/>
 							</Box>
+						</>
+					) : (
+						<>
+							<Text dimColor>
+								Select image (↑↓ navigate, tab for custom path)
+							</Text>
+							<Box flexDirection="column" marginTop={1}>
+								{generations
+									.slice(0, MAX_VISIBLE_HISTORY_ITEMS)
+									.map((gen, index) => {
+										const isSelected = index === selectedIndex;
+										return (
+											<Box key={gen.id} marginLeft={1}>
+												<Text
+													bold={isSelected}
+													color={isSelected ? "magenta" : undefined}
+												>
+													{isSelected ? "◆ " : "  "}
+												</Text>
+												<Box width={40}>
+													<Text color={isSelected ? "cyan" : undefined}>
+														{truncateWithEllipsis(
+															gen.prompt,
+															HISTORY_PROMPT_PREVIEW_LEN
+														)}
+													</Text>
+												</Box>
+												<Text dimColor>
+													{truncateWithEllipsis(
+														basename(gen.output),
+														HISTORY_FILE_PREVIEW_LEN
+													)}
+												</Text>
+											</Box>
+										);
+									})}
+							</Box>
+							{generations.length > MAX_VISIBLE_HISTORY_ITEMS && (
+								<Box marginLeft={1} marginTop={1}>
+									<Text dimColor>
+										+{generations.length - MAX_VISIBLE_HISTORY_ITEMS} more in
+										gallery
+									</Text>
+								</Box>
+							)}
 						</>
 					)}
 				</Box>
@@ -564,15 +825,15 @@ export function EditScreen({
 			{step === "operation" && source && (
 				<Box flexDirection="column" marginTop={1}>
 					<Text dimColor>Source: {basename(source.output)}</Text>
-					<Box marginTop={1} flexDirection="column">
+					<Box flexDirection="column" marginTop={1}>
 						{OPERATIONS.map((op, index) => {
 							const isSelected = index === operationIndex;
 							return (
 								<Box key={op.key} marginLeft={1}>
 									<Box width={20}>
 										<Text
-											color={isSelected ? "magenta" : undefined}
 											bold={isSelected}
+											color={isSelected ? "magenta" : undefined}
 										>
 											{isSelected ? "◆ " : "  "}
 											{op.label}
@@ -588,7 +849,7 @@ export function EditScreen({
 
 			{/* Show source after operation selection */}
 			{step !== "select" && step !== "operation" && source && (
-				<Box marginTop={1} marginBottom={1}>
+				<Box marginBottom={1} marginTop={1}>
 					<Text dimColor>Source: {basename(source.output)}</Text>
 				</Box>
 			)}
@@ -597,19 +858,19 @@ export function EditScreen({
 			{step === "edit-model" && (
 				<Box flexDirection="column">
 					<Text>Select model for editing:</Text>
-					<Box marginTop={1} flexDirection="column">
-						{EDIT_MODELS.map((m, i) => (
-							<Box key={m}>
+					<Box flexDirection="column" marginTop={1}>
+						{EDIT_MODELS.map((modelName, index) => (
+							<Box key={modelName}>
 								<Box width={22}>
 									<Text
-										color={i === editModelIndex ? "magenta" : undefined}
-										bold={i === editModelIndex}
+										bold={index === editModelIndex}
+										color={index === editModelIndex ? "magenta" : undefined}
 									>
-										{i === editModelIndex ? "◆ " : "  "}
-										{MODELS[m].name}
+										{index === editModelIndex ? "◆ " : "  "}
+										{MODELS[modelName].name}
 									</Text>
 								</Box>
-								<Text dimColor>{MODELS[m].pricing}</Text>
+								<Text dimColor>{MODELS[modelName].pricing}</Text>
 							</Box>
 						))}
 					</Box>
@@ -623,10 +884,10 @@ export function EditScreen({
 					<Box marginTop={1}>
 						<Text color="magenta">◆ </Text>
 						<TextInput
-							value={prompt}
 							onChange={setPrompt}
 							onSubmit={handlePromptSubmit}
 							placeholder="Change the background to a beach..."
+							value={prompt}
 						/>
 					</Box>
 				</Box>
@@ -637,7 +898,7 @@ export function EditScreen({
 				<Box flexDirection="column">
 					<Text>Select upscale factor:</Text>
 					<Box marginTop={1}>
-						<Text color="magenta" bold>
+						<Text bold color="magenta">
 							◆ {scale}x
 						</Text>
 						<Text dimColor> (↑↓ to adjust, enter to confirm)</Text>
@@ -649,20 +910,24 @@ export function EditScreen({
 			{step === "confirm" && source && mode && (
 				<Box flexDirection="column">
 					<Text bold>Ready to process:</Text>
-					<Box marginTop={1} flexDirection="column" marginLeft={2}>
+					<Box flexDirection="column" marginLeft={2} marginTop={1}>
 						{mode === "edit" && (
 							<Text>
 								Edit:{" "}
 								<Text color="cyan">
-									{prompt.slice(0, 40)}
-									{prompt.length > 40 ? "..." : ""}
+									{truncateWithEllipsis(prompt, CONFIRM_PROMPT_PREVIEW_LEN)}
 								</Text>
 							</Text>
 						)}
 						{mode === "variations" && (
 							<Text>
 								Prompt:{" "}
-								<Text color="cyan">{source.prompt.slice(0, 40)}...</Text>
+								<Text color="cyan">
+									{truncateWithEllipsis(
+										source.prompt,
+										CONFIRM_PROMPT_PREVIEW_LEN
+									)}
+								</Text>
 							</Text>
 						)}
 						{mode === "upscale" && (
@@ -686,14 +951,12 @@ export function EditScreen({
 						)}
 						<Text>
 							Seed: <Text color="cyan">{seed ?? "random"}</Text>
-							{step === "confirm" && (
-								<Text dimColor> (type digits to set)</Text>
-							)}
+							<Text dimColor> (type digits to set)</Text>
 						</Text>
 					</Box>
 					<Box marginTop={1}>
 						<Text>Proceed? </Text>
-						<Text color="green" bold>
+						<Text bold color="green">
 							[Y]es
 						</Text>
 						<Text> / </Text>
@@ -712,10 +975,10 @@ export function EditScreen({
 			{/* Done */}
 			{step === "done" && result && (
 				<Box flexDirection="column">
-					<Text color="green" bold>
+					<Text bold color="green">
 						◆ Complete
 					</Text>
-					<Box marginTop={1} flexDirection="column" marginLeft={2}>
+					<Box flexDirection="column" marginLeft={2} marginTop={1}>
 						<Text>
 							Saved: <Text color="cyan">{result.path}</Text>
 						</Text>

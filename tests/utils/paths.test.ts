@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import fc from "fast-check";
@@ -38,7 +38,7 @@ describe("validateOutputPath", () => {
 
 	it("throws for path traversal outside CWD", () => {
 		expect(() => validateOutputPath("../secret")).toThrow(
-			"Output path must be within current directory",
+			"Output path must be within current directory"
 		);
 	});
 });
@@ -58,7 +58,7 @@ describe("normalizeOutputPath", () => {
 
 	it("throws for path traversal", () => {
 		expect(() => normalizeOutputPath("../escape", "png")).toThrow(
-			"Output path must be within current directory",
+			"Output path must be within current directory"
 		);
 	});
 });
@@ -77,7 +77,7 @@ describe("buildIndexedOutputPath", () => {
 
 	it("preserves directory component", () => {
 		expect(buildIndexedOutputPath("subdir/out.png", 1, "png")).toBe(
-			join("subdir", "out-2.png"),
+			join("subdir", "out-2.png")
 		);
 	});
 });
@@ -108,16 +108,16 @@ describe("validateImagePath", () => {
 
 	it("throws for nonexistent file", () => {
 		expect(() => validateImagePath(join(tempDir, "nope.png"))).toThrow(
-			"Edit image not found",
+			"Edit image not found"
 		);
 	});
 
 	it("throws for unsupported extension", () => {
 		expect(() => validateImagePath(join(tempDir, "image.gif"))).toThrow(
-			"Edit image must be PNG, JPG, or WebP",
+			"Edit image must be PNG, JPG, or WebP"
 		);
 		expect(() => validateImagePath(join(tempDir, "notes.txt"))).toThrow(
-			"Edit image must be PNG, JPG, or WebP",
+			"Edit image must be PNG, JPG, or WebP"
 		);
 	});
 });
@@ -139,9 +139,9 @@ describe("property tests", () => {
 				(chars) => {
 					const path = chars.join("");
 					expect(isPathWithinCwd(path)).toBe(true);
-				},
+				}
 			),
-			{ numRuns: 50 },
+			{ numRuns: 50 }
 		);
 	});
 
@@ -158,9 +158,9 @@ describe("property tests", () => {
 				(chars) => {
 					const suffix = chars.join("");
 					expect(isPathWithinCwd(`../${suffix}`)).toBe(false);
-				},
+				}
 			),
-			{ numRuns: 50 },
+			{ numRuns: 50 }
 		);
 	});
 
@@ -179,9 +179,9 @@ describe("property tests", () => {
 				(chars, ext) => {
 					const path = chars.join("");
 					expect(buildIndexedOutputPath(path, 0, ext)).toBe(path);
-				},
+				}
 			),
-			{ numRuns: 50 },
+			{ numRuns: 50 }
 		);
 	});
 
@@ -198,9 +198,9 @@ describe("property tests", () => {
 				(path, index, ext) => {
 					const result = buildIndexedOutputPath(path, index, ext);
 					expect(result).toContain(`-${index + 1}.${ext}`);
-				},
+				}
 			),
-			{ numRuns: 50 },
+			{ numRuns: 50 }
 		);
 	});
 });

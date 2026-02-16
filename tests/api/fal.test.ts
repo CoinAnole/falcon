@@ -30,7 +30,7 @@ describe("fal api", () => {
 					aspect: "9:16",
 					transparent: true,
 				});
-			},
+			}
 		);
 
 		const call = calls[0];
@@ -60,7 +60,7 @@ describe("fal api", () => {
 					acceleration: "high",
 					outputFormat: "webp",
 				});
-			},
+			}
 		);
 
 		const call = calls[0];
@@ -89,7 +89,7 @@ describe("fal api", () => {
 					aspect: "16:9",
 					resolution: "512x512",
 				});
-			},
+			}
 		);
 
 		const call = calls[0];
@@ -112,7 +112,7 @@ describe("fal api", () => {
 					model: "banana",
 					editImage: "data:image/png;base64,abc",
 				});
-			},
+			}
 		);
 
 		const call = calls[0];
@@ -132,9 +132,9 @@ describe("fal api", () => {
 			},
 			async () => {
 				await expect(
-					generate({ prompt: "bad", model: "banana" }),
+					generate({ prompt: "bad", model: "banana" })
 				).rejects.toThrow("Bad request");
-			},
+			}
 		);
 	});
 
@@ -149,7 +149,7 @@ describe("fal api", () => {
 					imageUrl: "data:image/png;base64,abc",
 					model: "clarity",
 				});
-			},
+			}
 		);
 
 		expect(result.images).toHaveLength(1);
@@ -166,7 +166,7 @@ describe("fal api", () => {
 					imageUrl: "data:image/png;base64,abc",
 					model: "rmbg",
 				});
-			},
+			}
 		);
 		expect(result.images).toHaveLength(1);
 	});
@@ -175,20 +175,20 @@ describe("fal api", () => {
 		setApiKey("test-key");
 		const { calls } = await withMockFetch(
 			async () => {
-				return Response.json({ images: [], seed: 12345 });
+				return Response.json({ images: [], seed: 12_345 });
 			},
 			async () => {
 				await generate({
 					prompt: "test",
 					model: "banana",
-					seed: 12345,
+					seed: 12_345,
 				});
-			},
+			}
 		);
 
 		const call = calls[0];
 		const body = JSON.parse(call.init?.body as string);
-		expect(body.seed).toBe(12345);
+		expect(body.seed).toBe(12_345);
 	});
 
 	it("includes seed in upscale payload", async () => {
@@ -197,21 +197,21 @@ describe("fal api", () => {
 			async () => {
 				return Response.json({
 					image: { url: "https://example.com/x.png" },
-					seed: 54321,
+					seed: 54_321,
 				});
 			},
 			async () => {
 				await upscale({
 					imageUrl: "data:image/png;base64,abc",
 					model: "clarity",
-					seed: 54321,
+					seed: 54_321,
 				});
-			},
+			}
 		);
 
 		const call = calls[0];
 		const body = JSON.parse(call.init?.body as string);
-		expect(body.seed).toBe(54321);
+		expect(body.seed).toBe(54_321);
 	});
 
 	it("builds Banana payload with aspect_ratio, resolution, num_images and no output_format", async () => {
@@ -229,7 +229,7 @@ describe("fal api", () => {
 					numImages: 2,
 					outputFormat: "webp",
 				});
-			},
+			}
 		);
 
 		const call = calls[0];
@@ -258,7 +258,7 @@ describe("fal api", () => {
 					resolution: "4K",
 					numImages: 1,
 				});
-			},
+			}
 		);
 
 		const call = calls[0];
@@ -287,12 +287,12 @@ describe("fal api", () => {
 					numImages: 3,
 					outputFormat: "png",
 				});
-			},
+			}
 		);
 
 		const call = calls[0];
 		expect(call.input.toString()).toContain(
-			"fal-ai/gemini-3-pro-image-preview",
+			"fal-ai/gemini-3-pro-image-preview"
 		);
 		const body = JSON.parse(call.init?.body as string) as Record<
 			string,
@@ -318,7 +318,7 @@ describe("fal api", () => {
 					numImages: 2,
 					outputFormat: "webp",
 				});
-			},
+			}
 		);
 
 		const call = calls[0];
@@ -342,7 +342,7 @@ describe("fal api", () => {
 					model: "gemini3",
 					numImages: 3,
 				});
-			},
+			}
 		);
 
 		const body = JSON.parse(calls[0].init?.body as string) as Record<
@@ -361,7 +361,7 @@ describe("fal api", () => {
 					prompt: "test default numImages",
 					model: "gemini3",
 				});
-			},
+			}
 		);
 
 		const body = JSON.parse(calls[0].init?.body as string) as Record<
@@ -381,7 +381,7 @@ describe("fal api", () => {
 					model: "gemini3",
 					outputFormat: "webp",
 				});
-			},
+			}
 		);
 
 		const body = JSON.parse(calls[0].init?.body as string) as Record<
@@ -401,7 +401,7 @@ describe("fal api", () => {
 					model: "banana",
 					outputFormat: "webp",
 				});
-			},
+			}
 		);
 
 		const body = JSON.parse(calls[0].init?.body as string) as Record<
@@ -421,7 +421,7 @@ describe("fal api", () => {
 					model: "banana",
 					resolution: "4K",
 				});
-			},
+			}
 		);
 
 		const body = JSON.parse(calls[0].init?.body as string) as Record<
@@ -441,7 +441,7 @@ describe("fal api", () => {
 					model: "gemini",
 					resolution: "4K",
 				});
-			},
+			}
 		);
 
 		const body = JSON.parse(calls[0].init?.body as string) as Record<
@@ -461,9 +461,9 @@ describe("fal api", () => {
 						prompt: "test unsupported resolution",
 						model: "banana",
 						resolution: "512x512",
-					}),
+					})
 				).rejects.toThrow("does not support 512x512 resolution");
-			},
+			}
 		);
 	});
 
@@ -480,7 +480,7 @@ describe("fal api", () => {
 					imageUrl: "data:image/png;base64,abc",
 					model: "bria",
 				});
-			},
+			}
 		);
 
 		// Requirement 7.1: Verify endpoint URL contains bria endpoint
@@ -502,9 +502,9 @@ describe("fal api", () => {
 				}),
 			async () => {
 				await expect(
-					generate({ prompt: "fail", model: "banana" }),
+					generate({ prompt: "fail", model: "banana" })
 				).rejects.toThrow(/500.*Internal Server Error/);
-			},
+			}
 		);
 	});
 
@@ -521,9 +521,9 @@ describe("fal api", () => {
 					upscale({
 						imageUrl: "data:image/png;base64,abc",
 						model: "clarity",
-					}),
+					})
 				).rejects.toThrow(/503.*Service Unavailable/);
-			},
+			}
 		);
 	});
 
@@ -540,9 +540,9 @@ describe("fal api", () => {
 					removeBackground({
 						imageUrl: "data:image/png;base64,abc",
 						model: "rmbg",
-					}),
+					})
 				).rejects.toThrow(/403.*Forbidden/);
-			},
+			}
 		);
 	});
 });
@@ -568,7 +568,7 @@ describe("getApiKey fallback chain", () => {
 			async () => Response.json({ images: [] }),
 			async () => {
 				await generate({ prompt: "test", model: "banana" });
-			},
+			}
 		);
 
 		const authHeader = calls[0].init?.headers as Record<string, string>;
@@ -584,7 +584,7 @@ describe("getApiKey fallback chain", () => {
 			async () => Response.json({ images: [] }),
 			async () => {
 				await generate({ prompt: "test", model: "banana" });
-			},
+			}
 		);
 
 		const authHeader = calls[0].init?.headers as Record<string, string>;
@@ -603,7 +603,7 @@ describe("getApiKey fallback chain", () => {
 		mkdirSync(falconDir, { recursive: true });
 		writeFileSync(
 			join(falconDir, "config.json"),
-			JSON.stringify({ apiKey: "config-file-key" }),
+			JSON.stringify({ apiKey: "config-file-key" })
 		);
 
 		// Re-import to pick up the fresh HOME/config
@@ -612,7 +612,7 @@ describe("getApiKey fallback chain", () => {
 			async () => Response.json({ images: [] }),
 			async () => {
 				await generate({ prompt: "test", model: "banana" });
-			},
+			}
 		);
 
 		const authHeader = calls[0].init?.headers as Record<string, string>;
@@ -631,11 +631,11 @@ describe("getApiKey fallback chain", () => {
 		mkdirSync(falconDir, { recursive: true });
 		writeFileSync(
 			join(falconDir, "config.json"),
-			JSON.stringify({ defaultModel: "banana" }),
+			JSON.stringify({ defaultModel: "banana" })
 		);
 
 		await expect(generate({ prompt: "test", model: "banana" })).rejects.toThrow(
-			"FAL_KEY not found",
+			"FAL_KEY not found"
 		);
 	});
 });
@@ -683,7 +683,7 @@ describe("property-based tests", () => {
 										imageUrl: "https://example.com/img.png",
 									});
 								}
-							},
+							}
 						);
 						// Should not reach here — the function must throw
 						return false;
@@ -695,9 +695,9 @@ describe("property-based tests", () => {
 						const containsBody = message.includes(bodyText);
 						return containsStatusCode && containsBody;
 					}
-				},
+				}
 			),
-			{ numRuns: 50 },
+			{ numRuns: 50 }
 		);
 	}, 30_000);
 
@@ -722,7 +722,7 @@ describe("property-based tests", () => {
 						async () => Response.json({ images: [] }),
 						async () => {
 							await generate({ prompt, model });
-						},
+						}
 					);
 
 					const call = calls[0];
@@ -739,9 +739,9 @@ describe("property-based tests", () => {
 
 					// Request body must contain the prompt field matching the provided string
 					expect(body.prompt).toBe(prompt);
-				},
+				}
 			),
-			{ numRuns: 50 },
+			{ numRuns: 50 }
 		);
 	}, 30_000);
 
@@ -760,7 +760,7 @@ describe("property-based tests", () => {
 	 */
 	it("Property 3: Capability flags control payload fields", async () => {
 		const eligibleModels = GENERATION_MODELS.filter(
-			(m) => m !== "gpt" && !m.startsWith("flux2"),
+			(m) => m !== "gpt" && !m.startsWith("flux2")
 		);
 
 		await fc.assert(
@@ -778,7 +778,7 @@ describe("property-based tests", () => {
 							numImages: 2,
 							outputFormat: "webp",
 						});
-					},
+					}
 				);
 
 				const call = calls[0];
@@ -812,7 +812,7 @@ describe("property-based tests", () => {
 					expect(body.resolution).toBeUndefined();
 				}
 			}),
-			{ numRuns: 50 },
+			{ numRuns: 50 }
 		);
 	}, 30_000);
 });

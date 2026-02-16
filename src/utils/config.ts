@@ -81,16 +81,20 @@ const DEFAULT_HISTORY: History = {
 const historyDebugEnabled = process.env.FALCON_CLI_TEST_DEBUG === "1";
 const historyDebug = (
 	message: string,
-	meta?: Record<string, unknown>,
+	meta?: Record<string, unknown>
 ): void => {
-	if (!historyDebugEnabled) return;
+	if (!historyDebugEnabled) {
+		return;
+	}
 	const payload = meta ? ` ${JSON.stringify(meta)}` : "";
 	console.error(`[history] ${message}${payload}`);
 };
 
 const configDebugEnabled = process.env.FALCON_CLI_TEST_DEBUG === "1";
 const configDebug = (message: string, meta?: Record<string, unknown>): void => {
-	if (!configDebugEnabled) return;
+	if (!configDebugEnabled) {
+		return;
+	}
 	const payload = meta ? ` ${JSON.stringify(meta)}` : "";
 	console.error(`[config] ${message}${payload}`);
 };
@@ -165,7 +169,7 @@ export async function loadConfig(): Promise<FalconConfig> {
 				error: (err as Error).message,
 			});
 			console.error(
-				`Warning: Failed to parse ${CONFIG_PATH}: ${(err as Error).message}`,
+				`Warning: Failed to parse ${CONFIG_PATH}: ${(err as Error).message}`
 			);
 			console.error("Using default configuration.");
 		}
@@ -183,7 +187,7 @@ export async function loadConfig(): Promise<FalconConfig> {
 				error: (err as Error).message,
 			});
 			console.error(
-				`Warning: Failed to parse ${LOCAL_CONFIG_PATH}: ${(err as Error).message}`,
+				`Warning: Failed to parse ${LOCAL_CONFIG_PATH}: ${(err as Error).message}`
 			);
 		}
 	}
@@ -268,7 +272,7 @@ export async function loadHistory(): Promise<History> {
 			error: (err as Error).message,
 		});
 		console.error(
-			`Warning: Failed to load history from ${HISTORY_PATH}: ${(err as Error).message}`,
+			`Warning: Failed to load history from ${HISTORY_PATH}: ${(err as Error).message}`
 		);
 		console.error("Starting with empty history.");
 		return { ...DEFAULT_HISTORY };
@@ -327,13 +331,17 @@ export async function getLastGeneration(): Promise<Generation | null> {
 export function getApiKey(config: FalconConfig): string {
 	// Environment variable takes precedence
 	const envKey = process.env.FAL_KEY;
-	if (envKey) return envKey;
+	if (envKey) {
+		return envKey;
+	}
 
 	// Fall back to config
-	if (config.apiKey) return config.apiKey;
+	if (config.apiKey) {
+		return config.apiKey;
+	}
 
 	throw new Error(
-		"FAL_KEY not found. Set FAL_KEY environment variable or add apiKey to ~/.falcon/config.json",
+		"FAL_KEY not found. Set FAL_KEY environment variable or add apiKey to ~/.falcon/config.json"
 	);
 }
 

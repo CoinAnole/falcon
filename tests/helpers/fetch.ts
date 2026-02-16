@@ -6,9 +6,9 @@ export interface MockFetchCall {
 export async function withMockFetch<T>(
 	impl: (
 		input: RequestInfo | URL,
-		init?: RequestInit,
+		init?: RequestInit
 	) => Promise<Response> | Response,
-	run: () => Promise<T> | T,
+	run: () => Promise<T> | T
 ): Promise<{ result: T; calls: MockFetchCall[] }> {
 	const calls: MockFetchCall[] = [];
 	const original = globalThis.fetch;

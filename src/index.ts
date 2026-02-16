@@ -68,7 +68,7 @@ async function launchStudio() {
 				history,
 				onConfigChange: handleConfigChange,
 				onHistoryChange: handleHistoryChange,
-			}),
+			})
 		);
 	};
 
@@ -81,7 +81,7 @@ async function launchStudio() {
 				history,
 				onConfigChange: handleConfigChange,
 				onHistoryChange: handleHistoryChange,
-			}),
+			})
 		);
 	};
 
@@ -91,7 +91,7 @@ async function launchStudio() {
 			history,
 			onConfigChange: handleConfigChange,
 			onHistoryChange: handleHistoryChange,
-		}),
+		})
 	);
 
 	await waitUntilExit();

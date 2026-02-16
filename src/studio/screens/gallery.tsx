@@ -37,7 +37,7 @@ export function GalleryScreen({ history, onBack }: GalleryScreenProps) {
 		}
 	};
 
-	useInput(async (_input, key) => {
+	useInput((_input, key) => {
 		if (key.escape) {
 			onBack();
 			return;
@@ -63,7 +63,7 @@ export function GalleryScreen({ history, onBack }: GalleryScreenProps) {
 
 		if (key.return && pageItems[selectedIndex]) {
 			try {
-				await openImage(pageItems[selectedIndex].output);
+				openImage(pageItems[selectedIndex].output);
 			} catch {
 				// Image may have been deleted; silently ignore
 			}

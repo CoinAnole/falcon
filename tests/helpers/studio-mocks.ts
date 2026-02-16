@@ -33,7 +33,7 @@ interface RegisterStudioMocksOptions {
 }
 
 export function registerStudioMocks(
-	options: RegisterStudioMocksOptions = {},
+	options: RegisterStudioMocksOptions = {}
 ): void {
 	const {
 		config = STUDIO_TEST_CONFIG,
@@ -51,14 +51,14 @@ export function registerStudioMocks(
 	if (includeImage) {
 		mock.module("../../src/studio/deps/image", () => ({
 			downloadImage: mock(() => Promise.resolve()),
-			openImage: mock(() => Promise.resolve()),
+			openImage: mock(() => undefined),
 			generateFilename: mock(() => "test-output.png"),
 			getImageDimensions: mock(() =>
-				Promise.resolve({ width: 1024, height: 1024 }),
+				Promise.resolve({ width: 1024, height: 1024 })
 			),
-			getFileSize: mock(() => Promise.resolve("1.2 MB")),
+			getFileSize: mock(() => "1.2 MB"),
 			imageToDataUrl: mock(() =>
-				Promise.resolve("data:image/png;base64,dGVzdA=="),
+				Promise.resolve("data:image/png;base64,dGVzdA==")
 			),
 			...imageOverrides,
 		}));

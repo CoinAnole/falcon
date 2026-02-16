@@ -28,7 +28,7 @@ describe("cli preset mapping", () => {
 	it("does not change values when no preset flags are enabled", () => {
 		const result = applyPresetOverrides(
 			{},
-			{ aspect: "3:2", resolution: "4K" },
+			{ aspect: "3:2", resolution: "4K" }
 		);
 		expect(result.aspect).toBe("3:2");
 		expect(result.resolution).toBe("4K");
@@ -59,7 +59,7 @@ describe("cli preset mapping", () => {
 				landscape: true,
 				portrait: true,
 			},
-			{ aspect: "16:9", resolution: "1K" },
+			{ aspect: "16:9", resolution: "1K" }
 		);
 		expect(result.aspect).toBe("2:3");
 		expect(result.resolution).toBe("2K");
@@ -68,7 +68,7 @@ describe("cli preset mapping", () => {
 	it("keeps wide precedence ahead of ultra for resolution override", () => {
 		const result = applyPresetOverrides(
 			{ wide: true, ultra: true },
-			{ aspect: "16:9", resolution: "1K" },
+			{ aspect: "16:9", resolution: "1K" }
 		);
 		expect(result.aspect).toBe("21:9");
 		expect(result.resolution).toBe("1K");

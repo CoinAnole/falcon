@@ -237,54 +237,51 @@ describe("getFileSize", () => {
 		rmSync(tempDir, { recursive: true, force: true });
 	});
 
-	it("returns B suffix for files smaller than 1KB", async () => {
+	it("returns B suffix for files smaller than 1KB", () => {
 		const filePath = join(tempDir, "small.bin");
 		writeFileSync(filePath, Buffer.alloc(100));
-		const size = await getFileSize(filePath);
+		const size = getFileSize(filePath);
 		expect(size).toEndWith("B");
 		expect(size).not.toEndWith("KB");
 		expect(size).not.toEndWith("MB");
 	});
 
-	it("returns KB suffix for files between 1KB and 1MB", async () => {
+	it("returns KB suffix for files between 1KB and 1MB", () => {
 		const filePath = join(tempDir, "medium.bin");
 		writeFileSync(filePath, Buffer.alloc(2048));
-		const size = await getFileSize(filePath);
+		const size = getFileSize(filePath);
 		expect(size).toEndWith("KB");
 	});
 
-	it("returns MB suffix for files 1MB or larger", async () => {
+	it("returns MB suffix for files 1MB or larger", () => {
 		const filePath = join(tempDir, "large.bin");
 		writeFileSync(filePath, Buffer.alloc(1024 * 1024 + 1));
-		const size = await getFileSize(filePath);
+		const size = getFileSize(filePath);
 		expect(size).toEndWith("MB");
 	});
 
 	// Feature: phase5-config-integration-tests, Property 5: getFileSize suffix correctness
 	// **Validates: Requirements 7.2, 7.3, 7.4**
-	it("property: suffix matches byte size thresholds", async () => {
-		await fc.assert(
-			fc.asyncProperty(
-				fc.integer({ min: 0, max: 2 * 1024 * 1024 }),
-				async (byteSize) => {
-					const filePath = join(tempDir, `prop-${byteSize}.bin`);
-					writeFileSync(filePath, Buffer.alloc(byteSize));
-					try {
-						const result = await getFileSize(filePath);
-						if (byteSize < 1024) {
-							expect(result).toEndWith("B");
-							expect(result).not.toContain("KB");
-							expect(result).not.toContain("MB");
-						} else if (byteSize < 1024 * 1024) {
-							expect(result).toEndWith("KB");
-						} else {
-							expect(result).toEndWith("MB");
-						}
-					} finally {
-						rmSync(filePath, { force: true });
+	it("property: suffix matches byte size thresholds", () => {
+		fc.assert(
+			fc.property(fc.integer({ min: 0, max: 2 * 1024 * 1024 }), (byteSize) => {
+				const filePath = join(tempDir, `prop-${byteSize}.bin`);
+				writeFileSync(filePath, Buffer.alloc(byteSize));
+				try {
+					const result = getFileSize(filePath);
+					if (byteSize < 1024) {
+						expect(result).toEndWith("B");
+						expect(result).not.toContain("KB");
+						expect(result).not.toContain("MB");
+					} else if (byteSize < 1024 * 1024) {
+						expect(result).toEndWith("KB");
+					} else {
+						expect(result).toEndWith("MB");
 					}
+				} finally {
+					rmSync(filePath, { force: true });
 				}
-			),
+			}),
 			{ numRuns: 50 }
 		);
 	});
@@ -305,16 +302,16 @@ describe("openImage", () => {
 		}
 	});
 
-	it("skips open operation when FALCON_TEST_MODE is set", async () => {
+	it("skips open operation when FALCON_TEST_MODE is set", () => {
 		process.env.FALCON_TEST_MODE = "1";
 		const fixturePath = join(process.cwd(), "tests", "fixtures", "tiny.png");
 		// Should return without error and without spawning a process
-		await expect(openImage(fixturePath)).resolves.toBeUndefined();
+		expect(() => openImage(fixturePath)).not.toThrow();
 	});
 
-	it("throws for nonexistent file path", async () => {
+	it("throws for nonexistent file path", () => {
 		process.env.FALCON_TEST_MODE = undefined;
-		await expect(openImage("/nonexistent/image.png")).rejects.toThrow(
+		expect(() => openImage("/nonexistent/image.png")).toThrow(
 			"Image not found"
 		);
 	});

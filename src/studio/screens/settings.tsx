@@ -166,8 +166,8 @@ export function SettingsScreen({
 					<Box key={setting.key} marginLeft={1}>
 						<Box width={28}>
 							<Text
-								color={isSelected ? "magenta" : undefined}
 								bold={isSelected}
+								color={isSelected ? "magenta" : undefined}
 							>
 								{isSelected ? "◆ " : "  "}
 								{setting.label}
@@ -175,10 +175,10 @@ export function SettingsScreen({
 						</Box>
 						{isEditing && setting.type === "text" ? (
 							<TextInput
-								value={editValue}
+								mask="*"
 								onChange={setEditValue}
 								onSubmit={handleTextSubmit}
-								mask="*"
+								value={editValue}
 							/>
 						) : (
 							<Text color={isSelected ? "green" : "gray"}>
@@ -189,7 +189,7 @@ export function SettingsScreen({
 				);
 			})}
 
-			<Box marginTop={2} flexDirection="column">
+			<Box flexDirection="column" marginTop={2}>
 				<Text dimColor>────────────────────────────</Text>
 				<Box marginTop={1}>
 					<Text dimColor>enter toggle/edit │ s save │ esc cancel</Text>

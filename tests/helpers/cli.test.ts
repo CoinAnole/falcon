@@ -29,7 +29,7 @@ describe("runCli helper", () => {
 				FALCON_TEST_CLI_ENTRY: FIXTURE_ENTRY,
 				FALCON_TEST_RUNCLI_MODE: "timeout-once",
 			},
-			400,
+			400
 		);
 		expect(result.exitCode).toBe(0);
 		expect(result.stderr).not.toContain("[runCli] process timeout exceeded");
@@ -42,7 +42,7 @@ describe("runCli helper", () => {
 				FALCON_TEST_CLI_ENTRY: FIXTURE_ENTRY,
 				FALCON_TEST_RUNCLI_MODE: "timeout-with-stderr",
 			},
-			400,
+			400
 		);
 		expect(result.exitCode).toBe(143);
 		expect(result.stderr).toContain("fixture-timeout");
@@ -56,7 +56,7 @@ describe("runCli helper", () => {
 				FALCON_TEST_CLI_ENTRY: FIXTURE_ENTRY,
 				FALCON_TEST_RUNCLI_MODE: "timeout-always",
 			},
-			400,
+			400
 		);
 		expect(result.exitCode).toBe(143);
 		expect(result.stderr).toContain("[runCli] process timeout exceeded");
@@ -80,7 +80,7 @@ describe("runCli helper", () => {
 			{
 				FAL_KEY: "test-key",
 			},
-			30000,
+			30_000
 		);
 		expect(result.exitCode).toBe(0);
 		expect(result.stdout).toContain(getTestOutputDir());

@@ -54,7 +54,7 @@ function formatTimestamp(): string {
 function formatLogEntry(
 	level: LogLevel,
 	message: string,
-	meta?: Record<string, unknown>,
+	meta?: Record<string, unknown>
 ): string {
 	const timestamp = formatTimestamp();
 	let entry = `[${timestamp}] [${level.toUpperCase()}] ${message}`;
@@ -97,7 +97,9 @@ function sanitizeMeta(meta: Record<string, unknown>): Record<string, unknown> {
 
 // Write to log file
 function writeToLog(entry: string, synchronous = false): void {
-	if (!isLoggingEnabled()) return;
+	if (!isLoggingEnabled()) {
+		return;
+	}
 
 	try {
 		ensureLogDirectory();
@@ -123,7 +125,9 @@ function writeToLog(entry: string, synchronous = false): void {
 
 // Clear log file (useful for fresh session)
 export function clearLog(): void {
-	if (!isLoggingEnabled()) return;
+	if (!isLoggingEnabled()) {
+		return;
+	}
 
 	try {
 		ensureLogDirectory();
@@ -147,7 +151,7 @@ export function isEnabled(): boolean {
 function log(
 	level: LogLevel,
 	message: string,
-	meta?: Record<string, unknown>,
+	meta?: Record<string, unknown>
 ): void {
 	const currentLevel = getLogLevel();
 
@@ -184,7 +188,7 @@ export const logger = {
 	errorWithStack(
 		message: string,
 		error: Error,
-		meta?: Record<string, unknown>,
+		meta?: Record<string, unknown>
 	): void {
 		const errorMeta = {
 			...meta,

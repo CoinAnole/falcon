@@ -55,7 +55,7 @@ describe("config", () => {
 		const tempDir = mkdtempSync(join(tmpdir(), "falcon-cwd-"));
 		writeFileSync(
 			join(tempDir, ".falconrc"),
-			JSON.stringify({ defaultModel: "gemini" }, null, 2),
+			JSON.stringify({ defaultModel: "gemini" }, null, 2)
 		);
 		process.chdir(tempDir);
 
@@ -214,7 +214,7 @@ describe("legacy totalCost migration", () => {
 				generations: [],
 				totalCost: { session: 5, today: 10, allTime: 50 },
 				lastSessionDate: "2000-01-01",
-			}),
+			})
 		);
 
 		const history = await loadHistory();
@@ -233,7 +233,7 @@ describe("legacy totalCost migration", () => {
 				generations: [],
 				totalCost: { session: 0, today: 0, allTime: 0 },
 				lastSessionDate: "2000-01-01",
-			}),
+			})
 		);
 
 		const history = await loadHistory();
@@ -248,9 +248,9 @@ describe("legacy totalCost migration", () => {
 	it("property: legacy cost migration preserves allTime under USD", async () => {
 		await fc.assert(
 			fc.asyncProperty(
-				fc.float({ min: 0, max: 10000, noNaN: true }),
-				fc.float({ min: 0, max: 10000, noNaN: true }),
-				fc.float({ min: 0, max: 10000, noNaN: true }),
+				fc.float({ min: 0, max: 10_000, noNaN: true }),
+				fc.float({ min: 0, max: 10_000, noNaN: true }),
+				fc.float({ min: 0, max: 10_000, noNaN: true }),
 				async (session, today, allTime) => {
 					resetFalconDir();
 					mkdirSync(FALCON_DIR, { recursive: true });
@@ -260,15 +260,15 @@ describe("legacy totalCost migration", () => {
 							generations: [],
 							totalCost: { session, today, allTime },
 							lastSessionDate: "2000-01-01",
-						}),
+						})
 					);
 
 					const history = await loadHistory();
 					expect(history.totalCost.USD).toBeDefined();
 					expect(history.totalCost.USD.allTime).toBe(allTime || 0);
-				},
+				}
 			),
-			{ numRuns: 50 },
+			{ numRuns: 50 }
 		);
 	});
 });
@@ -390,7 +390,7 @@ describe("multi-currency cost tracking", () => {
 							noNaN: true,
 						}),
 					}),
-					{ minLength: 1, maxLength: 10 },
+					{ minLength: 1, maxLength: 10 }
 				),
 				async (generations) => {
 					resetFalconDir();
@@ -433,9 +433,9 @@ describe("multi-currency cost tracking", () => {
 						expect(history.totalCost[currency]).toBeDefined();
 						expect(history.totalCost[currency].allTime).toBeCloseTo(total, 1);
 					}
-				},
+				}
 			),
-			{ numRuns: 50 },
+			{ numRuns: 50 }
 		);
 	});
 });
@@ -468,7 +468,7 @@ describe("generateId", () => {
 					expect(id).toMatch(UUID_V4_REGEX);
 				}
 			}),
-			{ numRuns: 50 },
+			{ numRuns: 50 }
 		);
 	});
 });

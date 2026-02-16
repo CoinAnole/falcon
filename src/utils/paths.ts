@@ -8,7 +8,7 @@ export function validateOutputPath(outputPath: string): string {
 	const resolved = resolve(outputPath);
 	if (!isPathWithinCwd(resolved)) {
 		throw new Error(
-			`Output path must be within current directory: ${outputPath}`,
+			`Output path must be within current directory: ${outputPath}`
 		);
 	}
 
@@ -20,7 +20,7 @@ export function validateOutputPath(outputPath: string): string {
  */
 export function normalizeOutputPath(
 	outputPath: string,
-	fileExt: string,
+	fileExt: string
 ): string {
 	const currentExt = extname(outputPath);
 	const basePath = currentExt
@@ -35,9 +35,11 @@ export function normalizeOutputPath(
 export function buildIndexedOutputPath(
 	outputPath: string,
 	index: number,
-	fileExt: string,
+	fileExt: string
 ): string {
-	if (index === 0) return outputPath;
+	if (index === 0) {
+		return outputPath;
+	}
 	const { dir, name } = parse(outputPath);
 	const filename = `${name}-${index + 1}.${fileExt}`;
 	return dir ? join(dir, filename) : filename;

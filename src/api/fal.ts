@@ -65,18 +65,24 @@ function setApiKey(key: string): void {
 
 async function getApiKey(): Promise<string> {
 	// Check manually set key first
-	if (_apiKey) return _apiKey;
+	if (_apiKey) {
+		return _apiKey;
+	}
 
 	// Check environment variable
 	const envKey = process.env.FAL_KEY;
-	if (envKey) return envKey;
+	if (envKey) {
+		return envKey;
+	}
 
 	// Fall back to config file
 	const config = await loadConfig();
-	if (config.apiKey) return config.apiKey;
+	if (config.apiKey) {
+		return config.apiKey;
+	}
 
 	throw new Error(
-		"FAL_KEY not found. Set FAL_KEY environment variable or add apiKey to ~/.falcon/config.json",
+		"FAL_KEY not found. Set FAL_KEY environment variable or add apiKey to ~/.falcon/config.json"
 	);
 }
 
@@ -155,7 +161,7 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 		if (config.supportsResolution) {
 			if (resolution === "512x512") {
 				throw new Error(
-					`Model ${model} does not support 512x512 resolution. Use 1K, 2K, or 4K.`,
+					`Model ${model} does not support 512x512 resolution. Use 1K, 2K, or 4K.`
 				);
 			}
 			body.resolution = resolution;
@@ -191,7 +197,7 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 	if (apiFixturePath) {
 		if (process.env.FALCON_CLI_TEST_DEBUG === "1") {
 			console.error(
-				`[fal] fixture:generate ${JSON.stringify({ path: apiFixturePath })}`,
+				`[fal] fixture:generate ${JSON.stringify({ path: apiFixturePath })}`
 			);
 		}
 		const file = Bun.file(apiFixturePath);
@@ -201,7 +207,7 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 
 	// Add timeout to prevent hanging
 	const controller = new AbortController();
-	const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout for generation
+	const timeoutId = setTimeout(() => controller.abort(), 60_000); // 60 second timeout for generation
 
 	const response = await fetch(endpoint, {
 		method: "POST",
@@ -223,7 +229,7 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 					status: response.status,
 					statusText: response.statusText,
 					body: errorBody,
-				})}`,
+				})}`
 			);
 		}
 		logger.error("API request failed", {
@@ -233,7 +239,7 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 			errorBody,
 		});
 		throw new Error(
-			`Failed to generate image: ${response.status} ${response.statusText}${errorBody ? ` - ${errorBody}` : ""}`,
+			`Failed to generate image: ${response.status} ${response.statusText}${errorBody ? ` - ${errorBody}` : ""}`
 		);
 	}
 
@@ -293,7 +299,7 @@ export async function upscale(options: UpscaleOptions): Promise<FalResponse> {
 	if (apiFixturePath) {
 		if (process.env.FALCON_CLI_TEST_DEBUG === "1") {
 			console.error(
-				`[fal] fixture:upscale ${JSON.stringify({ path: apiFixturePath })}`,
+				`[fal] fixture:upscale ${JSON.stringify({ path: apiFixturePath })}`
 			);
 		}
 		const file = Bun.file(apiFixturePath);
@@ -303,7 +309,7 @@ export async function upscale(options: UpscaleOptions): Promise<FalResponse> {
 
 	// Add timeout to prevent hanging
 	const controller = new AbortController();
-	const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout for generation
+	const timeoutId = setTimeout(() => controller.abort(), 60_000); // 60 second timeout for generation
 
 	const response = await fetch(endpoint, {
 		method: "POST",
@@ -325,7 +331,7 @@ export async function upscale(options: UpscaleOptions): Promise<FalResponse> {
 					status: response.status,
 					statusText: response.statusText,
 					body: errorBody,
-				})}`,
+				})}`
 			);
 		}
 		logger.error("Upscale API request failed", {
@@ -335,7 +341,7 @@ export async function upscale(options: UpscaleOptions): Promise<FalResponse> {
 			errorBody,
 		});
 		throw new Error(
-			`Failed to upscale image: ${response.status} ${response.statusText}${errorBody ? ` - ${errorBody}` : ""}`,
+			`Failed to upscale image: ${response.status} ${response.statusText}${errorBody ? ` - ${errorBody}` : ""}`
 		);
 	}
 
@@ -360,7 +366,7 @@ export async function upscale(options: UpscaleOptions): Promise<FalResponse> {
 }
 
 export async function removeBackground(
-	options: RemoveBackgroundOptions,
+	options: RemoveBackgroundOptions
 ): Promise<FalResponse> {
 	const { imageUrl, model = "rmbg" } = options;
 
@@ -379,7 +385,7 @@ export async function removeBackground(
 	if (apiFixturePath) {
 		if (process.env.FALCON_CLI_TEST_DEBUG === "1") {
 			console.error(
-				`[fal] fixture:rmbg ${JSON.stringify({ path: apiFixturePath })}`,
+				`[fal] fixture:rmbg ${JSON.stringify({ path: apiFixturePath })}`
 			);
 		}
 		const file = Bun.file(apiFixturePath);
@@ -389,7 +395,7 @@ export async function removeBackground(
 
 	// Add timeout to prevent hanging
 	const controller = new AbortController();
-	const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+	const timeoutId = setTimeout(() => controller.abort(), 60_000); // 60 second timeout
 
 	const response = await fetch(endpoint, {
 		method: "POST",
@@ -411,7 +417,7 @@ export async function removeBackground(
 					status: response.status,
 					statusText: response.statusText,
 					body: errorBody,
-				})}`,
+				})}`
 			);
 		}
 		logger.error("Background removal API request failed", {
@@ -421,7 +427,7 @@ export async function removeBackground(
 			errorBody,
 		});
 		throw new Error(
-			`Failed to remove background: ${response.status} ${response.statusText}${errorBody ? ` - ${errorBody}` : ""}`,
+			`Failed to remove background: ${response.status} ${response.statusText}${errorBody ? ` - ${errorBody}` : ""}`
 		);
 	}
 

@@ -5,7 +5,7 @@ import { KEYS, stripAnsi, waitUntil, writeInput } from "../helpers/ink";
 import { registerStudioMocks } from "../helpers/studio-mocks";
 
 // Mock openImage to prevent actual file system access
-const openImageMock = mock(() => Promise.resolve());
+const openImageMock = mock(() => undefined);
 registerStudioMocks({
 	includeConfig: false,
 	includePaths: false,

@@ -18,7 +18,7 @@ const CLI_TEST_TIMEOUT_MS = 60_000;
 function itCli(
 	name: string,
 	fn: () => Promise<void> | void,
-	timeoutMs = CLI_TEST_TIMEOUT_MS,
+	timeoutMs = CLI_TEST_TIMEOUT_MS
 ) {
 	return it(name, fn, timeoutMs);
 }
@@ -77,7 +77,7 @@ function setupHistory(overrides?: Partial<Generation>): string {
 
 	writeFileSync(
 		join(falconDir, "history.json"),
-		JSON.stringify(history, null, 2),
+		JSON.stringify(history, null, 2)
 	);
 
 	return outputPath;
@@ -115,7 +115,7 @@ describe("cli", () => {
 			{
 				FAL_KEY: "test-key",
 				FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
-			},
+			}
 		);
 		expect(result.exitCode).toBe(1);
 		expect(result.stderr).toContain("Invalid format");
@@ -155,7 +155,7 @@ describe("cli", () => {
 				FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
 				FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
 				FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
-			},
+			}
 		);
 		expect(result.exitCode).toBe(0);
 		expect(result.stdout).toContain("Flux 2 Flash");
@@ -163,16 +163,10 @@ describe("cli", () => {
 
 	itCli("rejects 512x512 resolution for non-Flux models", async () => {
 		const result = await runCli(
-			[
-				"a test prompt",
-				"--resolution",
-				"512x512",
-				"--model",
-				"banana",
-			],
+			["a test prompt", "--resolution", "512x512", "--model", "banana"],
 			{
 				FAL_KEY: "test-key",
-			},
+			}
 		);
 		expect(result.exitCode).toBe(1);
 		expect(result.stderr).toContain("only supported for Flux 2 models");
@@ -181,7 +175,7 @@ describe("cli", () => {
 	itCli("rejects invalid Flux guidance scale", async () => {
 		const result = await runCli(
 			["prompt", "--model", "flux2", "--guidance-scale", "25"],
-			{ FAL_KEY: "test-key" },
+			{ FAL_KEY: "test-key" }
 		);
 		expect(result.exitCode).toBe(1);
 		expect(result.stderr).toContain("Invalid guidance scale");
@@ -190,7 +184,7 @@ describe("cli", () => {
 	itCli("rejects invalid Flux inference steps", async () => {
 		const result = await runCli(
 			["prompt", "--model", "flux2", "--inference-steps", "2"],
-			{ FAL_KEY: "test-key" },
+			{ FAL_KEY: "test-key" }
 		);
 		expect(result.exitCode).toBe(1);
 		expect(result.stderr).toContain("Invalid inference steps");
@@ -199,7 +193,7 @@ describe("cli", () => {
 	itCli("rejects invalid Flux acceleration", async () => {
 		const result = await runCli(
 			["prompt", "--model", "flux2", "--acceleration", "fast"],
-			{ FAL_KEY: "test-key" },
+			{ FAL_KEY: "test-key" }
 		);
 		expect(result.exitCode).toBe(1);
 		expect(result.stderr).toContain("Invalid acceleration level");
@@ -208,7 +202,7 @@ describe("cli", () => {
 	itCli("rejects unsupported aspect ratio for model", async () => {
 		const result = await runCli(
 			["prompt", "--model", "banana", "--aspect", "20:9"],
-			{ FAL_KEY: "test-key" },
+			{ FAL_KEY: "test-key" }
 		);
 		expect(result.exitCode).toBe(1);
 		expect(result.stderr).toContain("Aspect ratio 20:9 is not supported");
@@ -249,12 +243,12 @@ describe("cli", () => {
 						FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
 						FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
 					},
-					30000, // Longer timeout for this test
+					30_000 // Longer timeout for this test
 				);
 				expect(result.exitCode).toBe(0);
 				expect(result.stdout).toContain("42");
 			},
-			60000,
+			60_000
 		);
 	});
 
@@ -288,7 +282,7 @@ describe("cli", () => {
 					FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
 					FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
 					FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
-				},
+				}
 			);
 			expect(result.exitCode).toBe(0);
 		});
@@ -301,7 +295,7 @@ describe("cli", () => {
 					FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
 					FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
 					FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
-				},
+				}
 			);
 			expect(result.exitCode).toBe(0);
 			expect(existsSync(outputFile)).toBe(true);
@@ -315,11 +309,11 @@ describe("cli", () => {
 					FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
 					FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
 					FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
-				},
+				}
 			);
 			expect(result.exitCode).toBe(1);
 			expect(result.stderr).toContain(
-				"Output path must be within current directory",
+				"Output path must be within current directory"
 			);
 		});
 
@@ -340,7 +334,7 @@ describe("cli", () => {
 					FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
 					FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
 					FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
-				},
+				}
 			);
 			expect(result.exitCode).toBe(0);
 		});
@@ -350,7 +344,7 @@ describe("cli", () => {
 		itCli("fails with nonexistent file", async () => {
 			const result = await runCli(
 				["a test prompt", "--edit", "nonexistent.png"],
-				{ FAL_KEY: "test-key" },
+				{ FAL_KEY: "test-key" }
 			);
 			expect(result.exitCode).toBe(1);
 			expect(result.stderr).toContain("Edit image not found");
@@ -368,7 +362,7 @@ describe("cli", () => {
 				{
 					FAL_KEY: "test-key",
 					FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
-				},
+				}
 			);
 			expect(result.exitCode).toBe(1);
 			expect(result.stderr).toContain("does not support image editing");
@@ -391,7 +385,7 @@ describe("cli", () => {
 					FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
 					FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
 					FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
-				},
+				}
 			);
 			expect(result.exitCode).toBe(0);
 			expect(result.stdout).toContain("Editing");
@@ -415,7 +409,7 @@ describe("cli", () => {
 					FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
 					FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
 					FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
-				},
+				}
 			);
 			expect(result.exitCode).toBe(0);
 		});
@@ -459,7 +453,7 @@ describe("cli", () => {
 						FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
 						FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
 						FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
-					},
+					}
 				);
 				expect(result.exitCode).toBe(0);
 				expect(result.stdout).toContain("my custom variation prompt");
@@ -507,12 +501,12 @@ describe("cli", () => {
 						FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
 						FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
 						FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
-					},
+					}
 				);
 				expect(result.exitCode).toBe(0);
 				expect(result.stdout).toContain("Upscaling");
 			},
-			60000,
+			60_000
 		);
 	});
 
@@ -539,7 +533,7 @@ describe("cli", () => {
 							FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
 							FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
 						},
-						10000, // Extended timeout for background removal
+						10_000 // Extended timeout for background removal
 					);
 					expect(result.exitCode).toBe(0);
 					expect(result.stdout).toContain("Removing background");
@@ -548,7 +542,7 @@ describe("cli", () => {
 					cleanupHistory();
 				}
 			},
-			60000,
+			60_000
 		);
 	});
 
@@ -577,7 +571,7 @@ describe("cli", () => {
 					"--output",
 					join(getTestOutputDir(), "cover-test.png"),
 				],
-				fullFlowEnv,
+				fullFlowEnv
 			);
 			expect(result.exitCode).toBe(0);
 			expect(result.stdout).toContain("2:3");
@@ -592,7 +586,7 @@ describe("cli", () => {
 					"--output",
 					join(getTestOutputDir(), "story-test.png"),
 				],
-				fullFlowEnv,
+				fullFlowEnv
 			);
 			expect(result.exitCode).toBe(0);
 			expect(result.stdout).toContain("9:16");
@@ -607,7 +601,7 @@ describe("cli", () => {
 					"--output",
 					join(getTestOutputDir(), "square-test.png"),
 				],
-				fullFlowEnv,
+				fullFlowEnv
 			);
 			expect(result.exitCode).toBe(0);
 			expect(result.stdout).toContain("1:1");

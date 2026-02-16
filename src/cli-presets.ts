@@ -38,7 +38,7 @@ export const PRESET_MAPPINGS = [
  */
 export function applyPresetOverrides(
 	flags: PresetFlags,
-	initial: PresetResolution,
+	initial: PresetResolution
 ): PresetResolution {
 	let { aspect, resolution } = initial;
 

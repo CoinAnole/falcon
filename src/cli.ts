@@ -53,7 +53,9 @@ import {
 
 const cliDebugEnabled = process.env.FALCON_CLI_TEST_DEBUG === "1";
 const cliDebugLog = (message: string, meta?: Record<string, unknown>) => {
-	if (!cliDebugEnabled) return;
+	if (!cliDebugEnabled) {
+		return;
+	}
 	const payload = meta ? ` ${JSON.stringify(meta)}` : "";
 	console.error(`[cli] ${message}${payload}`);
 };
@@ -62,8 +64,12 @@ const cliDebugLog = (message: string, meta?: Record<string, unknown>) => {
  * Get error message safely from unknown error type
  */
 function getErrorMessage(err: unknown): string {
-	if (err instanceof Error) return err.message;
-	if (typeof err === "string") return err;
+	if (err instanceof Error) {
+		return err.message;
+	}
+	if (typeof err === "string") {
+		return err;
+	}
 	return "Unknown error";
 }
 
@@ -77,19 +83,21 @@ function parseNumImages(value: string | undefined, fallback: number): number {
 
 function parseCliResolution(
 	value: string | undefined,
-	fallback: Resolution,
+	fallback: Resolution
 ): CliResolution {
 	const parsed = (value ?? fallback) as CliResolution;
 	if (!CLI_RESOLUTIONS.includes(parsed)) {
 		throw new Error(
-			`Invalid resolution: ${parsed}. Use --resolution with ${CLI_RESOLUTIONS.join(", ")}.`,
+			`Invalid resolution: ${parsed}. Use --resolution with ${CLI_RESOLUTIONS.join(", ")}.`
 		);
 	}
 	return parsed;
 }
 
 function parseGuidanceScale(value: string | undefined): number | undefined {
-	if (value === undefined) return undefined;
+	if (value === undefined) {
+		return undefined;
+	}
 	const parsed = Number(value);
 	if (!Number.isFinite(parsed) || parsed < 0 || parsed > 20) {
 		throw new Error("Invalid guidance scale. Use --guidance-scale with 0-20.");
@@ -98,23 +106,27 @@ function parseGuidanceScale(value: string | undefined): number | undefined {
 }
 
 function parseInferenceSteps(value: string | undefined): number | undefined {
-	if (value === undefined) return undefined;
+	if (value === undefined) {
+		return undefined;
+	}
 	const parsed = Number(value);
 	if (!Number.isInteger(parsed) || parsed < 4 || parsed > 50) {
 		throw new Error(
-			"Invalid inference steps. Use --inference-steps with 4-50.",
+			"Invalid inference steps. Use --inference-steps with 4-50."
 		);
 	}
 	return parsed;
 }
 
 function parseAcceleration(
-	value: string | undefined,
+	value: string | undefined
 ): "none" | "regular" | "high" | undefined {
-	if (value === undefined) return undefined;
+	if (value === undefined) {
+		return undefined;
+	}
 	if (value !== "none" && value !== "regular" && value !== "high") {
 		throw new Error(
-			"Invalid acceleration level. Use --acceleration with none, regular, or high.",
+			"Invalid acceleration level. Use --acceleration with none, regular, or high."
 		);
 	}
 	return value;
@@ -183,16 +195,16 @@ export async function runCli(args: string[]): Promise<void> {
 		.option("--refresh", "Refresh cached pricing data")
 		.option(
 			"-m, --model <model>",
-			`Model to use (${GENERATION_MODELS.join(", ")})`,
+			`Model to use (${GENERATION_MODELS.join(", ")})`
 		)
 		.option("-e, --edit <file>", "Edit an existing image")
 		.option(
 			"-a, --aspect <ratio>",
-			`Aspect ratio (${ASPECT_RATIOS.join(", ")})`,
+			`Aspect ratio (${ASPECT_RATIOS.join(", ")})`
 		)
 		.option(
 			"-r, --resolution <res>",
-			`Resolution (${CLI_RESOLUTIONS.join(", ")})`,
+			`Resolution (${CLI_RESOLUTIONS.join(", ")})`
 		)
 		.option("-o, --output <file>", "Output filename")
 		.option("-n, --num <count>", "Number of images 1-4")
@@ -222,23 +234,23 @@ export async function runCli(args: string[]): Promise<void> {
 		// Flux 2 specific options
 		.option(
 			"--guidance-scale <scale>",
-			"Flux 2: guidance scale 0-20 (default: 2.5)",
+			"Flux 2: guidance scale 0-20 (default: 2.5)"
 		)
 		.option(
 			"--prompt-expansion",
-			"Flux 2: enable prompt expansion for better results",
+			"Flux 2: enable prompt expansion for better results"
 		)
 		.option(
 			"--inference-steps <steps>",
-			"Flux 2 base: inference steps 4-50 (default: 28)",
+			"Flux 2 base: inference steps 4-50 (default: 28)"
 		)
 		.option(
 			"--acceleration <level>",
-			"Flux 2 base: acceleration level - none, regular, high (default: regular)",
+			"Flux 2 base: acceleration level - none, regular, high (default: regular)"
 		)
 		.option(
 			"-f, --format <format>",
-			`Output format (${OUTPUT_FORMATS.join(", ")}) - for Grok, Flux, Gemini 3 Pro`,
+			`Output format (${OUTPUT_FORMATS.join(", ")}) - for Grok, Flux, Gemini 3 Pro`
 		)
 		.option("--seed <number>", "Seed for reproducible results");
 
@@ -262,7 +274,7 @@ export async function runCli(args: string[]): Promise<void> {
 		}
 
 		const endpointIds = Array.from(
-			new Set(Object.values(MODELS).map((model) => model.endpoint)),
+			new Set(Object.values(MODELS).map((model) => model.endpoint))
 		);
 		try {
 			logger.debug("Refreshing pricing cache via CLI", {
@@ -282,7 +294,7 @@ export async function runCli(args: string[]): Promise<void> {
 	if (options.refresh) {
 		cliDebugLog("pricing:hint");
 		console.log(
-			"Use 'falcon pricing --refresh' to update cached pricing data.",
+			"Use 'falcon pricing --refresh' to update cached pricing data."
 		);
 		return;
 	}
@@ -359,10 +371,10 @@ async function showLastGeneration(): Promise<void> {
 
 	console.log(chalk.bold("\nLast Generation:"));
 	console.log(
-		`  Prompt: ${chalk.cyan(last.prompt.slice(0, 60))}${last.prompt.length > 60 ? "..." : ""}`,
+		`  Prompt: ${chalk.cyan(last.prompt.slice(0, 60))}${last.prompt.length > 60 ? "..." : ""}`
 	);
 	console.log(
-		`  Model:  ${chalk.green(MODELS[last.model]?.name || last.model)}`,
+		`  Model:  ${chalk.green(MODELS[last.model]?.name || last.model)}`
 	);
 	console.log(`  Aspect: ${last.aspect} | Resolution: ${last.resolution}`);
 	console.log(`  Output: ${chalk.dim(last.output)}`);
@@ -370,7 +382,7 @@ async function showLastGeneration(): Promise<void> {
 		console.log(`  Seed:   ${chalk.cyan(last.seed)}`);
 	}
 	console.log(
-		`  Cost:   ${chalk.yellow(`${currency} $${last.cost.toFixed(3)}`)}${estimateSource}`,
+		`  Cost:   ${chalk.yellow(`${currency} $${last.cost.toFixed(3)}`)}${estimateSource}`
 	);
 	console.log(`  Time:   ${new Date(last.timestamp).toLocaleString()}`);
 }
@@ -397,7 +409,7 @@ function getHistoryTotals(history: Awaited<ReturnType<typeof loadHistory>>) {
 async function generateImage(
 	prompt: string,
 	options: CliOptions,
-	config: Awaited<ReturnType<typeof loadConfig>>,
+	config: Awaited<ReturnType<typeof loadConfig>>
 ): Promise<void> {
 	cliDebugLog("generate:prepare", { prompt, model: options.model });
 	// Apply presets
@@ -405,7 +417,10 @@ async function generateImage(
 		(options.aspect as AspectRatio) || config.defaultAspect;
 	let resolution: CliResolution;
 	try {
-		resolution = parseCliResolution(options.resolution, config.defaultResolution);
+		resolution = parseCliResolution(
+			options.resolution,
+			config.defaultResolution
+		);
 	} catch (err) {
 		cliDebugLog("generate:error:resolution", { error: getErrorMessage(err) });
 		console.error(chalk.red(getErrorMessage(err)));
@@ -446,14 +461,14 @@ async function generateImage(
 		if (options.format) {
 			if (
 				!OUTPUT_FORMATS.includes(
-					options.format as (typeof OUTPUT_FORMATS)[number],
+					options.format as (typeof OUTPUT_FORMATS)[number]
 				)
 			) {
 				cliDebugLog("generate:error:format", { format: options.format });
 				console.error(
 					chalk.red(
-						`Invalid format: ${options.format}. Valid options: ${OUTPUT_FORMATS.join(", ")}`,
-					),
+						`Invalid format: ${options.format}. Valid options: ${OUTPUT_FORMATS.join(", ")}`
+					)
 				);
 				process.exit(1);
 			}
@@ -463,8 +478,8 @@ async function generateImage(
 		// User specified format but model doesn't support it
 		console.warn(
 			chalk.yellow(
-				`Warning: Model ${model} does not support output format selection. Ignoring --format option.`,
-			),
+				`Warning: Model ${model} does not support output format selection. Ignoring --format option.`
+			)
 		);
 	}
 
@@ -489,8 +504,8 @@ async function generateImage(
 		cliDebugLog("generate:error:resolution-model", { model, resolution });
 		console.error(
 			chalk.red(
-				"Resolution 512x512 is only supported for Flux 2 models (flux2, flux2Flash, flux2Turbo).",
-			),
+				"Resolution 512x512 is only supported for Flux 2 models (flux2, flux2Flash, flux2Turbo)."
+			)
 		);
 		process.exit(1);
 	}
@@ -506,8 +521,8 @@ async function generateImage(
 		cliDebugLog("generate:error:aspect", { aspect, model });
 		console.error(
 			chalk.red(
-				`Aspect ratio ${aspect} is not supported for model ${model}. Supported ratios: ${supportedRatios.join(", ")}`,
-			),
+				`Aspect ratio ${aspect} is not supported for model ${model}. Supported ratios: ${supportedRatios.join(", ")}`
+			)
 		);
 		process.exit(1);
 	}
@@ -564,20 +579,20 @@ async function generateImage(
 	console.log(chalk.bold(`\nModel: ${modelConfig.name}`));
 	if (modelConfig.supportsAspect) {
 		console.log(
-			`Aspect: ${aspect} | Resolution: ${modelConfig.supportsResolution ? resolution : "N/A"}`,
+			`Aspect: ${aspect} | Resolution: ${modelConfig.supportsResolution ? resolution : "N/A"}`
 		);
 	}
 	console.log(
-		`Prompt: ${chalk.dim(prompt.slice(0, 80))}${prompt.length > 80 ? "..." : ""}`,
+		`Prompt: ${chalk.dim(prompt.slice(0, 80))}${prompt.length > 80 ? "..." : ""}`
 	);
 	console.log(
 		`Est. cost: ${chalk.yellow(
 			formatEstimateLabel(
 				estimate.cost,
 				estimate.costDetails.currency,
-				estimate.costDetails.estimateSource,
-			),
-		)}`,
+				estimate.costDetails.estimateSource
+			)
+		)}`
 	);
 	if (seed !== undefined) {
 		console.log(`  Seed:   ${chalk.cyan(seed)}`);
@@ -664,7 +679,7 @@ async function generateImage(
 			try {
 				cliDebugLog("generate:file-info:start", { path });
 				dims = await getImageDimensions(path);
-				size = await getFileSize(path);
+				size = getFileSize(path);
 				cliDebugLog("generate:file-info", {
 					path,
 					dims,
@@ -681,8 +696,8 @@ async function generateImage(
 			console.log(
 				chalk.green(`✓ Saved: ${path} `) +
 					chalk.dim(
-						` (${dims ? `${dims.width}x${dims.height}` : "?"}, ${size})`,
-					),
+						` (${dims ? `${dims.width}x${dims.height}` : "?"}, ${size})`
+					)
 			);
 
 			// Record generation
@@ -719,7 +734,7 @@ async function generateImage(
 
 			// Open first image
 			if (i === 0 && config.openAfterGenerate && options.open !== false) {
-				await openImage(path);
+				openImage(path);
 			}
 		}
 
@@ -735,8 +750,8 @@ async function generateImage(
 			: totals.currency;
 		console.log(
 			chalk.dim(
-				`\nSession: ${currencyLabel} $${totals.totals.session.toFixed(2)} | Today: ${currencyLabel} $${totals.totals.today.toFixed(2)} `,
-			),
+				`\nSession: ${currencyLabel} $${totals.totals.session.toFixed(2)} | Today: ${currencyLabel} $${totals.totals.today.toFixed(2)} `
+			)
 		);
 	} catch (err) {
 		cliDebugLog("generate:error", { error: getErrorMessage(err) });
@@ -753,7 +768,7 @@ async function generateImage(
 async function generateVariations(
 	customPrompt: string | undefined,
 	options: CliOptions,
-	config: Awaited<ReturnType<typeof loadConfig>>,
+	config: Awaited<ReturnType<typeof loadConfig>>
 ): Promise<void> {
 	cliDebugLog("vary:load-last");
 	const last = await getLastGeneration();
@@ -786,7 +801,7 @@ async function generateVariations(
 			resolution: options.resolution || last.resolution,
 			num: String(numImages),
 		},
-		config,
+		config
 	);
 	cliDebugLog("vary:generated", { prompt, numImages });
 }
@@ -794,7 +809,7 @@ async function generateVariations(
 async function upscaleLast(
 	imagePath: string | undefined,
 	options: CliOptions,
-	config: Awaited<ReturnType<typeof loadConfig>>,
+	config: Awaited<ReturnType<typeof loadConfig>>
 ): Promise<void> {
 	cliDebugLog("upscale:load-last", { imagePath });
 	let sourceImagePath: string;
@@ -825,13 +840,13 @@ async function upscaleLast(
 		sourceResolution = last.resolution;
 	}
 
-	const scaleFactor = parseInt(options.scale || "2", 10);
+	const scaleFactor = Number.parseInt(options.scale || "2", 10);
 	if (Number.isNaN(scaleFactor) || !isValidUpscaleFactor(scaleFactor)) {
 		cliDebugLog("upscale:error:scale", { scaleFactor });
 		console.error(
 			chalk.red(
-				`Invalid scale factor.Use--scale with ${UPSCALE_FACTORS.join(", ")}.`,
-			),
+				`Invalid scale factor.Use--scale with ${UPSCALE_FACTORS.join(", ")}.`
+			)
 		);
 		process.exit(1);
 	}
@@ -845,8 +860,8 @@ async function upscaleLast(
 				? validateOutputPath(
 						sourceImagePath.replace(
 							/\.(png|jpg|jpeg|webp)$/i,
-							`- up${scaleFactor} x.png`,
-						),
+							`- up${scaleFactor} x.png`
+						)
 					)
 				: generateFilename("falcon-upscale", "png");
 	} catch (err) {
@@ -876,9 +891,9 @@ async function upscaleLast(
 			formatEstimateLabel(
 				estimate.cost,
 				estimate.costDetails.currency,
-				estimate.costDetails.estimateSource,
-			),
-		)} `,
+				estimate.costDetails.estimateSource
+			)
+		)} `
 	);
 
 	const spinner = ora("Upscaling...").start();
@@ -911,11 +926,11 @@ async function upscaleLast(
 		cliDebugLog("upscale:downloaded", { outputPath });
 
 		const dims = await getImageDimensions(outputPath);
-		const size = await getFileSize(outputPath);
+		const size = getFileSize(outputPath);
 
 		console.log(
 			chalk.green(`✓ Saved: ${outputPath} `) +
-				chalk.dim(` (${dims ? `${dims.width}x${dims.height}` : "?"}, ${size})`),
+				chalk.dim(` (${dims ? `${dims.width}x${dims.height}` : "?"}, ${size})`)
 		);
 
 		// Record as generation
@@ -935,7 +950,7 @@ async function upscaleLast(
 		cliDebugLog("upscale:history:add");
 
 		if (config.openAfterGenerate && options.open !== false) {
-			await openImage(outputPath);
+			openImage(outputPath);
 		}
 	} catch (err) {
 		cliDebugLog("upscale:error", { error: getErrorMessage(err) });
@@ -951,14 +966,14 @@ async function upscaleLast(
 
 async function removeBackgroundLast(
 	options: CliOptions,
-	config: Awaited<ReturnType<typeof loadConfig>>,
+	config: Awaited<ReturnType<typeof loadConfig>>
 ): Promise<void> {
 	cliDebugLog("rmbg:load-last");
 	const last = await getLastGeneration();
 	if (!last) {
 		cliDebugLog("rmbg:error:no-history");
 		console.error(
-			chalk.red("No previous generation to remove background from"),
+			chalk.red("No previous generation to remove background from")
 		);
 		process.exit(1);
 	}
@@ -970,7 +985,7 @@ async function removeBackgroundLast(
 			? validateOutputPath(options.output)
 			: sourceInCwd
 				? validateOutputPath(
-						last.output.replace(/\.(png|jpg|jpeg|webp)$/i, "-nobg.png"),
+						last.output.replace(/\.(png|jpg|jpeg|webp)$/i, "-nobg.png")
 					)
 				: generateFilename("falcon-nobg", "png");
 	} catch (err) {
@@ -996,9 +1011,9 @@ async function removeBackgroundLast(
 			formatEstimateLabel(
 				estimate.cost,
 				estimate.costDetails.currency,
-				estimate.costDetails.estimateSource,
-			),
-		)} `,
+				estimate.costDetails.estimateSource
+			)
+		)} `
 	);
 
 	const spinner = ora("Processing...").start();
@@ -1024,11 +1039,11 @@ async function removeBackgroundLast(
 		cliDebugLog("rmbg:downloaded", { outputPath });
 
 		const dims = await getImageDimensions(outputPath);
-		const size = await getFileSize(outputPath);
+		const size = getFileSize(outputPath);
 
 		console.log(
 			chalk.green(`✓ Saved: ${outputPath} `) +
-				chalk.dim(` (${dims ? `${dims.width}x${dims.height}` : "?"}, ${size})`),
+				chalk.dim(` (${dims ? `${dims.width}x${dims.height}` : "?"}, ${size})`)
 		);
 
 		await addGeneration({
@@ -1046,7 +1061,7 @@ async function removeBackgroundLast(
 		cliDebugLog("rmbg:history:add");
 
 		if (config.openAfterGenerate && options.open !== false) {
-			await openImage(outputPath);
+			openImage(outputPath);
 		}
 	} catch (err) {
 		cliDebugLog("rmbg:error", { error: getErrorMessage(err) });

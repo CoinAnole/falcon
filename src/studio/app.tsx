@@ -75,7 +75,7 @@ export function App({
 						onBack={() => setScreen("home")}
 						onComplete={(
 							nextScreen?: Screen,
-							operation?: "edit" | "variations" | "upscale" | "rmbg",
+							operation?: "edit" | "variations" | "upscale" | "rmbg"
 						) => {
 							onHistoryChange();
 							if (nextScreen === "edit") {
@@ -91,6 +91,7 @@ export function App({
 				return (
 					<EditScreen
 						config={config}
+						initialOperation={editInitialOperation}
 						onBack={() => {
 							setEditFromGenerate(false);
 							setEditInitialOperation(undefined);
@@ -104,7 +105,6 @@ export function App({
 						}}
 						onError={handleError}
 						skipToOperation={editFromGenerate}
-						initialOperation={editInitialOperation}
 					/>
 				);
 			case "gallery":
@@ -115,11 +115,11 @@ export function App({
 				return (
 					<SettingsScreen
 						config={config}
+						onBack={() => setScreen("home")}
 						onSave={async (newConfig) => {
 							await onConfigChange(newConfig);
 							setScreen("home");
 						}}
-						onBack={() => setScreen("home")}
 					/>
 				);
 			default:

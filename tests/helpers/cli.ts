@@ -10,7 +10,7 @@ export interface CliResult {
 
 const KILL_GRACE_MS = 500;
 const STREAM_READ_TIMEOUT_BUFFER_MS = 3000;
-const DEFAULT_RUNCLI_TIMEOUT_MS = 20000;
+const DEFAULT_RUNCLI_TIMEOUT_MS = 20_000;
 const PROCESS_TIMEOUT_REASON = "[runCli] process timeout exceeded";
 const STREAM_TIMEOUT_REASON = "[runCli] stream read timeout exceeded";
 const MAX_RUNCLI_ATTEMPTS = 2;
@@ -32,7 +32,9 @@ const hasCleanupHook = globalStore[cleanupHookKey] === "1";
 let cleanedUp = false;
 
 function cleanupOnProcessExit(): void {
-	if (cleanedUp) return;
+	if (cleanedUp) {
+		return;
+	}
 	cleanedUp = true;
 	cleanupTestFiles(true);
 	delete globalStore[globalKey];
@@ -94,7 +96,7 @@ export interface RunCliOptions {
 export async function runCli(
 	args: string[],
 	envOverrides: Record<string, string> = {},
-	timeoutMs = DEFAULT_RUNCLI_TIMEOUT_MS,
+	timeoutMs = DEFAULT_RUNCLI_TIMEOUT_MS
 ): Promise<CliResult> {
 	const runTask = async () => {
 		return await runCliWithRetry(args, envOverrides, timeoutMs);
@@ -102,7 +104,7 @@ export async function runCli(
 	const queuedTask = runCliQueue.then(runTask, runTask);
 	runCliQueue = queuedTask.then(
 		() => undefined,
-		() => undefined,
+		() => undefined
 	);
 	return await queuedTask;
 }
@@ -112,12 +114,16 @@ function isBunExecutable(path: string): boolean {
 }
 
 export function resolveBunBinary(
-	envOverrides: Record<string, string> = {},
+	envOverrides: Record<string, string> = {}
 ): string {
 	const explicit =
 		envOverrides.FALCON_TEST_BUN_BIN || process.env.FALCON_TEST_BUN_BIN;
-	if (explicit) return explicit;
-	if (isBunExecutable(process.execPath)) return process.execPath;
+	if (explicit) {
+		return explicit;
+	}
+	if (isBunExecutable(process.execPath)) {
+		return process.execPath;
+	}
 	return "bun";
 }
 
@@ -134,9 +140,11 @@ function stripTimeoutMarkers(stderr: string): string {
 		.split("\n")
 		.filter(
 			(line) =>
-				!line.startsWith(PROCESS_TIMEOUT_REASON) &&
-				!line.startsWith(STREAM_TIMEOUT_REASON) &&
-				!line.startsWith("[runCli] timeout diagnostic:"),
+				!(
+					line.startsWith(PROCESS_TIMEOUT_REASON) ||
+					line.startsWith(STREAM_TIMEOUT_REASON) ||
+					line.startsWith("[runCli] timeout diagnostic:")
+				)
 		)
 		.join("\n")
 		.trim();
@@ -145,22 +153,32 @@ function stripTimeoutMarkers(stderr: string): string {
 function shouldRetryOnLaunchTimeout(
 	result: CliResult,
 	attempt: number,
-	maxAttempts: number,
+	maxAttempts: number
 ): boolean {
-	if (attempt >= maxAttempts) return false;
-	if (result.exitCode !== 143) return false;
-	if (!result.stderr.includes(PROCESS_TIMEOUT_REASON)) return false;
-	if (result.stdout.trim().length > 0) return false;
+	if (attempt >= maxAttempts) {
+		return false;
+	}
+	if (result.exitCode !== 143) {
+		return false;
+	}
+	if (!result.stderr.includes(PROCESS_TIMEOUT_REASON)) {
+		return false;
+	}
+	if (result.stdout.trim().length > 0) {
+		return false;
+	}
 	return stripTimeoutMarkers(result.stderr).length === 0;
 }
 
 function createDebugLogger(): (
 	message: string,
-	meta?: Record<string, unknown>,
+	meta?: Record<string, unknown>
 ) => void {
 	const debugEnabled = process.env.FALCON_CLI_TEST_DEBUG === "1";
 	return (message: string, meta?: Record<string, unknown>) => {
-		if (!debugEnabled) return;
+		if (!debugEnabled) {
+			return;
+		}
 		const payload = meta ? ` ${JSON.stringify(meta)}` : "";
 		console.error(`[runCli] ${message}${payload}`);
 	};
@@ -169,7 +187,7 @@ function createDebugLogger(): (
 async function runCliWithRetry(
 	args: string[],
 	envOverrides: Record<string, string>,
-	timeoutMs: number,
+	timeoutMs: number
 ): Promise<CliResult> {
 	const debugLog = createDebugLogger();
 	const bunBinary = resolveBunBinary(envOverrides);
@@ -181,7 +199,7 @@ async function runCliWithRetry(
 		envOverrides,
 		timeoutMs,
 		attempt,
-		bunBinary,
+		bunBinary
 	);
 	while (shouldRetryOnLaunchTimeout(result, attempt, MAX_RUNCLI_ATTEMPTS)) {
 		debugLog("retry:launch-timeout", {
@@ -196,7 +214,7 @@ async function runCliWithRetry(
 			envOverrides,
 			timeoutMs,
 			attempt,
-			bunBinary,
+			bunBinary
 		);
 	}
 	return result;
@@ -207,7 +225,7 @@ async function runCliAttempt(
 	envOverrides: Record<string, string>,
 	timeoutMs: number,
 	attempt: number,
-	bunBinary: string,
+	bunBinary: string
 ): Promise<CliResult> {
 	const debugLog = createDebugLogger();
 	const cliEntry = resolveCliEntry(envOverrides);
@@ -231,7 +249,7 @@ async function runCliAttempt(
 	const isPostProcess =
 		args.includes("--vary") || args.includes("--up") || args.includes("--rmbg");
 	const isImageProducing =
-		!isSubcommand && !hasOutputFlag && (hasPrompt || isPostProcess);
+		!(isSubcommand || hasOutputFlag) && (hasPrompt || isPostProcess);
 
 	const testArgs = [...args];
 	// Test files can clean up the shared helper output directory in parallel
@@ -256,7 +274,7 @@ async function runCliAttempt(
 			acc[key] = mergedOverrides[key] || process.env[key];
 			return acc;
 		},
-		{},
+		{}
 	);
 	debugLog("spawn", {
 		attempt,
@@ -303,13 +321,13 @@ async function runCliAttempt(
 		proc.stdout,
 		"stdout",
 		streamTimeoutMs,
-		debugLog,
+		debugLog
 	);
 	const stderrPromise = readStreamWithTimeout(
 		proc.stderr,
 		"stderr",
 		streamTimeoutMs,
-		debugLog,
+		debugLog
 	);
 
 	try {
@@ -329,7 +347,7 @@ async function runCliAttempt(
 			timeoutFired,
 			attempt,
 			bunBinary,
-			MAX_RUNCLI_ATTEMPTS,
+			MAX_RUNCLI_ATTEMPTS
 		);
 	} finally {
 		// HOME cleanup handled by tests/helpers/env.ts
@@ -339,7 +357,7 @@ async function runCliAttempt(
 async function waitForExit(
 	proc: ReturnType<typeof Bun.spawn>,
 	timeoutMs: number,
-	debugLog: (message: string, meta?: Record<string, unknown>) => void,
+	debugLog: (message: string, meta?: Record<string, unknown>) => void
 ): Promise<{ exitCode: number; timedOut: boolean }> {
 	return await new Promise<{ exitCode: number; timedOut: boolean }>(
 		(resolve) => {
@@ -358,7 +376,9 @@ async function waitForExit(
 				}
 			};
 			const timeoutId = setTimeout(() => {
-				if (resolved) return;
+				if (resolved) {
+					return;
+				}
 				timedOut = true;
 				debugLog("timeout", { timeoutMs, pid: proc.pid });
 				try {
@@ -368,7 +388,9 @@ async function waitForExit(
 					debugLog("timeout:sigterm:error", { pid: proc.pid });
 				}
 				killGraceTimer = setTimeout(() => {
-					if (resolved) return;
+					if (resolved) {
+						return;
+					}
 					try {
 						proc.kill("SIGKILL");
 						debugLog("timeout:sigkill", { pid: proc.pid });
@@ -377,7 +399,9 @@ async function waitForExit(
 					}
 				}, KILL_GRACE_MS);
 				forceResolveTimer = setTimeout(() => {
-					if (resolved) return;
+					if (resolved) {
+						return;
+					}
 					resolved = true;
 					debugLog("timeout:resolve-fallback", { pid: proc.pid });
 					resolve({ exitCode: 143, timedOut: true });
@@ -386,13 +410,15 @@ async function waitForExit(
 
 			void proc.exited.then((exitCode) => {
 				debugLog("exited", { exitCode, resolved, pid: proc.pid, timedOut });
-				if (resolved) return;
+				if (resolved) {
+					return;
+				}
 				resolved = true;
 				clearTimeout(timeoutId);
 				cleanup();
 				resolve({ exitCode, timedOut });
 			});
-		},
+		}
 	);
 }
 
@@ -400,7 +426,7 @@ async function readStreamWithTimeout(
 	stream: ReadableStream,
 	streamName: "stdout" | "stderr",
 	timeoutMs: number,
-	debugLog: (message: string, meta?: Record<string, unknown>) => void,
+	debugLog: (message: string, meta?: Record<string, unknown>) => void
 ): Promise<{ text: string; timedOut: boolean }> {
 	const readPromise = Bun.readableStreamToText(stream)
 		.then((text) => {
@@ -417,14 +443,18 @@ async function readStreamWithTimeout(
 	return await new Promise<{ text: string; timedOut: boolean }>((resolve) => {
 		let settled = false;
 		const timeoutId = setTimeout(() => {
-			if (settled) return;
+			if (settled) {
+				return;
+			}
 			settled = true;
 			debugLog(`${streamName}:timeout`, { timeoutMs });
 			resolve({ text: "", timedOut: true });
 		}, timeoutMs);
 
 		void readPromise.then((text) => {
-			if (settled) return;
+			if (settled) {
+				return;
+			}
 			settled = true;
 			clearTimeout(timeoutId);
 			resolve({ text, timedOut: false });
@@ -440,7 +470,7 @@ async function finalizeResult(
 	timedOut: boolean,
 	attempt: number,
 	bunBinary: string,
-	maxAttempts: number,
+	maxAttempts: number
 ): Promise<CliResult> {
 	debugLog("finalize:begin", {
 		exitCode,

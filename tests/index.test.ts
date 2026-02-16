@@ -32,7 +32,7 @@ describe("entry point mode detection", () => {
 				// --help output confirms runCli was invoked and processed the args
 				expect(result.stdout).toContain("fal.ai image generation CLI");
 			},
-			CLI_TEST_TIMEOUT_MS,
+			CLI_TEST_TIMEOUT_MS
 		);
 
 		it(
@@ -43,7 +43,7 @@ describe("entry point mode detection", () => {
 				expect(result.exitCode).toBe(1);
 				expect(result.stderr).toContain("FAL_KEY not found");
 			},
-			CLI_TEST_TIMEOUT_MS,
+			CLI_TEST_TIMEOUT_MS
 		);
 
 		it(
@@ -55,7 +55,7 @@ describe("entry point mode detection", () => {
 				// --last with no history confirms CLI mode processed the flag
 				expect(result.stdout).toContain("No previous generations found");
 			},
-			CLI_TEST_TIMEOUT_MS,
+			CLI_TEST_TIMEOUT_MS
 		);
 	});
 

@@ -11,13 +11,13 @@ import { join } from "node:path";
 
 const configuredRuns = Number.parseInt(
 	process.env.FALCON_FLAKY_MAX_RUNS ?? "10",
-	10,
+	10
 );
 const MAX_RUNS =
 	Number.isFinite(configuredRuns) && configuredRuns > 0 ? configuredRuns : 10;
 const OUTPUT_DIR = "test-runs";
 const RUN_TIMEOUT_MS = 180_000;
-const KILL_GRACE_MS = 1_000;
+const KILL_GRACE_MS = 1000;
 
 interface RunResult {
 	runNumber: number;
@@ -37,7 +37,7 @@ async function runTests(runNumber: number, runDir: string): Promise<RunResult> {
 	console.log("-".repeat(40));
 	console.log("Running: FALCON_DEBUG=1 FALCON_CLI_TEST_DEBUG=1 bun test ...\n");
 	console.log(
-		`Per-run watchdog timeout: ${Math.floor(RUN_TIMEOUT_MS / 1000)}s`,
+		`Per-run watchdog timeout: ${Math.floor(RUN_TIMEOUT_MS / 1000)}s`
 	);
 
 	return new Promise((resolve) => {
@@ -71,7 +71,7 @@ async function runTests(runNumber: number, runDir: string): Promise<RunResult> {
 		const timeoutTimer = setTimeout(() => {
 			timedOut = true;
 			console.error(
-				`\n⚠ Run ${runNumber} exceeded ${Math.floor(RUN_TIMEOUT_MS / 1000)}s; sending SIGTERM...`,
+				`\n⚠ Run ${runNumber} exceeded ${Math.floor(RUN_TIMEOUT_MS / 1000)}s; sending SIGTERM...`
 			);
 			try {
 				child.kill("SIGTERM");
@@ -88,7 +88,9 @@ async function runTests(runNumber: number, runDir: string): Promise<RunResult> {
 		}, RUN_TIMEOUT_MS);
 
 		const finalize = async (rawExitCode: number | null) => {
-			if (finalized) return;
+			if (finalized) {
+				return;
+			}
 			finalized = true;
 			clearTimeout(timeoutTimer);
 			if (killTimer) {
@@ -105,14 +107,16 @@ async function runTests(runNumber: number, runDir: string): Promise<RunResult> {
 			// Save full log
 			await writeFile(runLogPath, logContent);
 
-			if (!passed) {
+			if (passed) {
+				console.log(`\n✓ Run ${runNumber} PASSED`);
+			} else {
 				// Extract failure details
 				const failureLines = logContent
 					.split("\n")
 					.filter((line) =>
 						/✗|fail|error|Error|FAIL|Timed out|timed out|expect|assert|---|\bat\b|\.test\.ts|\.test\.tsx/.test(
-							line,
-						),
+							line
+						)
 					)
 					.join("\n");
 
@@ -129,11 +133,9 @@ ${failureLines}
 				await writeFile(failLogPath, failContent);
 				const timeoutSuffix = timedOut ? " (watchdog timeout)" : "";
 				console.log(
-					`\n✗ Run ${runNumber} FAILED (exit code: ${exitCode})${timeoutSuffix}`,
+					`\n✗ Run ${runNumber} FAILED (exit code: ${exitCode})${timeoutSuffix}`
 				);
 				console.log(`Failure details saved to: ${failLogPath}`);
-			} else {
-				console.log(`\n✓ Run ${runNumber} PASSED`);
 			}
 
 			resolve({
@@ -186,7 +188,7 @@ async function main() {
 
 	if (failCount > 0) {
 		console.log(
-			`\nFailed runs: ${failedRuns.map((r) => r.runNumber).join(", ")}`,
+			`\nFailed runs: ${failedRuns.map((r) => r.runNumber).join(", ")}`
 		);
 		console.log("\nFailure logs:");
 		for (const run of failedRuns) {
