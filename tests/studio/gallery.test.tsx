@@ -1,22 +1,18 @@
-import { beforeAll, describe, expect, it, mock } from "bun:test";
+import { describe, expect, it, mock } from "bun:test";
 import { render } from "ink-testing-library";
 import type { Generation, History } from "../../src/studio/deps/config";
-import { registerStudioMocks } from "../helpers/studio-mocks";
 import { KEYS, stripAnsi, waitUntil, writeInput } from "../helpers/ink";
+import { registerStudioMocks } from "../helpers/studio-mocks";
 
 // Mock openImage to prevent actual file system access
 const openImageMock = mock(() => Promise.resolve());
-let GalleryScreen = null as unknown as (typeof import("../../src/studio/screens/Gallery"))["GalleryScreen"];
-
-beforeAll(async () => {
-	registerStudioMocks({
-		includeConfig: false,
-		includePaths: false,
-		includeLogger: false,
-		imageOverrides: { openImage: openImageMock },
-	});
-	({ GalleryScreen } = await import("../../src/studio/screens/Gallery"));
+registerStudioMocks({
+	includeConfig: false,
+	includePaths: false,
+	includeLogger: false,
+	imageOverrides: { openImage: openImageMock },
 });
+const { GalleryScreen } = await import("../../src/studio/screens/Gallery");
 
 const createEmptyHistory = (): History => ({
 	generations: [],
