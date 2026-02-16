@@ -2,7 +2,7 @@ import { Box, Text, useInput } from "ink";
 import { useState } from "react";
 import { MODELS } from "../../api/models";
 import type { History } from "../../utils/config";
-import type { Screen } from "../App";
+import type { Screen } from "../app";
 
 interface MenuItem {
 	key: Screen;

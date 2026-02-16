@@ -12,7 +12,7 @@ registerStudioMocks({
 	includeLogger: false,
 	imageOverrides: { openImage: openImageMock },
 });
-const { GalleryScreen } = await import("../../src/studio/screens/Gallery");
+const { GalleryScreen } = await import("../../src/studio/screens/gallery");
 
 const createEmptyHistory = (): History => ({
 	generations: [],

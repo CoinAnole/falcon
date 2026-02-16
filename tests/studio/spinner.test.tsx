@@ -3,7 +3,7 @@ import fc from "fast-check";
 import { render } from "ink-testing-library";
 import { stripAnsi, waitUntil } from "../helpers/ink";
 
-const { Spinner } = await import("../../src/studio/components/Spinner");
+const { Spinner } = await import("../../src/studio/components/spinner");
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 

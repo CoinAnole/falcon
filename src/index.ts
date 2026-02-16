@@ -52,7 +52,7 @@ async function launchStudio() {
 	const [{ render }, { default: React }, { App }] = await Promise.all([
 		import("ink"),
 		import("react"),
-		import("./studio/App"),
+		import("./studio/app"),
 	]);
 
 	let config = await loadConfig();

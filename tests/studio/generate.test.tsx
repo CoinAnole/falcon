@@ -6,7 +6,7 @@ import { registerStudioMocks, STUDIO_TEST_CONFIG } from "../helpers/studio-mocks
 import { withMockFetch } from "../helpers/fetch";
 import { KEYS, stripAnsi, waitUntil, writeInput } from "../helpers/ink";
 
-let GenerateScreen = null as unknown as (typeof import("../../src/studio/screens/Generate"))["GenerateScreen"];
+let GenerateScreen = null as unknown as (typeof import("../../src/studio/screens/generate"))["GenerateScreen"];
 let originalFalKey: string | undefined;
 
 beforeAll(async () => {
@@ -14,7 +14,7 @@ beforeAll(async () => {
 	registerStudioMocks();
 	// Set FAL_KEY so getApiKey() doesn't throw during generation
 	process.env.FAL_KEY = "test-key-for-generate-tests";
-	({ GenerateScreen } = await import("../../src/studio/screens/Generate"));
+	({ GenerateScreen } = await import("../../src/studio/screens/generate"));
 });
 
 afterAll(() => {

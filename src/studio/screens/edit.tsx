@@ -37,7 +37,7 @@ import {
 	validateImagePath,
 	validateOutputPath,
 } from "../deps/paths";
-import { Spinner } from "../components/Spinner";
+import { Spinner } from "../components/spinner";
 
 type Mode = "edit" | "variations" | "upscale" | "rmbg";
 type Step =

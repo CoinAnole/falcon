@@ -2,11 +2,11 @@ import { Box, Text, useApp, useInput } from "ink";
 import { useEffect, useRef, useState } from "react";
 import type { FalconConfig, History } from "./deps/config";
 import { logger } from "./deps/logger";
-import { EditScreen } from "./screens/Edit";
-import { GalleryScreen } from "./screens/Gallery";
-import { GenerateScreen } from "./screens/Generate";
-import { HomeScreen } from "./screens/Home";
-import { SettingsScreen } from "./screens/Settings";
+import { EditScreen } from "./screens/edit";
+import { GalleryScreen } from "./screens/gallery";
+import { GenerateScreen } from "./screens/generate";
+import { HomeScreen } from "./screens/home";
+import { SettingsScreen } from "./screens/settings";
 
 export type Screen = "home" | "generate" | "gallery" | "settings" | "edit";
 

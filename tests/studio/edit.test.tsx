@@ -36,14 +36,14 @@ const createHistoryWithGenerations = (count: number): History => ({
 const testHistory = createHistoryWithGenerations(3);
 
 // --- Module mocks ---
-let EditScreen = null as unknown as (typeof import("../../src/studio/screens/Edit"))["EditScreen"];
+let EditScreen = null as unknown as (typeof import("../../src/studio/screens/edit"))["EditScreen"];
 let originalFalKey: string | undefined;
 
 beforeAll(async () => {
 	originalFalKey = process.env.FAL_KEY;
 	registerStudioMocks({ history: testHistory });
 	process.env.FAL_KEY = "test-key-for-edit-tests";
-	({ EditScreen } = await import("../../src/studio/screens/Edit"));
+	({ EditScreen } = await import("../../src/studio/screens/edit"));
 });
 
 afterAll(() => {

@@ -5,7 +5,7 @@ import { GENERATION_MODELS, MODELS } from "../../src/api/models";
 import type { FalconConfig } from "../../src/studio/deps/config";
 import { KEYS, stripAnsi, waitUntil, writeInput } from "../helpers/ink";
 
-const { SettingsScreen } = await import("../../src/studio/screens/Settings");
+const { SettingsScreen } = await import("../../src/studio/screens/settings");
 
 const baseConfig: FalconConfig = {
 	defaultModel: "banana",

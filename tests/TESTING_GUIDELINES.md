@@ -135,7 +135,7 @@ import { registerStudioMocks } from "../helpers/studio-mocks";
 
 beforeAll(async () => {
   registerStudioMocks();
-  const { GenerateScreen } = await import("../../src/studio/screens/Generate");
+  const { GenerateScreen } = await import("../../src/studio/screens/generate");
 });
 ```
 

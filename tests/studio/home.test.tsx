@@ -5,7 +5,7 @@ import type { History } from "../../src/studio/deps/config";
 import { KEYS, stripAnsi, waitUntil, writeInput } from "../helpers/ink";
 
 // Lazy import to avoid top-level side effects
-const { HomeScreen } = await import("../../src/studio/screens/Home");
+const { HomeScreen } = await import("../../src/studio/screens/home");
 
 const createEmptyHistory = (): History => ({
 	generations: [],

@@ -10,14 +10,14 @@ import {
 import { withMockFetch } from "../helpers/fetch";
 import { KEYS, stripAnsi, waitUntil, writeInput } from "../helpers/ink";
 
-let App = null as unknown as (typeof import("../../src/studio/App"))["App"];
+let App = null as unknown as (typeof import("../../src/studio/app"))["App"];
 let originalFalKey: string | undefined;
 
 beforeAll(async () => {
 	originalFalKey = process.env.FAL_KEY;
 	registerStudioMocks();
 	process.env.FAL_KEY = "test-key-for-app-tests";
-	({ App } = await import("../../src/studio/App"));
+	({ App } = await import("../../src/studio/app"));
 });
 
 afterAll(() => {

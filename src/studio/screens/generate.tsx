@@ -29,7 +29,7 @@ import {
 } from "../deps/image";
 import { logger } from "../deps/logger";
 import { validateOutputPath } from "../deps/paths";
-import { Spinner } from "../components/Spinner";
+import { Spinner } from "../components/spinner";
 
 type Step =
 	| "prompt"
