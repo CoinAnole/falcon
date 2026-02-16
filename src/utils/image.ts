@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { existsSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { extname, resolve } from "node:path";
+import { resolve } from "node:path";
+
+const DIMENSION_REGEX = /(\d+)\s*x\s*(\d+)/;
 
 /**
  * Download an image from a URL and save it to a file
@@ -60,11 +62,18 @@ export async function imageToDataUrl(imagePath: string): Promise<string> {
 	const buffer = await file.arrayBuffer();
 	const base64 = Buffer.from(buffer).toString("base64");
 
-	const ext = extname(imagePath).toLowerCase();
+	// Detect MIME type from file content (magic bytes) rather than extension.
+	// Resized images may contain JPEG bytes even when the extension is ".png".
+	const bytes = new Uint8Array(buffer.slice(0, 4));
 	let mimeType = "image/png";
-	if (ext === ".jpg" || ext === ".jpeg") {
+	if (bytes[0] === 0xff && bytes[1] === 0xd8) {
 		mimeType = "image/jpeg";
-	} else if (ext === ".webp") {
+	} else if (
+		bytes[0] === 0x52 &&
+		bytes[1] === 0x49 &&
+		bytes[2] === 0x46 &&
+		bytes[3] === 0x46
+	) {
 		mimeType = "image/webp";
 	}
 
@@ -117,12 +126,12 @@ export async function getImageDimensions(
 		});
 
 		const output = await new Response(proc.stdout).text();
-		const match = output.match(/(\d+)\s*x\s*(\d+)/);
+		const match = output.match(DIMENSION_REGEX);
 
 		if (match) {
 			return {
-				width: parseInt(match[1], 10),
-				height: parseInt(match[2], 10),
+				width: Number.parseInt(match[1], 10),
+				height: Number.parseInt(match[2], 10),
 			};
 		}
 	} catch {
