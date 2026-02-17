@@ -1,16 +1,25 @@
 // Import env helper FIRST to set process.env.HOME before config.ts is loaded
 
+import "../helpers/env";
+
 import { afterEach, describe, expect, it } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import {
-	generate,
-	removeBackground,
-	setApiKey,
-	upscale,
-} from "../../src/api/fal";
+import fc from "fast-check";
 import { getTestHome } from "../helpers/env";
 import { withMockFetch } from "../helpers/fetch";
+import { importWithTimeoutRetry } from "../helpers/import";
+
+const { generate, removeBackground, setApiKey, upscale } =
+	await importWithTimeoutRetry(() => import("../../src/api/fal"), {
+		label: "api/fal import (fal.test)",
+	});
+const { GENERATION_MODELS, MODELS } = await importWithTimeoutRetry(
+	() => import("../../src/api/models"),
+	{
+		label: "api/models import (fal.test)",
+	}
+);
 
 const HTTP_500_ERROR_REGEX = /500.*Internal Server Error/;
 const HTTP_503_ERROR_REGEX = /503.*Service Unavailable/;
@@ -646,9 +655,6 @@ describe("getApiKey fallback chain", () => {
 
 // --- Task 7.1: Property 1 — HTTP error propagation across all API functions ---
 // Feature: phase2-api-layer-tests, Property 1: HTTP error propagation across all API functions
-
-import fc from "fast-check";
-import { GENERATION_MODELS, MODELS } from "../../src/api/models";
 
 describe("property-based tests", () => {
 	// Feature: phase2-api-layer-tests, Property 1: HTTP error propagation across all API functions

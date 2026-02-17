@@ -5,7 +5,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import fc from "fast-check";
-import {
+import { importWithTimeoutRetry } from "../helpers/import";
+
+const {
 	addGeneration,
 	CONFIG_PATH,
 	FALCON_DIR,
@@ -16,7 +18,9 @@ import {
 	loadHistory,
 	saveConfig,
 	saveHistory,
-} from "../../src/utils/config";
+} = await importWithTimeoutRetry(() => import("../../src/utils/config"), {
+	label: "utils/config import (config.test)",
+});
 
 const baseCwd = process.cwd();
 let originalKey: string | undefined;

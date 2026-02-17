@@ -3,13 +3,12 @@ import { existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import fc from "fast-check";
-import {
-	clearLog,
-	errorWithStack,
-	getLogPath,
-	isEnabled,
-	logger,
-} from "../../src/utils/logger";
+import { importWithTimeoutRetry } from "../helpers/import";
+
+const { clearLog, errorWithStack, getLogPath, isEnabled, logger } =
+	await importWithTimeoutRetry(() => import("../../src/utils/logger"), {
+		label: "utils/logger import (logger.test)",
+	});
 
 // Save/restore env vars for isolation
 let savedDebug: string | undefined;
