@@ -170,6 +170,13 @@ bun run lint         # Run Biome + Ultracite
 bun test             # Run test suite (Bun test runner)
 ```
 
+If `bun` is not on `PATH` in your environment, use the explicit binary path:
+```bash
+BUN_BIN="/home/coinanole/.bun/bin/bun"
+"$BUN_BIN" run dev
+"$BUN_BIN" test
+```
+
 ### Environment
 ```bash
 # Required for API access
@@ -326,6 +333,13 @@ The project uses Bun's built-in test runner with a comprehensive test suite. For
 bun test                     # Run all tests
 bun test --watch            # Run in watch mode for development
 bun test tests/api          # Run specific directory
+```
+
+Fallback when `bun` is not on `PATH`:
+```bash
+BUN_BIN="/home/coinanole/.bun/bin/bun"
+"$BUN_BIN" test
+"$BUN_BIN" test tests/api
 ```
 
 ### Test Structure Overview
