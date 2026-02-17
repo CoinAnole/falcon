@@ -3,23 +3,14 @@ import "../helpers/env";
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { withMockFetch } from "../helpers/fetch";
-import { importWithTimeoutRetry } from "../helpers/import";
-
-const {
+import {
 	estimateBackgroundRemovalCost,
 	estimateGenerationCost,
 	estimateUpscaleCost,
 	refreshPricingCache,
-} = await importWithTimeoutRetry(() => import("../../src/api/pricing"), {
-	label: "api/pricing import (pricing.test)",
-});
-const { FALCON_DIR } = await importWithTimeoutRetry(
-	() => import("../../src/utils/config"),
-	{
-		label: "utils/config import (pricing.test)",
-	}
-);
+} from "../../src/api/pricing";
+import { FALCON_DIR } from "../../src/utils/config";
+import { withMockFetch } from "../helpers/fetch";
 
 let originalKey: string | undefined;
 

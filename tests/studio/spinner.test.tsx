@@ -1,13 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import fc from "fast-check";
 import { render } from "ink-testing-library";
-import { importWithTimeoutRetry } from "../helpers/import";
+import { Spinner } from "../../src/studio/components/spinner";
 import { stripAnsi, waitUntil } from "../helpers/ink";
-
-const { Spinner } = await importWithTimeoutRetry(
-	() => import("../../src/studio/components/spinner"),
-	{ label: "Spinner import" }
-);
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 const SAFE_TEXT_REGEX = /^[A-Za-z0-9 ,.?!:_-]{1,50}$/;

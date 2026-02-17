@@ -1,18 +1,15 @@
 import { describe, expect, it } from "bun:test";
-import type { AspectRatio, CliResolution } from "../../src/api/models";
-import { importWithTimeoutRetry } from "../helpers/import";
-
-const {
+import {
 	ASPECT_RATIOS,
+	type AspectRatio,
 	aspectToFlux2Size,
 	aspectToGptSize,
+	type CliResolution,
 	estimateCost,
 	GENERATION_MODELS,
 	getAspectRatiosForModel,
 	UTILITY_MODELS,
-} = await importWithTimeoutRetry(() => import("../../src/api/models"), {
-	label: "api/models import (models.test)",
-});
+} from "../../src/api/models";
 
 describe("models", () => {
 	it("maps GPT aspect ratios to image sizes", () => {

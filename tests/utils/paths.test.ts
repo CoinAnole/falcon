@@ -3,17 +3,13 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import fc from "fast-check";
-import { importWithTimeoutRetry } from "../helpers/import";
-
-const {
+import {
 	buildIndexedOutputPath,
 	isPathWithinCwd,
 	normalizeOutputPath,
 	validateImagePath,
 	validateOutputPath,
-} = await importWithTimeoutRetry(() => import("../../src/utils/paths"), {
-	label: "utils/paths import (paths.test)",
-});
+} from "../../src/utils/paths";
 
 // Temp directory for validateImagePath tests
 let tempDir: string;

@@ -6,20 +6,15 @@ import { afterEach, describe, expect, it } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import fc from "fast-check";
+import {
+	generate,
+	removeBackground,
+	setApiKey,
+	upscale,
+} from "../../src/api/fal";
+import { GENERATION_MODELS, MODELS } from "../../src/api/models";
 import { getTestHome } from "../helpers/env";
 import { withMockFetch } from "../helpers/fetch";
-import { importWithTimeoutRetry } from "../helpers/import";
-
-const { generate, removeBackground, setApiKey, upscale } =
-	await importWithTimeoutRetry(() => import("../../src/api/fal"), {
-		label: "api/fal import (fal.test)",
-	});
-const { GENERATION_MODELS, MODELS } = await importWithTimeoutRetry(
-	() => import("../../src/api/models"),
-	{
-		label: "api/models import (fal.test)",
-	}
-);
 
 const HTTP_500_ERROR_REGEX = /500.*Internal Server Error/;
 const HTTP_503_ERROR_REGEX = /503.*Service Unavailable/;

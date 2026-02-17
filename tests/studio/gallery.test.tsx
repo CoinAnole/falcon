@@ -1,7 +1,6 @@
 import { describe, expect, it, mock } from "bun:test";
 import { render } from "ink-testing-library";
 import type { Generation, History } from "../../src/studio/deps/config";
-import { importWithTimeoutRetry } from "../helpers/import";
 import { KEYS, stripAnsi, waitUntil, writeInput } from "../helpers/ink";
 import { registerStudioMocks } from "../helpers/studio-mocks";
 
@@ -13,10 +12,7 @@ registerStudioMocks({
 	includeLogger: false,
 	imageOverrides: { openImage: openImageMock },
 });
-const { GalleryScreen } = await importWithTimeoutRetry(
-	() => import("../../src/studio/screens/gallery"),
-	{ label: "GalleryScreen import" }
-);
+const { GalleryScreen } = await import("../../src/studio/screens/gallery");
 
 const createEmptyHistory = (): History => ({
 	generations: [],

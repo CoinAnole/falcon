@@ -1,12 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { importWithTimeoutRetry } from "../helpers/import";
-
-const { isValidUpscaleFactor, UPSCALE_FACTORS } = await importWithTimeoutRetry(
-	() => import("../../src/utils/constants"),
-	{
-		label: "utils/constants import (constants.test)",
-	}
-);
+import {
+	isValidUpscaleFactor,
+	UPSCALE_FACTORS,
+} from "../../src/utils/constants";
 
 // --- 3.1 UPSCALE_FACTORS and isValidUpscaleFactor ---
 

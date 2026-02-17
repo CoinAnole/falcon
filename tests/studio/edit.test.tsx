@@ -7,7 +7,6 @@ import type {
 	History,
 } from "../../src/studio/deps/config";
 import { withMockFetch } from "../helpers/fetch";
-import { importWithTimeoutRetry } from "../helpers/import";
 import { KEYS, stripAnsi, waitUntil, writeInput } from "../helpers/ink";
 import {
 	registerStudioMocks,
@@ -52,10 +51,7 @@ beforeAll(async () => {
 	originalFalKey = process.env.FAL_KEY;
 	registerStudioMocks({ history: testHistory });
 	process.env.FAL_KEY = "test-key-for-edit-tests";
-	({ EditScreen } = await importWithTimeoutRetry(
-		() => import("../../src/studio/screens/edit"),
-		{ label: "EditScreen import" }
-	));
+	({ EditScreen } = await import("../../src/studio/screens/edit"));
 });
 
 afterAll(() => {

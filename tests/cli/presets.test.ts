@@ -1,19 +1,10 @@
 import { describe, expect, it } from "bun:test";
-import type { PresetFlags } from "../../src/cli-presets";
-import { importWithTimeoutRetry } from "../helpers/import";
-
-const { ASPECT_RATIOS, RESOLUTIONS } = await importWithTimeoutRetry(
-	() => import("../../src/api/models"),
-	{
-		label: "api/models import (presets.test)",
-	}
-);
-const { applyPresetOverrides, PRESET_MAPPINGS } = await importWithTimeoutRetry(
-	() => import("../../src/cli-presets"),
-	{
-		label: "cli-presets import (presets.test)",
-	}
-);
+import { ASPECT_RATIOS, RESOLUTIONS } from "../../src/api/models";
+import {
+	applyPresetOverrides,
+	PRESET_MAPPINGS,
+	type PresetFlags,
+} from "../../src/cli-presets";
 
 type PresetFlag = (typeof PRESET_MAPPINGS)[number]["flag"];
 

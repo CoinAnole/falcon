@@ -11,10 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import fc from "fast-check";
-import { withMockFetch } from "../helpers/fetch";
-import { importWithTimeoutRetry } from "../helpers/import";
-
-const {
+import {
 	deleteTempFile,
 	downloadImage,
 	generateFilename,
@@ -23,9 +20,8 @@ const {
 	imageToDataUrl,
 	openImage,
 	resizeImage,
-} = await importWithTimeoutRetry(() => import("../../src/utils/image"), {
-	label: "utils/image import (image.test)",
-});
+} from "../../src/utils/image";
+import { withMockFetch } from "../helpers/fetch";
 
 describe("image utils", () => {
 	it("generates a timestamped filename", () => {
