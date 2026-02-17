@@ -1,15 +1,9 @@
 import { describe, expect, it, mock } from "bun:test";
+import fc from "fast-check";
 import { render } from "ink-testing-library";
 import type { History } from "../../src/studio/deps/config";
 import { importWithTimeoutRetry } from "../helpers/import";
 import { KEYS, stripAnsi, waitUntil, writeInput } from "../helpers/ink";
-
-const { default: fc } = await importWithTimeoutRetry(
-	() => import("fast-check"),
-	{
-		label: "fast-check import (home.test)",
-	}
-);
 
 // Lazy import to avoid top-level side effects
 const { HomeScreen } = await importWithTimeoutRetry(

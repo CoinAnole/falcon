@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, mock } from "bun:test";
+import fc from "fast-check";
 import { render } from "ink-testing-library";
 import type { FalconConfig, History } from "../../src/studio/deps/config";
 import { withMockFetch } from "../helpers/fetch";
@@ -9,13 +10,6 @@ import {
 	registerStudioMocks,
 	STUDIO_TEST_CONFIG,
 } from "../helpers/studio-mocks";
-
-const { default: fc } = await importWithTimeoutRetry(
-	() => import("fast-check"),
-	{
-		label: "fast-check import (app.test)",
-	}
-);
 
 let App = null as unknown as typeof import("../../src/studio/app")["App"];
 let originalFalKey: string | undefined;

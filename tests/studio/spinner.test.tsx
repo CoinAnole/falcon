@@ -1,14 +1,8 @@
 import { describe, expect, it } from "bun:test";
+import fc from "fast-check";
 import { render } from "ink-testing-library";
 import { importWithTimeoutRetry } from "../helpers/import";
 import { stripAnsi, waitUntil } from "../helpers/ink";
-
-const { default: fc } = await importWithTimeoutRetry(
-	() => import("fast-check"),
-	{
-		label: "fast-check import (spinner.test)",
-	}
-);
 
 const { Spinner } = await importWithTimeoutRetry(
 	() => import("../../src/studio/components/spinner"),

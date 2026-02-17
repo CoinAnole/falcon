@@ -4,14 +4,8 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import fc from "fast-check";
 import { importWithTimeoutRetry } from "../helpers/import";
-
-const { default: fc } = await importWithTimeoutRetry(
-	() => import("fast-check"),
-	{
-		label: "fast-check import (config.test)",
-	}
-);
 
 const {
 	addGeneration,
