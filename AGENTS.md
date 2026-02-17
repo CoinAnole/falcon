@@ -33,28 +33,41 @@ This document provides essential information for AI agents working on the Falcon
 ├── src/
 │   ├── index.ts            # Main entry - detects CLI vs Studio mode
 │   ├── cli.ts              # Command-line argument parsing & handlers
+│   ├── cli-presets.ts      # CLI preset flags (cover, story, reel, etc.)
 │   ├── api/
 │   │   ├── fal.ts          # Fal.ai API client (generate, upscale, rmbg)
 │   │   ├── models.ts       # Model configurations, aspect ratios, static pricing
 │   │   └── pricing.ts      # Live pricing client with caching and estimates
 │   ├── types/              # TypeScript type definitions
+│   │   └── pricing.ts      # Cost metadata types
 │   ├── studio/
-│   │   ├── App.tsx         # Main React app with screen routing
+│   │   ├── app.tsx         # Main React app with screen routing
 │   │   ├── components/     # Reusable UI components
+│   │   │   └── spinner.tsx # Loading spinner component
+│   │   ├── deps/           # Re-exports for cleaner imports in screens
+│   │   │   ├── config.ts   # Re-exports from utils/config.ts
+│   │   │   ├── image.ts    # Re-exports from utils/image.ts
+│   │   │   ├── logger.ts   # Re-exports from utils/logger.ts
+│   │   │   └── paths.ts    # Re-exports from utils/paths.ts
 │   │   └── screens/        # Screen components (Home, Generate, Edit, Gallery, Settings)
 │   └── utils/
 │       ├── config.ts       # Config & history management
-│       └── image.ts        # Image download, resize, open utilities
+│       ├── constants.ts    # Shared constants (upscale factors)
+│       ├── image.ts        # Image download, resize, open utilities
+│       ├── logger.ts       # Logging utility for debug output
+│       └── paths.ts        # Path validation and normalization
 ├── tests/                  # Test suite (Bun test runner)
 │   ├── api/                # API layer tests
-│   ├── cli/                # CLI parsing tests
-│   ├── studio/             # Studio UI tests
-│   ├── utils/              # Utility tests
-│   ├── helpers/            # Test utilities and helpers
+│   ├── cli/                # CLI parsing and preset tests
+│   ├── studio/             # Studio UI tests (all screens + components)
+│   ├── utils/              # Utility tests (config, image, logger, paths, constants)
+│   ├── helpers/            # Test utilities (CLI runner, fetch mocking, Ink helpers)
 │   ├── fixtures/           # Test data and sample files
 │   ├── types/              # Type declarations
 │   └── TESTING_GUIDELINES.md
 ├── docs_for_AIs/           # API documentation for AI models
+├── scripts/                # Development scripts
+│   └── flaky-test-detector.* # Script to detect flaky tests
 ├── .husky/                 # Git hooks
 ├── package.json            # Dependencies and scripts
 ├── tsconfig.json           # TypeScript configuration
@@ -142,9 +155,25 @@ Every generation is stored in `~/.falcon/history.json` (up to 100). The `Generat
 
 - `downloadImage()` - Download from URL to file
 - `imageToDataUrl()` - Convert file to base64 for API upload
-- `resizeImage()` - Resize using `sips` (macOS)
-- `openImage()` - Open in system viewer
+- `resizeImage()` - Resize using `sips` (macOS) with fallback
+- `openImage()` - Open in system viewer (macOS `open` or Linux `xdg-open`)
 - `generateFilename()` - Timestamp-based naming
+- `getImageDimensions()` - Get image dimensions via `file` command
+- `getFileSize()` - Human-readable file size
+- `deleteTempFile()` - Safe temp file cleanup
+
+### Path Utilities (`src/utils/paths.ts`)
+
+- `validateOutputPath()` - Ensure path is within current directory
+- `normalizeOutputPath()` - Add correct file extension
+- `buildIndexedOutputPath()` - Create indexed filenames for multi-image outputs
+- `isPathWithinCwd()` - Check if path resolves within cwd
+- `validateImagePath()` - Validate image exists and has allowed extension
+
+### Constants (`src/utils/constants.ts`)
+
+- `UPSCALE_FACTORS` - Available upscale factors: `[2, 4, 6, 8]`
+- `isValidUpscaleFactor()` - Type guard for upscale factor validation
 
 ## Development Workflow
 
@@ -192,12 +221,12 @@ export FAL_KEY="your-api-key"
 4. Update API request building in `generate()` if needed
 
 ### Adding a New Preset
-1. Add to `PRESETS` in `Generate.tsx`
+1. Add to `PRESETS` in `generate.tsx`
 2. Add CLI flag in `runCli()` in `cli.ts`
 3. Add preset logic in `generateImage()`
 
 ### Adding a New Screen
-1. Add screen type to `Screen` in `App.tsx`
+1. Add screen type to `Screen` in `app.tsx`
 2. Create component in `src/studio/screens/`
 3. Add routing in `renderScreen()`
 4. Add navigation from appropriate screens
@@ -284,7 +313,7 @@ errorWithStack("Generation failed", error, { prompt, model });
 
 ### Integration Points
 
-- **Studio errors**: All errors in `App.tsx`, `Generate.tsx`, and `Edit.tsx`
+- **Studio errors**: All errors in `app.tsx`, `generate.tsx`, and `edit.tsx`
 - **API layer**: `fal.ts` logs API requests/responses
 - **Pricing**: `pricing.ts` logs cache operations
 - **CLI**: `cli.ts` logs command execution
@@ -346,11 +375,12 @@ BUN_BIN="/home/coinanole/.bun/bin/bun"
 
 Tests mirror the source structure under [`tests/`](tests/):
 - `api/` - API client and pricing tests
-- `cli/` - CLI parsing and command tests  
+- `cli/` - CLI parsing and preset tests  
 - `studio/` - Comprehensive Ink UI tests for all screens (Home, Generate, Edit, Gallery, Settings)
-- `utils/` - Utility function tests
+- `utils/` - Utility function tests (config, image, logger, paths, constants)
 - `helpers/` - Test utilities (CLI runner, fetch mocking, Ink helpers, environment setup)
 - `fixtures/` - Test data and sample files
+- `types/` - Type declarations
 
 ### Key Testing Principles
 
@@ -365,6 +395,8 @@ Import from [`tests/helpers/`](tests/helpers/) for common testing needs:
 - `fetch.ts` - `withMockFetch()` for stubbing API calls
 - `ink.ts` - Keyboard input simulation (`KEYS`, `writeInput`), ANSI stripping, and async waiting (`waitUntil`)
 - `env.ts` - Automatic temp directory setup for isolated config/history
+- `studio-mocks.ts` - Mock utilities for Studio screen tests
+- `import.ts` - Dynamic import helpers for test isolation
 
 See [`tests/TESTING_GUIDELINES.md`](tests/TESTING_GUIDELINES.md) for detailed usage examples and patterns.
 
@@ -377,6 +409,7 @@ The Studio UI has comprehensive test coverage across all five screens:
 - **Edit** (`edit.test.tsx`) - Image selection, operation routing (Edit/Variations/Upscale/Remove Background), skipToOperation shortcuts, and property-based operation mapping
 - **Gallery** (`gallery.test.tsx`) - Empty state, pagination, navigation, and item selection
 - **Settings** (`settings.test.tsx`) - Setting navigation, toggle/select/text editing, save behavior, and property-based state mutations
+- **Spinner** (`spinner.test.tsx`) - Loading spinner component tests
 
 Tests use `ink-testing-library` for rendering, keyboard input simulation via `KEYS` constants, and property-based testing with `fast-check` to verify behavioral invariants across input ranges.
 
