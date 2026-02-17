@@ -3,11 +3,13 @@ export interface ImportRetryOptions {
 	timeoutMs?: number;
 	maxAttempts?: number;
 	retryDelayMs?: number;
+	timeoutBackoffFactor?: number;
 }
 
 const DEFAULT_TIMEOUT_MS = 10_000;
-const DEFAULT_MAX_ATTEMPTS = 2;
+const DEFAULT_MAX_ATTEMPTS = 3;
 const DEFAULT_RETRY_DELAY_MS = 100;
+const DEFAULT_TIMEOUT_BACKOFF_FACTOR = 2;
 
 class ImportTimeoutError extends Error {
 	constructor(
@@ -23,8 +25,8 @@ class ImportTimeoutError extends Error {
 	}
 }
 
-async function runImportWithTimeout<T>(
-	importer: () => Promise<T>,
+async function waitForImportWithTimeout<T>(
+	importPromise: Promise<T>,
 	label: string,
 	timeoutMs: number,
 	attempt: number,
@@ -33,7 +35,7 @@ async function runImportWithTimeout<T>(
 	let timeoutId: ReturnType<typeof setTimeout> | undefined;
 	try {
 		return await Promise.race([
-			importer(),
+			importPromise,
 			new Promise<T>((_, reject) => {
 				timeoutId = setTimeout(() => {
 					reject(
@@ -67,16 +69,22 @@ export async function importWithTimeoutRetry<T>(
 		timeoutMs = DEFAULT_TIMEOUT_MS,
 		maxAttempts = DEFAULT_MAX_ATTEMPTS,
 		retryDelayMs = DEFAULT_RETRY_DELAY_MS,
+		timeoutBackoffFactor = DEFAULT_TIMEOUT_BACKOFF_FACTOR,
 	} = options;
 
 	let lastTimeoutError: ImportTimeoutError | undefined;
+	const importPromise = importer();
 
 	for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+		const attemptTimeoutMs =
+			attempt === 1
+				? timeoutMs
+				: Math.round(timeoutMs * timeoutBackoffFactor ** (attempt - 1));
 		try {
-			return await runImportWithTimeout(
-				importer,
+			return await waitForImportWithTimeout(
+				importPromise,
 				label,
-				timeoutMs,
+				attemptTimeoutMs,
 				attempt,
 				maxAttempts
 			);
