@@ -10,9 +10,15 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import fc from "fast-check";
 import { withMockFetch } from "../helpers/fetch";
 import { importWithTimeoutRetry } from "../helpers/import";
+
+const { default: fc } = await importWithTimeoutRetry(
+	() => import("fast-check"),
+	{
+		label: "fast-check import (image.test)",
+	}
+);
 
 const {
 	deleteTempFile,

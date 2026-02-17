@@ -5,10 +5,16 @@ import "../helpers/env";
 import { afterEach, describe, expect, it } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import fc from "fast-check";
 import { getTestHome } from "../helpers/env";
 import { withMockFetch } from "../helpers/fetch";
 import { importWithTimeoutRetry } from "../helpers/import";
+
+const { default: fc } = await importWithTimeoutRetry(
+	() => import("fast-check"),
+	{
+		label: "fast-check import (fal.test)",
+	}
+);
 
 const { generate, removeBackground, setApiKey, upscale } =
 	await importWithTimeoutRetry(() => import("../../src/api/fal"), {

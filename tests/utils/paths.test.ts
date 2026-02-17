@@ -2,8 +2,14 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import fc from "fast-check";
 import { importWithTimeoutRetry } from "../helpers/import";
+
+const { default: fc } = await importWithTimeoutRetry(
+	() => import("fast-check"),
+	{
+		label: "fast-check import (paths.test)",
+	}
+);
 
 const {
 	buildIndexedOutputPath,
