@@ -27,12 +27,18 @@ const waitForRender = async (result: ReturnType<typeof render>) => {
 	});
 };
 
-const selectedLine = (result: ReturnType<typeof render>, label: string): string => {
+const selectedLine = (
+	result: ReturnType<typeof render>,
+	label: string
+): string => {
 	const output = stripAnsi(result.lastFrame() ?? "");
 	return output.split("\n").find((line) => line.includes(`◆ ${label}`)) ?? "";
 };
 
-async function goToSetting(result: ReturnType<typeof render>, settingIndex: number) {
+async function goToSetting(
+	result: ReturnType<typeof render>,
+	settingIndex: number
+) {
 	for (let index = 0; index < settingIndex; index++) {
 		await writeInput(result, KEYS.down);
 	}
@@ -62,7 +68,9 @@ describe("settings screen", () => {
 			expect(output).toContain("Open After Generate");
 			expect(output).toContain("Prompt Expansion");
 			expect(output).toContain("API Key");
-			expect(output).toContain("enter edit │ esc back │ q quit │ s auto-save info");
+			expect(output).toContain(
+				"enter edit │ esc back │ q quit │ s auto-save info"
+			);
 			expect(output).toContain("Nano Banana Pro");
 			expect(output).toContain("Not set");
 		} finally {
@@ -124,7 +132,10 @@ describe("settings screen", () => {
 
 			await writeInput(result, KEYS.enter);
 			await waitUntil(
-				() => stripAnsi(result.lastFrame() ?? "").includes("enter save │ esc cancel"),
+				() =>
+					stripAnsi(result.lastFrame() ?? "").includes(
+						"enter save │ esc cancel"
+					),
 				{ timeoutMs: 3000 }
 			);
 		} finally {
@@ -148,7 +159,10 @@ describe("settings screen", () => {
 			await goToSetting(result, 7);
 			await writeInput(result, KEYS.enter);
 			await waitUntil(
-				() => stripAnsi(result.lastFrame() ?? "").includes("enter save │ esc cancel"),
+				() =>
+					stripAnsi(result.lastFrame() ?? "").includes(
+						"enter save │ esc cancel"
+					),
 				{ timeoutMs: 3000 }
 			);
 
@@ -224,13 +238,18 @@ describe("settings screen", () => {
 			await goToSetting(result, 7);
 			await writeInput(result, KEYS.enter);
 			await waitUntil(
-				() => stripAnsi(result.lastFrame() ?? "").includes("enter save │ esc cancel"),
+				() =>
+					stripAnsi(result.lastFrame() ?? "").includes(
+						"enter save │ esc cancel"
+					),
 				{ timeoutMs: 3000 }
 			);
 
 			await writeInput(result, "q");
 			expect(onQuit).not.toHaveBeenCalled();
-			expect(stripAnsi(result.lastFrame() ?? "")).toContain("enter save │ esc cancel");
+			expect(stripAnsi(result.lastFrame() ?? "")).toContain(
+				"enter save │ esc cancel"
+			);
 		} finally {
 			result.unmount();
 		}
@@ -345,7 +364,8 @@ describe("settings screen", () => {
 			await waitForRender(result);
 			await writeInput(result, KEYS.enter); // Default Model editor
 			await waitUntil(
-				() => stripAnsi(result.lastFrame() ?? "").includes("Editing Default Model"),
+				() =>
+					stripAnsi(result.lastFrame() ?? "").includes("Editing Default Model"),
 				{ timeoutMs: 3000 }
 			);
 
@@ -375,7 +395,10 @@ describe("settings screen", () => {
 			await goToSetting(result, 7);
 			await writeInput(result, KEYS.enter);
 			await waitUntil(
-				() => stripAnsi(result.lastFrame() ?? "").includes("enter save │ esc cancel"),
+				() =>
+					stripAnsi(result.lastFrame() ?? "").includes(
+						"enter save │ esc cancel"
+					),
 				{ timeoutMs: 3000 }
 			);
 
@@ -436,8 +459,8 @@ describe("settings screen", () => {
 	});
 
 	it("shows save failure while keeping local value", async () => {
-		const onPersistChange = mock(async () => {
-			throw new Error("persist failed");
+		const onPersistChange = mock(() => {
+			return Promise.reject(new Error("persist failed"));
 		});
 		const onBack = mock(() => undefined);
 		const result = render(
@@ -540,7 +563,8 @@ describe("settings screen", () => {
 
 					const expected = presses % 2 === 1 ? "Yes" : "No";
 					await waitUntil(
-						() => selectedLine(result, "Open After Generate").includes(expected),
+						() =>
+							selectedLine(result, "Open After Generate").includes(expected),
 						{ timeoutMs: 3000 }
 					);
 					expect(onPersistChange).toHaveBeenCalledTimes(presses);

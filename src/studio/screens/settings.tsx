@@ -128,7 +128,10 @@ export function SettingsScreen({
 			if (sequence !== saveSeqRef.current) {
 				return;
 			}
-			setTransientStatus({ type: "saved", message: "Saved" }, STATUS_HIDE_DELAY_MS);
+			setTransientStatus(
+				{ type: "saved", message: "Saved" },
+				STATUS_HIDE_DELAY_MS
+			);
 		} catch {
 			if (sequence !== saveSeqRef.current) {
 				return;
@@ -173,7 +176,10 @@ export function SettingsScreen({
 		setStep("list");
 	};
 
-	const handleListInput = (input: string, key: { upArrow?: boolean; downArrow?: boolean; return?: boolean }) => {
+	const handleListInput = (
+		input: string,
+		key: { upArrow?: boolean; downArrow?: boolean; return?: boolean }
+	) => {
 		if (input === "q") {
 			onQuit();
 			return;
@@ -220,7 +226,11 @@ export function SettingsScreen({
 		}
 
 		const setting = currentSetting;
-		if (setting.type !== "select" || !setting.options || setting.options.length === 0) {
+		if (
+			setting.type !== "select" ||
+			!setting.options ||
+			setting.options.length === 0
+		) {
 			return;
 		}
 
@@ -229,13 +239,12 @@ export function SettingsScreen({
 		}
 
 		const options = setting.options;
-		const nextIndex = key.upArrow
-			? editorIndex > 0
-				? editorIndex - 1
-				: options.length - 1
-			: editorIndex < options.length - 1
-				? editorIndex + 1
-				: 0;
+		let nextIndex: number;
+		if (key.upArrow) {
+			nextIndex = editorIndex > 0 ? editorIndex - 1 : options.length - 1;
+		} else {
+			nextIndex = editorIndex < options.length - 1 ? editorIndex + 1 : 0;
+		}
 		setEditorIndex(nextIndex);
 
 		const nextValue = options[nextIndex];
@@ -244,9 +253,11 @@ export function SettingsScreen({
 			return;
 		}
 
-		void persistPatch({
+		persistPatch({
 			[setting.key]: nextValue,
-		} as Partial<FalconConfig>);
+		} as Partial<FalconConfig>).catch(() => {
+			// Error handled in persistPatch
+		});
 	};
 
 	const handleToggleEditorInput = (key: {
@@ -276,9 +287,11 @@ export function SettingsScreen({
 			return;
 		}
 
-		void persistPatch({
+		persistPatch({
 			[setting.key]: nextValue,
-		} as Partial<FalconConfig>);
+		} as Partial<FalconConfig>).catch(() => {
+			// Error handled in persistPatch
+		});
 	};
 
 	const handleTextEditorInput = () => {
@@ -314,9 +327,11 @@ export function SettingsScreen({
 			return;
 		}
 		setStep("list");
-		void persistPatch({
+		persistPatch({
 			[currentSetting.key]: value,
-		} as Partial<FalconConfig>);
+		} as Partial<FalconConfig>).catch(() => {
+			// Error handled in persistPatch
+		});
 	};
 
 	const formatValue = (setting: SettingItem): string => {
@@ -411,21 +426,32 @@ export function SettingsScreen({
 		return null;
 	};
 
-	const statusColor =
-		status.type === "saved"
-			? "green"
-			: status.type === "saving" || status.type === "hint"
-				? "yellow"
-				: status.type === "error"
-					? "red"
-					: undefined;
+	const getStatusColor = (): string | undefined => {
+		if (status.type === "saved") {
+			return "green";
+		}
+		if (status.type === "saving" || status.type === "hint") {
+			return "yellow";
+		}
+		if (status.type === "error") {
+			return "red";
+		}
+		return undefined;
+	};
 
-	const legend =
-		step === "list"
-			? "enter edit │ esc back │ q quit │ s auto-save info"
-			: step === "editText"
-				? "enter save │ esc cancel"
-				: "↑↓ change │ enter done │ esc cancel";
+	const statusColor = getStatusColor();
+
+	const getLegend = (): string => {
+		if (step === "list") {
+			return "enter edit │ esc back │ q quit │ s auto-save info";
+		}
+		if (step === "editText") {
+			return "enter save │ esc cancel";
+		}
+		return "↑↓ change │ enter done │ esc cancel";
+	};
+
+	const legend = getLegend();
 
 	return (
 		<Box flexDirection="column">
@@ -448,7 +474,9 @@ export function SettingsScreen({
 								{setting.label}
 							</Text>
 						</Box>
-						<Text color={isSelected ? "green" : "gray"}>{formatValue(setting)}</Text>
+						<Text color={isSelected ? "green" : "gray"}>
+							{formatValue(setting)}
+						</Text>
 					</Box>
 				);
 			})}

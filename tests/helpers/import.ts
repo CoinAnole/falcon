@@ -87,7 +87,6 @@ export async function importWithTimeoutRetry<T>(
 			lastTimeoutError = err;
 			if (attempt < maxAttempts) {
 				await waitForRetryDelay(retryDelayMs);
-				continue;
 			}
 		}
 	}

@@ -122,10 +122,10 @@ export function App({
 					<SettingsScreen
 						config={config}
 						onBack={() => setScreen("home")}
-						onQuit={handleQuit}
 						onPersistChange={async (configPatch) => {
 							await onConfigChange(configPatch);
 						}}
+						onQuit={handleQuit}
 					/>
 				);
 			default:

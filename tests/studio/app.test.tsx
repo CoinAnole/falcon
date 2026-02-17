@@ -18,9 +18,12 @@ beforeAll(async () => {
 	originalFalKey = process.env.FAL_KEY;
 	registerStudioMocks();
 	process.env.FAL_KEY = "test-key-for-app-tests";
-	({ App } = await importWithTimeoutRetry(() => import("../../src/studio/app"), {
-		label: "App import",
-	}));
+	({ App } = await importWithTimeoutRetry(
+		() => import("../../src/studio/app"),
+		{
+			label: "App import",
+		}
+	));
 });
 
 afterAll(() => {
@@ -154,7 +157,9 @@ describe("studio app routing", () => {
 				await writeInput(result, KEYS.enter); // Open Default Model editor
 				await waitUntil(
 					() =>
-						stripAnsi(result.lastFrame() ?? "").includes("Editing Default Model"),
+						stripAnsi(result.lastFrame() ?? "").includes(
+							"Editing Default Model"
+						),
 					{ timeoutMs: 3000 }
 				);
 				await writeInput(result, KEYS.down); // Persist change
