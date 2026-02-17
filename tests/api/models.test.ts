@@ -1,5 +1,4 @@
 import { describe, expect, it } from "bun:test";
-import fc from "fast-check";
 import type { AspectRatio, CliResolution } from "../../src/api/models";
 import { importWithTimeoutRetry } from "../helpers/import";
 
@@ -171,19 +170,17 @@ describe("Property 6: estimateCost scales linearly with numImages", () => {
 	];
 
 	it("cost(model, res, n) === cost(model, res, 1) * n", () => {
-		fc.assert(
-			fc.property(
-				fc.constantFrom(...knownModels),
-				fc.constantFrom(...resolutions),
-				fc.integer({ min: 1, max: 100 }),
-				(model, resolution, numImages) => {
+		for (const model of knownModels) {
+			for (const resolution of resolutions) {
+				for (let numImages = 1; numImages <= 100; numImages++) {
 					const baseCost = estimateCost(model, resolution, 1);
 					const scaledCost = estimateCost(model, resolution, numImages);
-					return Math.abs(scaledCost - baseCost * numImages) < 1e-10;
+					expect(Math.abs(scaledCost - baseCost * numImages)).toBeLessThan(
+						1e-10
+					);
 				}
-			),
-			{ numRuns: 50 }
-		);
+			}
+		}
 	});
 });
 
@@ -212,11 +209,8 @@ describe("Property 7: aspectToGptSize always returns a valid GPT size", () => {
 	const validGptSizes = ["1024x1024", "1024x1536", "1536x1024"];
 
 	it("always returns one of the three valid GPT sizes", () => {
-		fc.assert(
-			fc.property(fc.constantFrom(...allAspectRatios), (ratio) => {
-				return validGptSizes.includes(aspectToGptSize(ratio));
-			}),
-			{ numRuns: 50 }
-		);
+		for (const ratio of allAspectRatios) {
+			expect(validGptSizes).toContain(aspectToGptSize(ratio));
+		}
 	});
 });
