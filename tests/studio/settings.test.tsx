@@ -3,9 +3,13 @@ import fc from "fast-check";
 import { render } from "ink-testing-library";
 import { GENERATION_MODELS, MODELS } from "../../src/api/models";
 import type { FalconConfig } from "../../src/studio/deps/config";
+import { importWithTimeoutRetry } from "../helpers/import";
 import { KEYS, stripAnsi, waitUntil, writeInput } from "../helpers/ink";
 
-const { SettingsScreen } = await import("../../src/studio/screens/settings");
+const { SettingsScreen } = await importWithTimeoutRetry(
+	() => import("../../src/studio/screens/settings"),
+	{ label: "SettingsScreen import" }
+);
 
 const baseConfig: FalconConfig = {
 	defaultModel: "banana",

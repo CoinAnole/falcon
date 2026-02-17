@@ -3,6 +3,7 @@ import fc from "fast-check";
 import { render } from "ink-testing-library";
 import type { FalconConfig } from "../../src/studio/deps/config";
 import { withMockFetch } from "../helpers/fetch";
+import { importWithTimeoutRetry } from "../helpers/import";
 import { KEYS, stripAnsi, waitUntil, writeInput } from "../helpers/ink";
 import {
 	registerStudioMocks,
@@ -18,7 +19,10 @@ beforeAll(async () => {
 	registerStudioMocks();
 	// Set FAL_KEY so getApiKey() doesn't throw during generation
 	process.env.FAL_KEY = "test-key-for-generate-tests";
-	({ GenerateScreen } = await import("../../src/studio/screens/generate"));
+	({ GenerateScreen } = await importWithTimeoutRetry(
+		() => import("../../src/studio/screens/generate"),
+		{ label: "GenerateScreen import" }
+	));
 });
 
 afterAll(() => {

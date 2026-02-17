@@ -3,6 +3,7 @@ import fc from "fast-check";
 import { render } from "ink-testing-library";
 import type { FalconConfig, History } from "../../src/studio/deps/config";
 import { withMockFetch } from "../helpers/fetch";
+import { importWithTimeoutRetry } from "../helpers/import";
 import { KEYS, stripAnsi, waitUntil, writeInput } from "../helpers/ink";
 import {
 	createEmptyStudioHistory,
@@ -17,7 +18,9 @@ beforeAll(async () => {
 	originalFalKey = process.env.FAL_KEY;
 	registerStudioMocks();
 	process.env.FAL_KEY = "test-key-for-app-tests";
-	({ App } = await import("../../src/studio/app"));
+	({ App } = await importWithTimeoutRetry(() => import("../../src/studio/app"), {
+		label: "App import",
+	}));
 });
 
 afterAll(() => {
