@@ -53,14 +53,16 @@ cd falcon && bun install && bun link
 
 | Model | Description | Price |
 |-------|-------------|-------|
-| `banana` | Nano Banana Pro (default) | $0.15-0.30 |
-| `gpt` | GPT Image 1.5, supports transparency | $0.01-0.20 |
-| `gemini` | Gemini 2.5 Flash, fast | $0.04 |
-| `gemini3` | Gemini 3 Pro, highest quality | $0.15-0.30 |
-| `flux2` | Flux 2 | $0.04-0.06 |
-| `flux2Flash` | Flux 2 Flash | $0.015-0.025 |
-| `flux2Turbo` | Flux 2 Turbo | $0.03-0.05 |
-| `imagine` | Grok Imagine | $0.04 |
+| `banana` | Nano Banana Pro (default) | $0.15/image |
+| `gpt` | GPT Image 1.5, supports transparency | $1.00/unit (~$0.21/call) |
+| `gemini` | Gemini 2.5 Flash, fast | $0.0398/image |
+| `gemini3` | Gemini 3 Pro, highest quality | $0.15/image |
+| `flux2` | Flux 2 | $0.012/megapixel |
+| `flux2Flash` | Flux 2 Flash | $0.005/megapixel |
+| `flux2Turbo` | Flux 2 Turbo | $0.008/megapixel |
+| `imagine` | Grok Imagine | $0.02/image |
+
+Prices can vary by account and are subject to change. Use `falcon pricing --refresh` to update cached live pricing.
 
 ## Options
 

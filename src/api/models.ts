@@ -43,7 +43,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		name: "GPT Image 1.5",
 		endpoint: "fal-ai/gpt-image-1.5",
 		type: "generation",
-		pricing: "$0.01-$0.20/image",
+		pricing: "$1.00/unit (~$0.21/call)",
 		supportsAspect: false, // Uses image_size instead
 		supportsResolution: false,
 		supportsEdit: true,
@@ -55,7 +55,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		name: "Nano Banana Pro",
 		endpoint: "fal-ai/nano-banana-pro",
 		type: "generation",
-		pricing: "$0.15-$0.30/image",
+		pricing: "$0.15/image",
 		supportsAspect: true,
 		supportsResolution: true,
 		supportsEdit: true,
@@ -66,7 +66,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		name: "Gemini 2.5 Flash",
 		endpoint: "fal-ai/gemini-25-flash-image",
 		type: "generation",
-		pricing: "$0.039/image",
+		pricing: "$0.0398/image",
 		supportsAspect: true,
 		supportsResolution: false,
 		supportsEdit: true,
@@ -77,7 +77,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		name: "Gemini 3 Pro",
 		endpoint: "fal-ai/gemini-3-pro-image-preview",
 		type: "generation",
-		pricing: "$0.15-$0.30/image",
+		pricing: "$0.15/image",
 		supportsAspect: true,
 		supportsResolution: true,
 		supportsEdit: true,
@@ -88,7 +88,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		name: "Flux 2",
 		endpoint: "fal-ai/flux-2",
 		type: "generation",
-		pricing: "$0.04-$0.06/image",
+		pricing: "$0.012/megapixel",
 		supportsAspect: false, // Uses image_size instead
 		supportsResolution: false,
 		supportsEdit: true,
@@ -99,7 +99,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		name: "Flux 2 Flash",
 		endpoint: "fal-ai/flux-2/flash",
 		type: "generation",
-		pricing: "$0.015-$0.025/image",
+		pricing: "$0.005/megapixel",
 		supportsAspect: false, // Uses image_size instead
 		supportsResolution: false,
 		supportsEdit: true,
@@ -110,7 +110,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		name: "Flux 2 Turbo",
 		endpoint: "fal-ai/flux-2/turbo",
 		type: "generation",
-		pricing: "$0.03-$0.05/image",
+		pricing: "$0.008/megapixel",
 		supportsAspect: false, // Uses image_size instead
 		supportsResolution: false,
 		supportsEdit: true,
@@ -121,7 +121,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		name: "Grok Imagine",
 		endpoint: "xai/grok-imagine-image",
 		type: "generation",
-		pricing: "$0.04/image",
+		pricing: "$0.02/image",
 		supportsAspect: true,
 		supportsResolution: false,
 		supportsEdit: true,
@@ -152,7 +152,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		name: "Clarity Upscaler",
 		endpoint: "fal-ai/clarity-upscaler",
 		type: "utility",
-		pricing: "~$0.02/image",
+		pricing: "$0.03/megapixel",
 		supportsAspect: false,
 		supportsResolution: false,
 		supportsEdit: false,
@@ -174,7 +174,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		name: "BiRefNet (Background Removal)",
 		endpoint: "fal-ai/birefnet",
 		type: "utility",
-		pricing: "~$0.02/image",
+		pricing: "$0.00111/compute-second",
 		supportsAspect: false,
 		supportsResolution: false,
 		supportsEdit: false,
@@ -185,7 +185,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		name: "Bria RMBG 2.0",
 		endpoint: "fal-ai/bria/background/remove",
 		type: "utility",
-		pricing: "$0.018/image",
+		pricing: "$0.018/generation",
 		supportsAspect: false,
 		supportsResolution: false,
 		supportsEdit: false,
@@ -282,32 +282,38 @@ export function estimateCost(
 	let baseCost = 0;
 	switch (model) {
 		case "gpt":
-			baseCost = 0.13; // high quality default
+			baseCost = 0.21;
 			break;
 		case "banana":
 		case "gemini3":
-			baseCost = resolution === "4K" ? 0.3 : 0.15;
+			baseCost = 0.15;
 			break;
 		case "gemini":
-			baseCost = 0.039;
+			baseCost = 0.0398;
 			break;
 		case "flux2":
-			baseCost = 0.05;
+			baseCost = 0.012;
 			break;
 		case "flux2Flash":
-			baseCost = 0.02;
+			baseCost = 0.005;
 			break;
 		case "flux2Turbo":
-			baseCost = 0.035;
+			baseCost = 0.008;
 			break;
 		case "imagine":
-			baseCost = 0.04;
+			baseCost = 0.02;
 			break;
 		case "clarity":
+			baseCost = 0.03;
+			break;
 		case "crystal":
+			baseCost = 0.016;
+			break;
 		case "rmbg":
+			baseCost = 0.00111;
+			break;
 		case "bria":
-			baseCost = 0.02;
+			baseCost = 0.018;
 			break;
 		default:
 			baseCost = 0.1;

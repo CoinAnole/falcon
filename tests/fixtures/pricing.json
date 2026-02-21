@@ -2,74 +2,74 @@
   "prices": [
     {
       "endpoint_id": "fal-ai/gpt-image-1.5",
-      "unit_price": 0.13,
-      "unit": "image",
+      "unit_price": 1,
+      "unit": "units",
       "currency": "USD"
     },
     {
       "endpoint_id": "fal-ai/nano-banana-pro",
       "unit_price": 0.15,
-      "unit": "image",
+      "unit": "images",
       "currency": "USD"
     },
     {
       "endpoint_id": "fal-ai/gemini-25-flash-image",
-      "unit_price": 0.039,
-      "unit": "image",
+      "unit_price": 0.0398,
+      "unit": "images",
       "currency": "USD"
     },
     {
       "endpoint_id": "fal-ai/gemini-3-pro-image-preview",
       "unit_price": 0.15,
-      "unit": "image",
+      "unit": "images",
       "currency": "USD"
     },
     {
       "endpoint_id": "fal-ai/flux-2",
-      "unit_price": 0.05,
-      "unit": "image",
+      "unit_price": 0.012,
+      "unit": "megapixels",
       "currency": "USD"
     },
     {
       "endpoint_id": "fal-ai/flux-2/flash",
-      "unit_price": 0.02,
-      "unit": "image",
+      "unit_price": 0.005,
+      "unit": "megapixels",
       "currency": "USD"
     },
     {
       "endpoint_id": "fal-ai/flux-2/turbo",
-      "unit_price": 0.035,
-      "unit": "image",
+      "unit_price": 0.008,
+      "unit": "megapixels",
       "currency": "USD"
     },
     {
       "endpoint_id": "xai/grok-imagine-image",
-      "unit_price": 0.04,
-      "unit": "image",
+      "unit_price": 0.02,
+      "unit": "images",
       "currency": "USD"
     },
     {
       "endpoint_id": "fal-ai/clarity-upscaler",
-      "unit_price": 0.02,
-      "unit": "image",
+      "unit_price": 0.03,
+      "unit": "megapixels",
       "currency": "USD"
     },
     {
       "endpoint_id": "clarityai/crystal-upscaler",
       "unit_price": 0.016,
-      "unit": "megapixel",
+      "unit": "megapixels",
       "currency": "USD"
     },
     {
       "endpoint_id": "fal-ai/birefnet",
-      "unit_price": 0.02,
-      "unit": "image",
+      "unit_price": 0.00111,
+      "unit": "compute seconds",
       "currency": "USD"
     },
     {
       "endpoint_id": "fal-ai/bria/background/remove",
       "unit_price": 0.018,
-      "unit": "image",
+      "unit": "generations",
       "currency": "USD"
     }
   ]

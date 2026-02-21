@@ -25,7 +25,7 @@ describe("models", () => {
 
 	it("estimates cost based on model and resolution", () => {
 		expect(estimateCost("banana", "2K", 2)).toBeCloseTo(0.3);
-		expect(estimateCost("banana", "4K", 1)).toBeCloseTo(0.3);
+		expect(estimateCost("banana", "4K", 1)).toBeCloseTo(0.15);
 	});
 
 	it("returns model-specific aspect ratios when configured", () => {
@@ -101,26 +101,26 @@ describe("aspectToFlux2Size — full coverage", () => {
 // Requirements: 4.6, 4.7, 4.8, 4.10
 describe("estimateCost — all models", () => {
 	it("returns correct base cost for each generation model", () => {
-		expect(estimateCost("gpt", "2K", 1)).toBeCloseTo(0.13);
+		expect(estimateCost("gpt", "2K", 1)).toBeCloseTo(0.21);
 		expect(estimateCost("banana", "2K", 1)).toBeCloseTo(0.15);
-		expect(estimateCost("gemini", "2K", 1)).toBeCloseTo(0.039);
+		expect(estimateCost("gemini", "2K", 1)).toBeCloseTo(0.0398);
 		expect(estimateCost("gemini3", "2K", 1)).toBeCloseTo(0.15);
-		expect(estimateCost("flux2", "2K", 1)).toBeCloseTo(0.05);
-		expect(estimateCost("flux2Flash", "2K", 1)).toBeCloseTo(0.02);
-		expect(estimateCost("flux2Turbo", "2K", 1)).toBeCloseTo(0.035);
-		expect(estimateCost("imagine", "2K", 1)).toBeCloseTo(0.04);
+		expect(estimateCost("flux2", "2K", 1)).toBeCloseTo(0.012);
+		expect(estimateCost("flux2Flash", "2K", 1)).toBeCloseTo(0.005);
+		expect(estimateCost("flux2Turbo", "2K", 1)).toBeCloseTo(0.008);
+		expect(estimateCost("imagine", "2K", 1)).toBeCloseTo(0.02);
 	});
 
 	it("returns correct base cost for each utility model", () => {
-		expect(estimateCost("clarity", undefined, 1)).toBeCloseTo(0.02);
-		expect(estimateCost("crystal", undefined, 1)).toBeCloseTo(0.02);
-		expect(estimateCost("rmbg", undefined, 1)).toBeCloseTo(0.02);
-		expect(estimateCost("bria", undefined, 1)).toBeCloseTo(0.02);
+		expect(estimateCost("clarity", undefined, 1)).toBeCloseTo(0.03);
+		expect(estimateCost("crystal", undefined, 1)).toBeCloseTo(0.016);
+		expect(estimateCost("rmbg", undefined, 1)).toBeCloseTo(0.00111);
+		expect(estimateCost("bria", undefined, 1)).toBeCloseTo(0.018);
 	});
 
-	it("returns higher cost for 4K resolution on banana and gemini3", () => {
-		expect(estimateCost("banana", "4K", 1)).toBeCloseTo(0.3);
-		expect(estimateCost("gemini3", "4K", 1)).toBeCloseTo(0.3);
+	it("keeps banana and gemini3 cost stable across resolutions", () => {
+		expect(estimateCost("banana", "4K", 1)).toBeCloseTo(0.15);
+		expect(estimateCost("gemini3", "4K", 1)).toBeCloseTo(0.15);
 	});
 
 	it("returns 0 for unknown model", () => {
