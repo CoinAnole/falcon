@@ -156,7 +156,8 @@ describe("studio app routing", () => {
 						),
 					{ timeoutMs: 3000 }
 				);
-				await writeInput(result, KEYS.down); // Persist change
+				await writeInput(result, KEYS.down); // Stage change
+				await writeInput(result, KEYS.enter); // Persist change
 				await waitUntil(() => onConfigChange.mock.calls.length === 1, {
 					timeoutMs: 3000,
 				});
@@ -165,15 +166,6 @@ describe("studio app routing", () => {
 				expect(stillOnSettings).toContain("Settings");
 				expect(stillOnSettings).toContain("Default Model");
 				expect(stillOnSettings).not.toContain("Create new image from prompt");
-
-				await writeInput(result, KEYS.escape); // Editor -> list
-				await waitUntil(
-					() =>
-						stripAnsi(result.lastFrame() ?? "").includes(
-							"enter edit │ esc back │ q quit │ s auto-save info"
-						),
-					{ timeoutMs: 3000 }
-				);
 
 				await writeInput(result, KEYS.escape); // Settings -> home
 				await waitUntil(

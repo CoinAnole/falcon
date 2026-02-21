@@ -40,7 +40,7 @@ async function goToSetting(
 }
 
 describe("settings screen", () => {
-	it("renders all settings and auto-save hint", async () => {
+	it("renders all settings and save-on-enter hint", async () => {
 		const onPersistChange = mock(async () => undefined);
 		const onBack = mock(() => undefined);
 		const result = render(
@@ -63,9 +63,8 @@ describe("settings screen", () => {
 			expect(output).toContain("Open After Generate");
 			expect(output).toContain("Prompt Expansion");
 			expect(output).toContain("API Key");
-			expect(output).toContain(
-				"enter edit │ esc back │ q quit │ s auto-save info"
-			);
+			expect(output).toContain("enter edit │ esc back │ q quit");
+			expect(output).toContain("Press Enter to save changes");
 			expect(output).toContain("Nano Banana Pro");
 			expect(output).toContain("Not set");
 		} finally {
@@ -250,7 +249,7 @@ describe("settings screen", () => {
 		}
 	});
 
-	it("pressing s shows auto-save hint and does not persist", async () => {
+	it("pressing s in list does not persist", async () => {
 		const onPersistChange = mock(async () => undefined);
 		const onBack = mock(() => undefined);
 		const result = render(
@@ -264,20 +263,16 @@ describe("settings screen", () => {
 		try {
 			await waitForRender(result);
 			await writeInput(result, "s");
-			await waitUntil(
-				() =>
-					stripAnsi(result.lastFrame() ?? "").includes(
-						"Auto-save is enabled. Changes save automatically."
-					),
-				{ timeoutMs: 3000 }
-			);
 			expect(onPersistChange).not.toHaveBeenCalled();
+			expect(stripAnsi(result.lastFrame() ?? "")).toContain(
+				"enter edit │ esc back │ q quit"
+			);
 		} finally {
 			result.unmount();
 		}
 	});
 
-	it("select editor persists on arrow change", async () => {
+	it("select editor persists on enter", async () => {
 		const onPersistChange = mock(async () => undefined);
 		const onBack = mock(() => undefined);
 		const result = render(
@@ -298,6 +293,8 @@ describe("settings screen", () => {
 			);
 
 			await writeInput(result, KEYS.down);
+			expect(onPersistChange).not.toHaveBeenCalled();
+			await writeInput(result, KEYS.enter);
 			await waitUntil(() => onPersistChange.mock.calls.length === 1, {
 				timeoutMs: 3000,
 			});
@@ -308,7 +305,7 @@ describe("settings screen", () => {
 		}
 	});
 
-	it("toggle editor persists on arrow change", async () => {
+	it("toggle editor persists on enter", async () => {
 		const onPersistChange = mock(async () => undefined);
 		const onBack = mock(() => undefined);
 		const result = render(
@@ -332,6 +329,8 @@ describe("settings screen", () => {
 			);
 
 			await writeInput(result, KEYS.down);
+			expect(onPersistChange).not.toHaveBeenCalled();
+			await writeInput(result, KEYS.enter);
 			await waitUntil(() => onPersistChange.mock.calls.length === 1, {
 				timeoutMs: 3000,
 			});
@@ -438,6 +437,7 @@ describe("settings screen", () => {
 			await goToSetting(result, 5);
 			await writeInput(result, KEYS.enter);
 			await writeInput(result, KEYS.down);
+			await writeInput(result, KEYS.enter);
 
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Saving..."),
@@ -471,6 +471,7 @@ describe("settings screen", () => {
 			await goToSetting(result, 5);
 			await writeInput(result, KEYS.enter);
 			await writeInput(result, KEYS.down);
+			await writeInput(result, KEYS.enter);
 
 			await waitUntil(
 				() => stripAnsi(result.lastFrame() ?? "").includes("Save failed"),
@@ -503,9 +504,12 @@ describe("settings screen", () => {
 			await waitForRender(result);
 			await goToSetting(result, 3); // Upscaler
 			await writeInput(result, KEYS.enter);
-
 			await writeInput(result, KEYS.down); // clarity -> crystal
+			await writeInput(result, KEYS.enter); // save #1
+
+			await writeInput(result, KEYS.enter); // reopen editor
 			await writeInput(result, KEYS.up); // crystal -> clarity
+			await writeInput(result, KEYS.enter); // save #2
 			await waitUntil(() => onPersistChange.mock.calls.length === 2, {
 				timeoutMs: 3000,
 			});
@@ -523,18 +527,13 @@ describe("settings screen", () => {
 				{ timeoutMs: 3000 }
 			);
 
-			await writeInput(result, KEYS.enter); // exit editor
-			await waitUntil(
-				() => stripAnsi(result.lastFrame() ?? "").includes("◆ Upscaler"),
-				{ timeoutMs: 3000 }
-			);
 			expect(selectedLine(result, "Upscaler")).toContain("clarity");
 		} finally {
 			result.unmount();
 		}
 	});
 
-	it("property: repeated toggle changes persist every change", async () => {
+	it("property: repeated toggle saves persist every submit", async () => {
 		await fc.assert(
 			fc.asyncProperty(fc.integer({ min: 1, max: 6 }), async (presses) => {
 				const onPersistChange = mock(async () => undefined);
@@ -550,10 +549,11 @@ describe("settings screen", () => {
 				try {
 					await waitForRender(result);
 					await goToSetting(result, 5);
-					await writeInput(result, KEYS.enter);
 
 					for (let index = 0; index < presses; index++) {
+						await writeInput(result, KEYS.enter);
 						await writeInput(result, KEYS.down);
+						await writeInput(result, KEYS.enter);
 					}
 
 					const expected = presses % 2 === 1 ? "Yes" : "No";

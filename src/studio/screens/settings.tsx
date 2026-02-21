@@ -64,7 +64,7 @@ interface SettingsScreenProps {
 }
 
 type SettingsStep = "list" | "editSelect" | "editToggle" | "editText";
-type SaveStatusType = "idle" | "saving" | "saved" | "error" | "hint";
+type SaveStatusType = "idle" | "saving" | "saved" | "error";
 
 interface SaveStatus {
 	type: SaveStatusType;
@@ -201,17 +201,6 @@ export function SettingsScreen({
 
 		if (key.return) {
 			enterEditor();
-			return;
-		}
-
-		if (input === "s" || input === "S") {
-			setTransientStatus(
-				{
-					type: "hint",
-					message: "Auto-save is enabled. Changes save automatically.",
-				},
-				STATUS_HIDE_DELAY_MS
-			);
 		}
 	};
 
@@ -220,11 +209,6 @@ export function SettingsScreen({
 		downArrow?: boolean;
 		return?: boolean;
 	}) => {
-		if (key.return) {
-			setStep("list");
-			return;
-		}
-
 		const setting = currentSetting;
 		if (
 			setting.type !== "select" ||
@@ -234,30 +218,32 @@ export function SettingsScreen({
 			return;
 		}
 
-		if (!(key.upArrow || key.downArrow)) {
+		if (!(key.upArrow || key.downArrow || key.return)) {
 			return;
 		}
 
 		const options = setting.options;
-		let nextIndex: number;
-		if (key.upArrow) {
-			nextIndex = editorIndex > 0 ? editorIndex - 1 : options.length - 1;
-		} else {
-			nextIndex = editorIndex < options.length - 1 ? editorIndex + 1 : 0;
-		}
-		setEditorIndex(nextIndex);
-
-		const nextValue = options[nextIndex];
-		const currentValue = localConfig[setting.key] as string;
-		if (currentValue === nextValue) {
+		if (key.return) {
+			setStep("list");
+			const nextValue = options[editorIndex];
+			const currentValue = localConfig[setting.key] as string;
+			if (currentValue === nextValue) {
+				return;
+			}
+			persistPatch({
+				[setting.key]: nextValue,
+			} as Partial<FalconConfig>).catch(() => {
+				// Error handled in persistPatch
+			});
 			return;
 		}
 
-		persistPatch({
-			[setting.key]: nextValue,
-		} as Partial<FalconConfig>).catch(() => {
-			// Error handled in persistPatch
-		});
+		if (key.upArrow) {
+			setEditorIndex((index) => (index > 0 ? index - 1 : options.length - 1));
+			return;
+		}
+
+		setEditorIndex((index) => (index < options.length - 1 ? index + 1 : 0));
 	};
 
 	const handleToggleEditorInput = (key: {
@@ -265,12 +251,7 @@ export function SettingsScreen({
 		downArrow?: boolean;
 		return?: boolean;
 	}) => {
-		if (key.return) {
-			setStep("list");
-			return;
-		}
-
-		if (!(key.upArrow || key.downArrow)) {
+		if (!(key.upArrow || key.downArrow || key.return)) {
 			return;
 		}
 
@@ -279,19 +260,21 @@ export function SettingsScreen({
 			return;
 		}
 
-		const nextIndex = editorIndex === 0 ? 1 : 0;
-		const nextValue = nextIndex === 1;
-		setEditorIndex(nextIndex);
-
-		if (Boolean(localConfig[setting.key]) === nextValue) {
+		if (key.return) {
+			setStep("list");
+			const nextValue = editorIndex === 1;
+			if (Boolean(localConfig[setting.key]) === nextValue) {
+				return;
+			}
+			persistPatch({
+				[setting.key]: nextValue,
+			} as Partial<FalconConfig>).catch(() => {
+				// Error handled in persistPatch
+			});
 			return;
 		}
 
-		persistPatch({
-			[setting.key]: nextValue,
-		} as Partial<FalconConfig>).catch(() => {
-			// Error handled in persistPatch
-		});
+		setEditorIndex((index) => (index === 0 ? 1 : 0));
 	};
 
 	const handleTextEditorInput = () => {
@@ -430,7 +413,7 @@ export function SettingsScreen({
 		if (status.type === "saved") {
 			return "green";
 		}
-		if (status.type === "saving" || status.type === "hint") {
+		if (status.type === "saving") {
 			return "yellow";
 		}
 		if (status.type === "error") {
@@ -443,12 +426,12 @@ export function SettingsScreen({
 
 	const getLegend = (): string => {
 		if (step === "list") {
-			return "enter edit │ esc back │ q quit │ s auto-save info";
+			return "enter edit │ esc back │ q quit";
 		}
 		if (step === "editText") {
 			return "enter save │ esc cancel";
 		}
-		return "↑↓ change │ enter done │ esc cancel";
+		return "↑↓ change │ enter save │ esc cancel";
 	};
 
 	const legend = getLegend();
@@ -457,7 +440,7 @@ export function SettingsScreen({
 		<Box flexDirection="column">
 			<Box marginBottom={1}>
 				<Text bold>Settings</Text>
-				<Text dimColor> (Auto-save on change)</Text>
+				<Text dimColor> (Press Enter to save changes)</Text>
 			</Box>
 
 			{SETTINGS.map((setting, index) => {
