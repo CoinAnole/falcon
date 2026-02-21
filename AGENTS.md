@@ -429,7 +429,6 @@ bun run dev --help             # View all options
 3. Build with `bun run build`
 4. Test both CLI and Studio modes
 5. Tag release: `git tag v1.x.x && git push --tags`
-6. Update Homebrew tap if applicable
 
 ## Model Documentation
 
