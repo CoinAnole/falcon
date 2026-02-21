@@ -478,7 +478,6 @@ Grok Imagine supports model-specific aspect ratios via the `supportedAspectRatio
 - **Unique aspect ratios**: `2:1`, `20:9`, `19.5:9`, `9:19.5`, `9:20`, `1:2` (in addition to common ratios)
 - **Edit support**: Yes, via `/edit` endpoint
 - **Returns**: `images[]` + `revised_prompt`
-- **Pricing**: ~$0.04/image
 
 ### Gemini 3 Pro Specifics
 
@@ -488,7 +487,6 @@ Gemini 3 Pro (gemini-2.0-flash-exp-preview-05-30) is Google's latest image gener
 - **Resolution support**: Supports `1K`, `2K`, `4K` resolutions
 - **Edit support**: Yes, via image editing endpoint
 - **Returns**: `images[]` with generated images
-- **Pricing**: ~$0.05/image
 
 ### Output Format Support
 
