@@ -122,7 +122,7 @@ describe("estimateCost — all models", () => {
 	it("returns correct base cost for each utility model", () => {
 		expect(estimateCost("clarity", undefined, 1)).toBeCloseTo(0.03);
 		expect(estimateCost("crystal", undefined, 1)).toBeCloseTo(0.016);
-		expect(estimateCost("rmbg", undefined, 1)).toBeCloseTo(0.00111);
+		expect(estimateCost("rmbg", undefined, 1)).toBeCloseTo(0.001_11);
 		expect(estimateCost("bria", undefined, 1)).toBeCloseTo(0.018);
 	});
 

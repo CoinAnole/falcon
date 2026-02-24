@@ -285,7 +285,7 @@ export function aspectToFlux2Size(aspect: AspectRatio): string {
 // Estimate cost based on model and settings
 export function estimateCost(
 	model: string,
-	resolution?: CliResolution,
+	_resolution?: CliResolution,
 	numImages = 1
 ): number {
 	const config = MODELS[model];
@@ -324,7 +324,7 @@ export function estimateCost(
 			baseCost = 0.016;
 			break;
 		case "rmbg":
-			baseCost = 0.00111;
+			baseCost = 0.001_11;
 			break;
 		case "bria":
 			baseCost = 0.018;

@@ -124,6 +124,30 @@ function parseSourcePaths(rawValue: string): string[] {
 	return paths;
 }
 
+function getNextHistoryIndex(
+	key: InputKey,
+	selectedIndex: number,
+	visibleCount: number
+): number | null {
+	if (key.upArrow) {
+		return selectedIndex > 0 ? selectedIndex - 1 : visibleCount - 1;
+	}
+	if (key.downArrow) {
+		return selectedIndex < visibleCount - 1 ? selectedIndex + 1 : 0;
+	}
+	return null;
+}
+
+function toggleSelectedHistoryId(ids: string[], nextId: string): string[] {
+	return ids.includes(nextId)
+		? ids.filter((id) => id !== nextId)
+		: [...ids, nextId];
+}
+
+function isPlainTextInput(input: string, key: InputKey): boolean {
+	return Boolean(input && !key.ctrl && !key.meta);
+}
+
 function getPreferredEditModel(
 	sourceModel: string | undefined,
 	fallbackModel = "gpt"
@@ -183,6 +207,7 @@ interface EditScreenProps {
 	initialOperation?: InitialOperation;
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: EditScreen intentionally centralizes this keyboard-driven multi-step state machine.
 export function EditScreen({
 	config,
 	onBack,
@@ -294,14 +319,14 @@ export function EditScreen({
 			if (!latest) {
 				setUseCustomPath(true);
 				return;
-				}
-				setGenerations([...history.generations].reverse());
-				setSelectedGen(latest);
-				setSelectedSources([latest]);
+			}
+			setGenerations([...history.generations].reverse());
+			setSelectedGen(latest);
+			setSelectedSources([latest]);
 
-				if (!skipToOperation) {
-					return;
-				}
+			if (!skipToOperation) {
+				return;
+			}
 
 			if (initialOperation) {
 				const opIndex = OPERATIONS.findIndex(
@@ -345,14 +370,12 @@ export function EditScreen({
 				onError(err as Error);
 				return;
 			}
-		} else {
-			if (selectedHistoryIds.length > 0) {
-				nextSources = selectedHistoryIds
-					.map((id) => generations.find((gen) => gen.id === id))
-					.filter((gen): gen is Generation => gen !== undefined);
-			} else if (selectedGen) {
-				nextSources = [selectedGen];
-			}
+		} else if (selectedHistoryIds.length > 0) {
+			nextSources = selectedHistoryIds
+				.map((id) => generations.find((gen) => gen.id === id))
+				.filter((gen): gen is Generation => gen !== undefined);
+		} else if (selectedGen) {
+			nextSources = [selectedGen];
 		}
 
 		if (nextSources.length === 0) {
@@ -367,7 +390,7 @@ export function EditScreen({
 	const proceedFromOperation = (): void => {
 		const selectedMode = availableOperations[operationIndex]?.key;
 		const source = selectedSources[0];
-		if (!selectedMode || !source) {
+		if (!(selectedMode && source)) {
 			return;
 		}
 		if (selectedMode !== "edit" && selectedSources.length > 1) {
@@ -401,39 +424,28 @@ export function EditScreen({
 	};
 
 	const handleSelectHistoryInput = (input: string, key: InputKey): void => {
-		const visibleCount = Math.min(
-			generations.length,
-			MAX_VISIBLE_HISTORY_ITEMS
+		const visibleGenerations = generations.slice(0, MAX_VISIBLE_HISTORY_ITEMS);
+		if (visibleGenerations.length === 0) {
+			return;
+		}
+
+		const nextIndex = getNextHistoryIndex(
+			key,
+			selectedIndex,
+			visibleGenerations.length
 		);
-		if (visibleCount === 0) {
+		if (nextIndex !== null) {
+			setSelectedIndex(nextIndex);
+			setSelectedGen(visibleGenerations[nextIndex]);
 			return;
 		}
 
-		if (key.upArrow) {
-			const nextIndex =
-				selectedIndex > 0 ? selectedIndex - 1 : visibleCount - 1;
-			setSelectedIndex(nextIndex);
-			setSelectedGen(generations[nextIndex]);
-			return;
-		}
-
-		if (key.downArrow) {
-			const nextIndex =
-				selectedIndex < visibleCount - 1 ? selectedIndex + 1 : 0;
-			setSelectedIndex(nextIndex);
-			setSelectedGen(generations[nextIndex]);
-			return;
-		}
+		const current = visibleGenerations[selectedIndex];
 		if (input === " ") {
-			const current = generations[selectedIndex];
 			if (!current) {
 				return;
 			}
-			setSelectedHistoryIds((ids) =>
-				ids.includes(current.id)
-					? ids.filter((id) => id !== current.id)
-					: [...ids, current.id]
-			);
+			setSelectedHistoryIds((ids) => toggleSelectedHistoryId(ids, current.id));
 			return;
 		}
 
@@ -447,7 +459,7 @@ export function EditScreen({
 			return;
 		}
 
-		if (input && !key.ctrl && !key.meta) {
+		if (isPlainTextInput(input, key)) {
 			// User typed/pasted text (e.g. dragged a file) - switch to custom path mode.
 			setCustomPath(input);
 			setUseCustomPath(true);
@@ -723,7 +735,9 @@ export function EditScreen({
 		}
 		const sourcePaths = selectedSources.map((item) => item.output);
 		if (mode !== "edit" && selectedSources.length > 1) {
-			onError(new Error("Only edit operations support multiple source images."));
+			onError(
+				new Error("Only edit operations support multiple source images.")
+			);
 			return;
 		}
 
@@ -760,12 +774,12 @@ export function EditScreen({
 				resolution: source.resolution,
 				output: resolve(processResult.outputPath),
 				cost: processResult.cost,
-					costDetails: processResult.costDetails,
-					timestamp: new Date().toISOString(),
-					seed: processResult.resultSeed || seed,
-					editedFrom: source.output,
-					editedFromInputs: mode === "edit" ? sourcePaths : undefined,
-				});
+				costDetails: processResult.costDetails,
+				timestamp: new Date().toISOString(),
+				seed: processResult.resultSeed || seed,
+				editedFrom: source.output,
+				editedFromInputs: mode === "edit" ? sourcePaths : undefined,
+			});
 
 			const fullPath = resolve(processResult.outputPath);
 			setResult({
@@ -780,12 +794,12 @@ export function EditScreen({
 
 			setStep("done");
 		} catch (err) {
-				logger.errorWithStack("Edit operation failed", err as Error, {
-					mode,
-					sourcePaths,
-					editModel,
-					scale,
-					seed,
+			logger.errorWithStack("Edit operation failed", err as Error, {
+				mode,
+				sourcePaths,
+				editModel,
+				scale,
+				seed,
 			});
 			onError(err as Error);
 			onBack();
@@ -844,50 +858,50 @@ export function EditScreen({
 			{/* Image selection step */}
 			{step === "select" && (
 				<Box flexDirection="column" marginTop={1}>
-						{useCustomPath ? (
-							<>
-								<Text dimColor>
-									Enter path or drag file(s)
-									{generations.length > 0 ? " (tab for history)" : ""}
-								</Text>
-								<Box marginTop={1}>
-									<Text color="magenta">◆ </Text>
-									<TextInput
-										onChange={setCustomPath}
-										onSubmit={proceedFromSelect}
-										placeholder="/path/to/image-a.png,/path/to/image-b.png"
-										value={customPath}
-									/>
-								</Box>
-							</>
-						) : (
-							<>
-								<Text dimColor>
-									Select image(s) (↑↓ navigate, space toggle, enter confirm, tab
-									for custom path)
-								</Text>
-								<Box flexDirection="column" marginTop={1}>
-									{generations
-										.slice(0, MAX_VISIBLE_HISTORY_ITEMS)
-										.map((gen, index) => {
-											const isSelected = index === selectedIndex;
-											const isMarked = selectedHistoryIds.includes(gen.id);
-											return (
-												<Box key={gen.id} marginLeft={1}>
-													<Text
-														bold={isSelected}
-														color={isSelected ? "magenta" : undefined}
-													>
-														{isSelected ? "◆ " : "  "}
+					{useCustomPath ? (
+						<>
+							<Text dimColor>
+								Enter path or drag file(s)
+								{generations.length > 0 ? " (tab for history)" : ""}
+							</Text>
+							<Box marginTop={1}>
+								<Text color="magenta">◆ </Text>
+								<TextInput
+									onChange={setCustomPath}
+									onSubmit={proceedFromSelect}
+									placeholder="/path/to/image-a.png,/path/to/image-b.png"
+									value={customPath}
+								/>
+							</Box>
+						</>
+					) : (
+						<>
+							<Text dimColor>
+								Select image(s) (↑↓ navigate, space toggle, enter confirm, tab
+								for custom path)
+							</Text>
+							<Box flexDirection="column" marginTop={1}>
+								{generations
+									.slice(0, MAX_VISIBLE_HISTORY_ITEMS)
+									.map((gen, index) => {
+										const isSelected = index === selectedIndex;
+										const isMarked = selectedHistoryIds.includes(gen.id);
+										return (
+											<Box key={gen.id} marginLeft={1}>
+												<Text
+													bold={isSelected}
+													color={isSelected ? "magenta" : undefined}
+												>
+													{isSelected ? "◆ " : "  "}
+												</Text>
+												<Box width={4}>
+													<Text color={isMarked ? "green" : undefined}>
+														{isMarked ? "[x]" : "[ ]"}
 													</Text>
-													<Box width={4}>
-														<Text color={isMarked ? "green" : undefined}>
-															{isMarked ? "[x]" : "[ ]"}
-														</Text>
-													</Box>
-													<Box width={40}>
-														<Text color={isSelected ? "cyan" : undefined}>
-															{truncateWithEllipsis(
+												</Box>
+												<Box width={40}>
+													<Text color={isSelected ? "cyan" : undefined}>
+														{truncateWithEllipsis(
 															gen.prompt,
 															HISTORY_PROMPT_PREVIEW_LEN
 														)}
@@ -916,29 +930,29 @@ export function EditScreen({
 				</Box>
 			)}
 
-				{/* Operation selection step */}
-				{step === "operation" && source && (
+			{/* Operation selection step */}
+			{step === "operation" && source && (
+				<Box flexDirection="column" marginTop={1}>
+					{selectedSources.length === 1 ? (
+						<Text dimColor>Source: {basename(source.output)}</Text>
+					) : (
+						<>
+							<Text dimColor>Sources: {selectedSources.length} selected</Text>
+							<Text dimColor>
+								{selectedSources
+									.slice(0, 3)
+									.map((item) => basename(item.output))
+									.join(", ")}
+								{selectedSources.length > 3
+									? ` +${selectedSources.length - 3} more`
+									: ""}
+							</Text>
+						</>
+					)}
 					<Box flexDirection="column" marginTop={1}>
-						{selectedSources.length === 1 ? (
-							<Text dimColor>Source: {basename(source.output)}</Text>
-						) : (
-							<>
-								<Text dimColor>Sources: {selectedSources.length} selected</Text>
-								<Text dimColor>
-									{selectedSources
-										.slice(0, 3)
-										.map((item) => basename(item.output))
-										.join(", ")}
-									{selectedSources.length > 3
-										? ` +${selectedSources.length - 3} more`
-										: ""}
-								</Text>
-							</>
-						)}
-						<Box flexDirection="column" marginTop={1}>
-							{availableOperations.map((op, index) => {
-								const isSelected = index === operationIndex;
-								return (
+						{availableOperations.map((op, index) => {
+							const isSelected = index === operationIndex;
+							return (
 								<Box key={op.key} marginLeft={1}>
 									<Box width={20}>
 										<Text
@@ -957,16 +971,16 @@ export function EditScreen({
 				</Box>
 			)}
 
-				{/* Show source after operation selection */}
-				{step !== "select" && step !== "operation" && source && (
-					<Box marginBottom={1} marginTop={1}>
-						{selectedSources.length === 1 ? (
-							<Text dimColor>Source: {basename(source.output)}</Text>
-						) : (
-							<Text dimColor>Sources: {selectedSources.length} selected</Text>
-						)}
-					</Box>
-				)}
+			{/* Show source after operation selection */}
+			{step !== "select" && step !== "operation" && source && (
+				<Box marginBottom={1} marginTop={1}>
+					{selectedSources.length === 1 ? (
+						<Text dimColor>Source: {basename(source.output)}</Text>
+					) : (
+						<Text dimColor>Sources: {selectedSources.length} selected</Text>
+					)}
+				</Box>
+			)}
 
 			{/* Edit model selection */}
 			{step === "edit-model" && (
@@ -1025,28 +1039,28 @@ export function EditScreen({
 				<Box flexDirection="column">
 					<Text bold>Ready to process:</Text>
 					<Box flexDirection="column" marginLeft={2} marginTop={1}>
-							{mode === "edit" && (
-								<>
-									<Text>
-										Edit:{" "}
-										<Text color="cyan">
-											{truncateWithEllipsis(prompt, CONFIRM_PROMPT_PREVIEW_LEN)}
-										</Text>
+						{mode === "edit" && (
+							<>
+								<Text>
+									Edit:{" "}
+									<Text color="cyan">
+										{truncateWithEllipsis(prompt, CONFIRM_PROMPT_PREVIEW_LEN)}
 									</Text>
-									<Text>
-										Sources: <Text color="cyan">{selectedSources.length}</Text>
-									</Text>
-									<Text dimColor>
-										{selectedSources
-											.slice(0, 3)
-											.map((item) => basename(item.output))
-											.join(", ")}
-										{selectedSources.length > 3
-											? ` +${selectedSources.length - 3} more`
-											: ""}
-									</Text>
-								</>
-							)}
+								</Text>
+								<Text>
+									Sources: <Text color="cyan">{selectedSources.length}</Text>
+								</Text>
+								<Text dimColor>
+									{selectedSources
+										.slice(0, 3)
+										.map((item) => basename(item.output))
+										.join(", ")}
+									{selectedSources.length > 3
+										? ` +${selectedSources.length - 3} more`
+										: ""}
+								</Text>
+							</>
+						)}
 						{mode === "variations" && (
 							<Text>
 								Prompt:{" "}

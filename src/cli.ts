@@ -690,13 +690,13 @@ async function generateImage(
 		const result = await generate({
 			prompt,
 			model,
-				aspect,
-				resolution,
-				numImages,
-				editImages: editImageData,
-				transparent: options.transparent,
-				guidanceScale,
-				enablePromptExpansion: options.promptExpansion,
+			aspect,
+			resolution,
+			numImages,
+			editImages: editImageData,
+			transparent: options.transparent,
+			guidanceScale,
+			enablePromptExpansion: options.promptExpansion,
 			numInferenceSteps,
 			acceleration,
 			outputFormat: outputFormat as "jpeg" | "png" | "webp" | undefined,
@@ -764,12 +764,12 @@ async function generateImage(
 						estimate.costDetails.unitQuantity !== undefined
 							? estimate.costDetails.unitQuantity / numImages
 							: undefined,
-					},
-					timestamp: new Date().toISOString(),
-					seed: result.seed || seed,
-					editedFrom: editPaths?.[0],
-					editedFromInputs: editPaths,
-				};
+				},
+				timestamp: new Date().toISOString(),
+				seed: result.seed || seed,
+				editedFrom: editPaths?.[0],
+				editedFromInputs: editPaths,
+			};
 			try {
 				cliDebugLog("generate:history:add:start", { id: generation.id });
 				await addGeneration(generation);

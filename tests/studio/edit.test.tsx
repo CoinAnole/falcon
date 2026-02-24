@@ -508,7 +508,8 @@ describe("edit screen", () => {
 				await writeInput(result, "/tmp/test-a.png,/tmp/test-b.png");
 				await writeInput(result, KEYS.enter);
 				await waitUntil(
-					() => stripAnsi(result.lastFrame() ?? "").includes("Sources: 2 selected"),
+					() =>
+						stripAnsi(result.lastFrame() ?? "").includes("Sources: 2 selected"),
 					{ timeoutMs: 3000 }
 				);
 				await writeInput(result, KEYS.enter);
@@ -521,13 +522,15 @@ describe("edit screen", () => {
 				);
 				await writeInput(result, KEYS.enter);
 				await waitUntil(
-					() => stripAnsi(result.lastFrame() ?? "").includes("Describe the edit"),
+					() =>
+						stripAnsi(result.lastFrame() ?? "").includes("Describe the edit"),
 					{ timeoutMs: 3000 }
 				);
 				await writeInput(result, "blend");
 				await writeInput(result, KEYS.enter);
 				await waitUntil(
-					() => stripAnsi(result.lastFrame() ?? "").includes("Ready to process"),
+					() =>
+						stripAnsi(result.lastFrame() ?? "").includes("Ready to process"),
 					{ timeoutMs: 3000 }
 				);
 				await writeInput(result, "y");
@@ -540,7 +543,9 @@ describe("edit screen", () => {
 			}
 		});
 
-		const editCall = calls.find((call) => call.input.toString().includes("/edit"));
+		const editCall = calls.find((call) =>
+			call.input.toString().includes("/edit")
+		);
 		expect(editCall).toBeDefined();
 		const body = JSON.parse(editCall?.init?.body as string) as Record<
 			string,
@@ -569,7 +574,8 @@ describe("edit screen", () => {
 			);
 			await writeInput(result, KEYS.tab);
 			await waitUntil(
-				() => stripAnsi(result.lastFrame() ?? "").includes("Enter path or drag"),
+				() =>
+					stripAnsi(result.lastFrame() ?? "").includes("Enter path or drag"),
 				{ timeoutMs: 3000 }
 			);
 			await writeInput(result, "/tmp/a.png,,/tmp/b.png");
