@@ -45,6 +45,7 @@ export interface Generation {
 	timestamp: string;
 	seed?: number;
 	editedFrom?: string;
+	editedFromInputs?: string[];
 }
 
 export interface History {

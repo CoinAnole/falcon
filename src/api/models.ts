@@ -31,6 +31,8 @@ export interface ModelConfig {
 	supportsAspect: boolean;
 	supportsResolution: boolean;
 	supportsEdit: boolean;
+	editInputField?: "image_urls" | "image_url";
+	maxEditInputImages?: number;
 	supportsNumImages: boolean;
 	supportsOutputFormat: boolean;
 	defaultParams?: Record<string, unknown>;
@@ -47,6 +49,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		supportsAspect: false, // Uses image_size instead
 		supportsResolution: false,
 		supportsEdit: true,
+		editInputField: "image_urls",
 		supportsNumImages: true,
 		supportsOutputFormat: false,
 		defaultParams: { quality: "high" },
@@ -59,6 +62,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		supportsAspect: true,
 		supportsResolution: true,
 		supportsEdit: true,
+		editInputField: "image_urls",
 		supportsNumImages: true,
 		supportsOutputFormat: false,
 	},
@@ -70,6 +74,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		supportsAspect: true,
 		supportsResolution: false,
 		supportsEdit: true,
+		editInputField: "image_urls",
 		supportsNumImages: true,
 		supportsOutputFormat: false,
 	},
@@ -81,6 +86,7 @@ export const MODELS: Record<string, ModelConfig> = {
 		supportsAspect: true,
 		supportsResolution: true,
 		supportsEdit: true,
+		editInputField: "image_urls",
 		supportsNumImages: true,
 		supportsOutputFormat: true,
 	},
@@ -92,6 +98,8 @@ export const MODELS: Record<string, ModelConfig> = {
 		supportsAspect: false, // Uses image_size instead
 		supportsResolution: false,
 		supportsEdit: true,
+		editInputField: "image_urls",
+		maxEditInputImages: 4,
 		supportsNumImages: true,
 		supportsOutputFormat: true,
 	},
@@ -103,6 +111,8 @@ export const MODELS: Record<string, ModelConfig> = {
 		supportsAspect: false, // Uses image_size instead
 		supportsResolution: false,
 		supportsEdit: true,
+		editInputField: "image_urls",
+		maxEditInputImages: 4,
 		supportsNumImages: true,
 		supportsOutputFormat: true,
 	},
@@ -114,6 +124,8 @@ export const MODELS: Record<string, ModelConfig> = {
 		supportsAspect: false, // Uses image_size instead
 		supportsResolution: false,
 		supportsEdit: true,
+		editInputField: "image_urls",
+		maxEditInputImages: 4,
 		supportsNumImages: true,
 		supportsOutputFormat: true,
 	},
@@ -125,6 +137,8 @@ export const MODELS: Record<string, ModelConfig> = {
 		supportsAspect: true,
 		supportsResolution: false,
 		supportsEdit: true,
+		editInputField: "image_url",
+		maxEditInputImages: 1,
 		supportsNumImages: true,
 		supportsOutputFormat: true,
 		supportedAspectRatios: [

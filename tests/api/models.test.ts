@@ -8,6 +8,7 @@ import {
 	estimateCost,
 	GENERATION_MODELS,
 	getAspectRatiosForModel,
+	MODELS,
 	UTILITY_MODELS,
 } from "../../src/api/models";
 
@@ -37,6 +38,13 @@ describe("models", () => {
 	it("falls back to common aspect ratios for unknown models", () => {
 		const ratios = getAspectRatiosForModel("unknown");
 		expect(ratios).toEqual(ASPECT_RATIOS);
+	});
+
+	it("declares edit input field metadata for edit-capable models", () => {
+		expect(MODELS.banana.editInputField).toBe("image_urls");
+		expect(MODELS.imagine.editInputField).toBe("image_url");
+		expect(MODELS.imagine.maxEditInputImages).toBe(1);
+		expect(MODELS.flux2.maxEditInputImages).toBe(4);
 	});
 });
 

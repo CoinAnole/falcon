@@ -139,6 +139,65 @@ describe("config", () => {
 		expect(updated.totalCost.USD.allTime).toBeCloseTo(0.25);
 	});
 
+	it("persists editedFromInputs in history generations", async () => {
+		const today = new Date().toISOString().split("T")[0];
+		await saveHistory({
+			generations: [],
+			totalCost: {
+				USD: { session: 0, today: 0, allTime: 0 },
+			},
+			lastSessionDate: today,
+		});
+
+		await addGeneration({
+			id: "multi-edit-gen",
+			prompt: "merge references",
+			model: "banana",
+			aspect: "1:1",
+			resolution: "2K",
+			output: "multi-output.png",
+			cost: 0.3,
+			timestamp: new Date().toISOString(),
+			editedFrom: "/tmp/source-a.png",
+			editedFromInputs: ["/tmp/source-a.png", "/tmp/source-b.png"],
+		});
+
+		const updated = await loadHistory();
+		const saved = updated.generations.at(-1);
+		expect(saved?.editedFrom).toBe("/tmp/source-a.png");
+		expect(saved?.editedFromInputs).toEqual([
+			"/tmp/source-a.png",
+			"/tmp/source-b.png",
+		]);
+	});
+
+	it("loads generations that do not include editedFromInputs", async () => {
+		const today = new Date().toISOString().split("T")[0];
+		await saveHistory({
+			generations: [
+				{
+					id: "legacy-gen",
+					prompt: "legacy",
+					model: "banana",
+					aspect: "1:1",
+					resolution: "2K",
+					output: "legacy.png",
+					cost: 0.1,
+					timestamp: new Date().toISOString(),
+					editedFrom: "/tmp/legacy.png",
+				},
+			],
+			totalCost: {
+				USD: { session: 0.1, today: 0.1, allTime: 0.1 },
+			},
+			lastSessionDate: today,
+		});
+
+		const history = await loadHistory();
+		expect(history.generations).toHaveLength(1);
+		expect(history.generations[0]?.editedFromInputs).toBeUndefined();
+	});
+
 	it("prefers FAL_KEY environment variable", () => {
 		process.env.FAL_KEY = "env-key";
 		const key = getApiKey({

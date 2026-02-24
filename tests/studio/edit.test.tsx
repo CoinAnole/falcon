@@ -441,6 +441,146 @@ describe("edit screen", () => {
 		}
 	});
 
+	it("history multi-select via space shows edit-only operations", async () => {
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
+		const result = render(
+			<EditScreen
+				config={baseConfig}
+				onBack={onBack}
+				onComplete={onComplete}
+				onError={onError}
+			/>
+		);
+		try {
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
+				{ timeoutMs: 3000 }
+			);
+			await writeInput(result, " ");
+			await writeInput(result, KEYS.down);
+			await writeInput(result, " ");
+			await writeInput(result, KEYS.enter);
+			await waitUntil(
+				() => {
+					const frame = stripAnsi(result.lastFrame() ?? "");
+					return frame.includes("Sources: 2 selected");
+				},
+				{ timeoutMs: 3000 }
+			);
+			const output = stripAnsi(result.lastFrame() ?? "");
+			expect(output).toContain("Sources: 2 selected");
+			expect(output).toContain("Edit");
+			expect(output).not.toContain("Variations");
+			expect(output).not.toContain("Upscale");
+			expect(output).not.toContain("Remove Background");
+		} finally {
+			result.unmount();
+		}
+	});
+
+	it("custom comma-separated paths support multi-source edit generation", async () => {
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
+
+		const { calls } = await withMockFetch(mockFetchImpl, async () => {
+			const result = render(
+				<EditScreen
+					config={baseConfig}
+					onBack={onBack}
+					onComplete={onComplete}
+					onError={onError}
+				/>
+			);
+			try {
+				await waitUntil(
+					() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
+					{ timeoutMs: 3000 }
+				);
+				await writeInput(result, KEYS.tab);
+				await waitUntil(
+					() =>
+						stripAnsi(result.lastFrame() ?? "").includes("Enter path or drag"),
+					{ timeoutMs: 3000 }
+				);
+				await writeInput(result, "/tmp/test-a.png,/tmp/test-b.png");
+				await writeInput(result, KEYS.enter);
+				await waitUntil(
+					() => stripAnsi(result.lastFrame() ?? "").includes("Sources: 2 selected"),
+					{ timeoutMs: 3000 }
+				);
+				await writeInput(result, KEYS.enter);
+				await waitUntil(
+					() =>
+						stripAnsi(result.lastFrame() ?? "").includes(
+							"Select model for editing"
+						),
+					{ timeoutMs: 3000 }
+				);
+				await writeInput(result, KEYS.enter);
+				await waitUntil(
+					() => stripAnsi(result.lastFrame() ?? "").includes("Describe the edit"),
+					{ timeoutMs: 3000 }
+				);
+				await writeInput(result, "blend");
+				await writeInput(result, KEYS.enter);
+				await waitUntil(
+					() => stripAnsi(result.lastFrame() ?? "").includes("Ready to process"),
+					{ timeoutMs: 3000 }
+				);
+				await writeInput(result, "y");
+				await waitUntil(
+					() => stripAnsi(result.lastFrame() ?? "").includes("Complete"),
+					{ timeoutMs: 10_000 }
+				);
+			} finally {
+				result.unmount();
+			}
+		});
+
+		const editCall = calls.find((call) => call.input.toString().includes("/edit"));
+		expect(editCall).toBeDefined();
+		const body = JSON.parse(editCall?.init?.body as string) as Record<
+			string,
+			unknown
+		>;
+		expect(Array.isArray(body.image_urls)).toBe(true);
+		expect((body.image_urls as string[]).length).toBe(2);
+	});
+
+	it("invalid comma-separated custom paths call onError", async () => {
+		const onBack = mock(() => undefined);
+		const onComplete = mock(() => undefined);
+		const onError = mock(() => undefined);
+		const result = render(
+			<EditScreen
+				config={baseConfig}
+				onBack={onBack}
+				onComplete={onComplete}
+				onError={onError}
+			/>
+		);
+		try {
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Select image"),
+				{ timeoutMs: 3000 }
+			);
+			await writeInput(result, KEYS.tab);
+			await waitUntil(
+				() => stripAnsi(result.lastFrame() ?? "").includes("Enter path or drag"),
+				{ timeoutMs: 3000 }
+			);
+			await writeInput(result, "/tmp/a.png,,/tmp/b.png");
+			await writeInput(result, KEYS.enter);
+			await waitUntil(() => onError.mock.calls.length > 0, { timeoutMs: 3000 });
+			expect(onError).toHaveBeenCalled();
+		} finally {
+			result.unmount();
+		}
+	});
+
 	// Task 1.3: Prompt input step
 	it("prompt input step: type prompt and submit transitions to confirm", async () => {
 		const onBack = mock(() => undefined);

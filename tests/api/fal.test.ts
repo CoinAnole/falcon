@@ -108,7 +108,7 @@ describe("fal api", () => {
 		expect(body.image_size).toEqual({ width: 512, height: 512 });
 	});
 
-	it("adds edit endpoint and image URLs", async () => {
+	it("adds edit endpoint and image URLs for legacy editImage alias", async () => {
 		setApiKey("test-key");
 		const { calls } = await withMockFetch(
 			() => {
@@ -130,6 +130,84 @@ describe("fal api", () => {
 			unknown
 		>;
 		expect(body.image_urls).toEqual(["data:image/png;base64,abc"]);
+	});
+
+	it("sends multiple edit images via image_urls for multi-input models", async () => {
+		setApiKey("test-key");
+		const { calls } = await withMockFetch(
+			() => Response.json({ images: [] }),
+			async () => {
+				await generate({
+					prompt: "edit",
+					model: "banana",
+					editImages: [
+						"data:image/png;base64,abc",
+						"data:image/png;base64,def",
+					],
+				});
+			}
+		);
+
+		const call = calls[0];
+		expect(call.input.toString()).toContain("/edit");
+		const body = JSON.parse(call.init?.body as string) as Record<
+			string,
+			unknown
+		>;
+		expect(body.image_urls).toEqual([
+			"data:image/png;base64,abc",
+			"data:image/png;base64,def",
+		]);
+		expect(body.image_url).toBeUndefined();
+	});
+
+	it("uses image_url for single-input edit models", async () => {
+		setApiKey("test-key");
+		const { calls } = await withMockFetch(
+			() => Response.json({ images: [] }),
+			async () => {
+				await generate({
+					prompt: "edit",
+					model: "imagine",
+					editImages: ["data:image/png;base64,abc"],
+				});
+			}
+		);
+
+		const body = JSON.parse(calls[0].init?.body as string) as Record<
+			string,
+			unknown
+		>;
+		expect(body.image_url).toBe("data:image/png;base64,abc");
+		expect(body.image_urls).toBeUndefined();
+	});
+
+	it("throws when single-input edit model receives multiple input images", async () => {
+		setApiKey("test-key");
+		await expect(
+			generate({
+				prompt: "edit",
+				model: "imagine",
+				editImages: ["data:image/png;base64,abc", "data:image/png;base64,def"],
+			})
+		).rejects.toThrow("supports at most 1 edit input image");
+	});
+
+	it("throws when Flux edit receives more than 4 input images", async () => {
+		setApiKey("test-key");
+		await expect(
+			generate({
+				prompt: "edit",
+				model: "flux2",
+				editImages: [
+					"data:image/png;base64,1",
+					"data:image/png;base64,2",
+					"data:image/png;base64,3",
+					"data:image/png;base64,4",
+					"data:image/png;base64,5",
+				],
+			})
+		).rejects.toThrow("supports at most 4 edit input images");
 	});
 
 	it("throws on API error response", async () => {

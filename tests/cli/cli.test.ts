@@ -336,9 +336,9 @@ describe("cli", () => {
 		});
 	});
 
-	describe("--edit", () => {
-		it("fails with nonexistent file", async () => {
-			const result = await runCli(
+		describe("--edit", () => {
+			it("fails with nonexistent file", async () => {
+				const result = await runCli(
 				["a test prompt", "--edit", "nonexistent.png"],
 				{ FAL_KEY: "test-key" }
 			);
@@ -384,9 +384,67 @@ describe("cli", () => {
 				}
 			);
 			expect(result.exitCode).toBe(0);
-			expect(result.stdout).toContain("Editing");
+				expect(result.stdout).toContain("Editing");
+			});
+
+			it("supports comma-separated multi-image edit input", async () => {
+				const result = await runCli(
+					[
+						"a test prompt",
+						"--edit",
+						"tests/fixtures/tiny.png,tests/fixtures/tiny.png",
+						"--model",
+						"banana",
+						"--no-open",
+						"--output",
+						join(getTestOutputDir(), "edit-multi-test.png"),
+					],
+					{
+						FAL_KEY: "test-key",
+						FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
+						FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
+						FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
+					}
+				);
+				expect(result.exitCode).toBe(0);
+				expect(result.stdout).toContain("Editing 2 images");
+			});
+
+			it("fails with invalid comma-separated edit path list", async () => {
+				const result = await runCli(
+					[
+						"a test prompt",
+						"--edit",
+						"tests/fixtures/tiny.png,,tests/fixtures/tiny.png",
+						"--model",
+						"banana",
+					],
+					{
+						FAL_KEY: "test-key",
+					}
+				);
+				expect(result.exitCode).toBe(1);
+				expect(result.stderr).toContain("Invalid edit image list");
+			});
+
+			it("fails when single-image edit model receives multiple inputs", async () => {
+				const result = await runCli(
+					[
+						"a test prompt",
+						"--edit",
+						"tests/fixtures/tiny.png,tests/fixtures/tiny.png",
+						"--model",
+						"imagine",
+					],
+					{
+						FAL_KEY: "test-key",
+						FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
+					}
+				);
+				expect(result.exitCode).toBe(1);
+				expect(result.stderr).toContain("supports at most 1 edit input image");
+			});
 		});
-	});
 
 	describe("--transparent", () => {
 		it("accepts transparent flag with gpt model", async () => {

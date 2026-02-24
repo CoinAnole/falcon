@@ -70,7 +70,7 @@ Prices can vary by account and are subject to change. Use `falcon pricing --refr
 falcon [prompt] [options]
 
 -m, --model <model>      Model: gpt, banana, gemini, gemini3, flux2, flux2Flash, flux2Turbo, imagine
--e, --edit <file>        Edit an existing image with prompt
+-e, --edit <files>       Edit existing image(s) with prompt (comma-separated)
 -a, --aspect <ratio>     Aspect ratio (model-specific)
 -r, --resolution <res>   Resolution: 1K, 2K, 4K, 512x512 (Flux 2 only)
 -o, --output <file>      Output filename
@@ -91,6 +91,13 @@ Flux 2 options:
 --inference-steps <n>    Base Flux 2 only: steps 4-50 (default: 28)
 --acceleration <level>   Base Flux 2 only: none, regular, high (default: regular)
 ```
+
+Example multi-image edit:
+```bash
+falcon "blend these references into one scene" --model banana --edit ref-a.png,ref-b.png
+```
+
+Note: `imagine` edit supports exactly one source image.
 
 ## Presets
 

@@ -101,6 +101,7 @@ const OPERATIONS: { key: Mode; label: string; description: string }[] = [
 		description: "Transparent PNG output",
 	},
 ];
+const MULTI_SOURCE_OPERATIONS = OPERATIONS.filter((op) => op.key === "edit");
 
 const EDIT_MODELS = GENERATION_MODELS.filter((modelName) =>
 	Boolean(MODELS[modelName]?.supportsEdit)
@@ -111,6 +112,16 @@ function truncateWithEllipsis(text: string, maxLength: number): string {
 		return text;
 	}
 	return `${text.slice(0, maxLength)}...`;
+}
+
+function parseSourcePaths(rawValue: string): string[] {
+	const paths = rawValue.split(",").map((part) => part.trim());
+	if (paths.length === 0 || paths.some((path) => path.length === 0)) {
+		throw new Error(
+			"Invalid image path list. Use comma-separated image paths (for example: /tmp/a.png,/tmp/b.png)."
+		);
+	}
+	return paths;
 }
 
 function getPreferredEditModel(
@@ -185,6 +196,8 @@ export function EditScreen({
 	const [mode, setMode] = useState<Mode | null>(null);
 	const [generations, setGenerations] = useState<Generation[]>([]);
 	const [selectedGen, setSelectedGen] = useState<Generation | null>(null);
+	const [selectedHistoryIds, setSelectedHistoryIds] = useState<string[]>([]);
+	const [selectedSources, setSelectedSources] = useState<SourceImage[]>([]);
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const [operationIndex, setOperationIndex] = useState(0);
 	const [customPath, setCustomPath] = useState("");
@@ -201,19 +214,8 @@ export function EditScreen({
 		size: string;
 	} | null>(null);
 
-	const getSourceImage = (): SourceImage => {
-		if (useCustomPath && customPath) {
-			return {
-				output: customPath.trim(),
-				prompt: basename(customPath),
-				model: config.defaultModel,
-				aspect: config.defaultAspect,
-				resolution: config.defaultResolution,
-			};
-		}
-
-		return selectedGen as Generation;
-	};
+	const availableOperations =
+		selectedSources.length > 1 ? MULTI_SOURCE_OPERATIONS : OPERATIONS;
 
 	const setStepForOperation = (
 		selectedMode: Mode,
@@ -292,13 +294,14 @@ export function EditScreen({
 			if (!latest) {
 				setUseCustomPath(true);
 				return;
-			}
-			setGenerations([...history.generations].reverse());
-			setSelectedGen(latest);
+				}
+				setGenerations([...history.generations].reverse());
+				setSelectedGen(latest);
+				setSelectedSources([latest]);
 
-			if (!skipToOperation) {
-				return;
-			}
+				if (!skipToOperation) {
+					return;
+				}
 
 			if (initialOperation) {
 				const opIndex = OPERATIONS.findIndex(
@@ -320,33 +323,58 @@ export function EditScreen({
 	}, [skipToOperation, initialOperation, applyInitialOperation]);
 
 	const proceedFromSelect = (): void => {
+		let nextSources: SourceImage[] = [];
 		if (useCustomPath) {
-			const path = customPath.trim();
-			if (!path) {
+			const rawPathList = customPath.trim();
+			if (!rawPathList) {
 				return;
 			}
 
 			try {
-				validateImagePath(path);
+				nextSources = parseSourcePaths(rawPathList).map((path) => {
+					const validatedPath = validateImagePath(path) || path;
+					return {
+						output: validatedPath,
+						prompt: basename(validatedPath),
+						model: config.defaultModel,
+						aspect: config.defaultAspect,
+						resolution: config.defaultResolution,
+					};
+				});
 			} catch (err) {
 				onError(err as Error);
 				return;
 			}
-		} else if (!selectedGen) {
+		} else {
+			if (selectedHistoryIds.length > 0) {
+				nextSources = selectedHistoryIds
+					.map((id) => generations.find((gen) => gen.id === id))
+					.filter((gen): gen is Generation => gen !== undefined);
+			} else if (selectedGen) {
+				nextSources = [selectedGen];
+			}
+		}
+
+		if (nextSources.length === 0) {
 			return;
 		}
 
+		setSelectedSources(nextSources);
 		setStep("operation");
 		setOperationIndex(0);
 	};
 
 	const proceedFromOperation = (): void => {
-		const selectedMode = OPERATIONS[operationIndex]?.key;
-		if (!selectedMode) {
+		const selectedMode = availableOperations[operationIndex]?.key;
+		const source = selectedSources[0];
+		if (!selectedMode || !source) {
+			return;
+		}
+		if (selectedMode !== "edit" && selectedSources.length > 1) {
 			return;
 		}
 
-		setStepForOperation(selectedMode, getSourceImage());
+		setStepForOperation(selectedMode, source);
 	};
 
 	const handleEscapeInput = (): void => {
@@ -396,6 +424,18 @@ export function EditScreen({
 			setSelectedGen(generations[nextIndex]);
 			return;
 		}
+		if (input === " ") {
+			const current = generations[selectedIndex];
+			if (!current) {
+				return;
+			}
+			setSelectedHistoryIds((ids) =>
+				ids.includes(current.id)
+					? ids.filter((id) => id !== current.id)
+					: [...ids, current.id]
+			);
+			return;
+		}
 
 		if (key.tab) {
 			setUseCustomPath(true);
@@ -422,16 +462,19 @@ export function EditScreen({
 	};
 
 	const handleOperationInput = (key: InputKey): void => {
+		if (availableOperations.length === 0) {
+			return;
+		}
 		if (key.upArrow) {
 			setOperationIndex((index) =>
-				index > 0 ? index - 1 : OPERATIONS.length - 1
+				index > 0 ? index - 1 : availableOperations.length - 1
 			);
 			return;
 		}
 
 		if (key.downArrow) {
 			setOperationIndex((index) =>
-				index < OPERATIONS.length - 1 ? index + 1 : 0
+				index < availableOperations.length - 1 ? index + 1 : 0
 			);
 			return;
 		}
@@ -523,16 +566,24 @@ export function EditScreen({
 	};
 
 	const runEditOperation = async (
-		source: SourceImage
+		sources: SourceImage[]
 	): Promise<ProcessResult> => {
-		setStatus("Preparing image...");
-		const imageData = await imageToDataUrl(source.output);
+		const primarySource = sources[0];
+		if (!primarySource) {
+			throw new Error("No source images selected for editing.");
+		}
+		setStatus(
+			`Preparing image${sources.length === 1 ? "" : "s"} (${sources.length})...`
+		);
+		const imageData = await Promise.all(
+			sources.map((source) => imageToDataUrl(source.output))
+		);
 
 		setStatus("Generating edit...");
 		const result = await generate({
 			prompt,
 			model: editModel,
-			editImage: imageData,
+			editImages: imageData,
 			enablePromptExpansion: config.promptExpansion,
 			seed,
 		});
@@ -542,7 +593,7 @@ export function EditScreen({
 
 		const estimate = await estimateGenerationCost({
 			model: editModel,
-			resolution: source.resolution,
+			resolution: primarySource.resolution,
 			numImages: 1,
 		});
 
@@ -666,8 +717,13 @@ export function EditScreen({
 	};
 
 	const runProcess = async (): Promise<void> => {
-		const source = getSourceImage();
+		const source = selectedSources[0];
 		if (!(source && mode)) {
+			return;
+		}
+		const sourcePaths = selectedSources.map((item) => item.output);
+		if (mode !== "edit" && selectedSources.length > 1) {
+			onError(new Error("Only edit operations support multiple source images."));
 			return;
 		}
 
@@ -677,7 +733,7 @@ export function EditScreen({
 			let processResult: ProcessResult;
 			switch (mode) {
 				case "edit":
-					processResult = await runEditOperation(source);
+					processResult = await runEditOperation(selectedSources);
 					break;
 				case "variations":
 					processResult = await runVariationOperation(source);
@@ -704,11 +760,12 @@ export function EditScreen({
 				resolution: source.resolution,
 				output: resolve(processResult.outputPath),
 				cost: processResult.cost,
-				costDetails: processResult.costDetails,
-				timestamp: new Date().toISOString(),
-				seed: processResult.resultSeed || seed,
-				editedFrom: source.output,
-			});
+					costDetails: processResult.costDetails,
+					timestamp: new Date().toISOString(),
+					seed: processResult.resultSeed || seed,
+					editedFrom: source.output,
+					editedFromInputs: mode === "edit" ? sourcePaths : undefined,
+				});
 
 			const fullPath = resolve(processResult.outputPath);
 			setResult({
@@ -723,12 +780,12 @@ export function EditScreen({
 
 			setStep("done");
 		} catch (err) {
-			logger.errorWithStack("Edit operation failed", err as Error, {
-				mode,
-				sourcePath: source.output,
-				editModel,
-				scale,
-				seed,
+				logger.errorWithStack("Edit operation failed", err as Error, {
+					mode,
+					sourcePaths,
+					editModel,
+					scale,
+					seed,
 			});
 			onError(err as Error);
 			onBack();
@@ -778,7 +835,7 @@ export function EditScreen({
 		}
 	});
 
-	const source = step !== "select" ? getSourceImage() : null;
+	const source = step !== "select" ? (selectedSources[0] ?? null) : null;
 
 	return (
 		<Box flexDirection="column">
@@ -787,43 +844,50 @@ export function EditScreen({
 			{/* Image selection step */}
 			{step === "select" && (
 				<Box flexDirection="column" marginTop={1}>
-					{useCustomPath ? (
-						<>
-							<Text dimColor>
-								Enter path or drag file
-								{generations.length > 0 ? " (tab for history)" : ""}
-							</Text>
-							<Box marginTop={1}>
-								<Text color="magenta">◆ </Text>
-								<TextInput
-									onChange={setCustomPath}
-									onSubmit={proceedFromSelect}
-									placeholder="/path/to/image.png"
-									value={customPath}
-								/>
-							</Box>
-						</>
-					) : (
-						<>
-							<Text dimColor>
-								Select image (↑↓ navigate, tab for custom path)
-							</Text>
-							<Box flexDirection="column" marginTop={1}>
-								{generations
-									.slice(0, MAX_VISIBLE_HISTORY_ITEMS)
-									.map((gen, index) => {
-										const isSelected = index === selectedIndex;
-										return (
-											<Box key={gen.id} marginLeft={1}>
-												<Text
-													bold={isSelected}
-													color={isSelected ? "magenta" : undefined}
-												>
-													{isSelected ? "◆ " : "  "}
-												</Text>
-												<Box width={40}>
-													<Text color={isSelected ? "cyan" : undefined}>
-														{truncateWithEllipsis(
+						{useCustomPath ? (
+							<>
+								<Text dimColor>
+									Enter path or drag file(s)
+									{generations.length > 0 ? " (tab for history)" : ""}
+								</Text>
+								<Box marginTop={1}>
+									<Text color="magenta">◆ </Text>
+									<TextInput
+										onChange={setCustomPath}
+										onSubmit={proceedFromSelect}
+										placeholder="/path/to/image-a.png,/path/to/image-b.png"
+										value={customPath}
+									/>
+								</Box>
+							</>
+						) : (
+							<>
+								<Text dimColor>
+									Select image(s) (↑↓ navigate, space toggle, enter confirm, tab
+									for custom path)
+								</Text>
+								<Box flexDirection="column" marginTop={1}>
+									{generations
+										.slice(0, MAX_VISIBLE_HISTORY_ITEMS)
+										.map((gen, index) => {
+											const isSelected = index === selectedIndex;
+											const isMarked = selectedHistoryIds.includes(gen.id);
+											return (
+												<Box key={gen.id} marginLeft={1}>
+													<Text
+														bold={isSelected}
+														color={isSelected ? "magenta" : undefined}
+													>
+														{isSelected ? "◆ " : "  "}
+													</Text>
+													<Box width={4}>
+														<Text color={isMarked ? "green" : undefined}>
+															{isMarked ? "[x]" : "[ ]"}
+														</Text>
+													</Box>
+													<Box width={40}>
+														<Text color={isSelected ? "cyan" : undefined}>
+															{truncateWithEllipsis(
 															gen.prompt,
 															HISTORY_PROMPT_PREVIEW_LEN
 														)}
@@ -852,14 +916,29 @@ export function EditScreen({
 				</Box>
 			)}
 
-			{/* Operation selection step */}
-			{step === "operation" && source && (
-				<Box flexDirection="column" marginTop={1}>
-					<Text dimColor>Source: {basename(source.output)}</Text>
+				{/* Operation selection step */}
+				{step === "operation" && source && (
 					<Box flexDirection="column" marginTop={1}>
-						{OPERATIONS.map((op, index) => {
-							const isSelected = index === operationIndex;
-							return (
+						{selectedSources.length === 1 ? (
+							<Text dimColor>Source: {basename(source.output)}</Text>
+						) : (
+							<>
+								<Text dimColor>Sources: {selectedSources.length} selected</Text>
+								<Text dimColor>
+									{selectedSources
+										.slice(0, 3)
+										.map((item) => basename(item.output))
+										.join(", ")}
+									{selectedSources.length > 3
+										? ` +${selectedSources.length - 3} more`
+										: ""}
+								</Text>
+							</>
+						)}
+						<Box flexDirection="column" marginTop={1}>
+							{availableOperations.map((op, index) => {
+								const isSelected = index === operationIndex;
+								return (
 								<Box key={op.key} marginLeft={1}>
 									<Box width={20}>
 										<Text
@@ -878,12 +957,16 @@ export function EditScreen({
 				</Box>
 			)}
 
-			{/* Show source after operation selection */}
-			{step !== "select" && step !== "operation" && source && (
-				<Box marginBottom={1} marginTop={1}>
-					<Text dimColor>Source: {basename(source.output)}</Text>
-				</Box>
-			)}
+				{/* Show source after operation selection */}
+				{step !== "select" && step !== "operation" && source && (
+					<Box marginBottom={1} marginTop={1}>
+						{selectedSources.length === 1 ? (
+							<Text dimColor>Source: {basename(source.output)}</Text>
+						) : (
+							<Text dimColor>Sources: {selectedSources.length} selected</Text>
+						)}
+					</Box>
+				)}
 
 			{/* Edit model selection */}
 			{step === "edit-model" && (
@@ -942,14 +1025,28 @@ export function EditScreen({
 				<Box flexDirection="column">
 					<Text bold>Ready to process:</Text>
 					<Box flexDirection="column" marginLeft={2} marginTop={1}>
-						{mode === "edit" && (
-							<Text>
-								Edit:{" "}
-								<Text color="cyan">
-									{truncateWithEllipsis(prompt, CONFIRM_PROMPT_PREVIEW_LEN)}
-								</Text>
-							</Text>
-						)}
+							{mode === "edit" && (
+								<>
+									<Text>
+										Edit:{" "}
+										<Text color="cyan">
+											{truncateWithEllipsis(prompt, CONFIRM_PROMPT_PREVIEW_LEN)}
+										</Text>
+									</Text>
+									<Text>
+										Sources: <Text color="cyan">{selectedSources.length}</Text>
+									</Text>
+									<Text dimColor>
+										{selectedSources
+											.slice(0, 3)
+											.map((item) => basename(item.output))
+											.join(", ")}
+										{selectedSources.length > 3
+											? ` +${selectedSources.length - 3} more`
+											: ""}
+									</Text>
+								</>
+							)}
 						{mode === "variations" && (
 							<Text>
 								Prompt:{" "}

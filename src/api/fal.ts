@@ -18,6 +18,7 @@ export interface GenerateOptions {
 	resolution?: CliResolution;
 	numImages?: number;
 	editImage?: string; // base64 data URL for edit mode
+	editImages?: string[]; // base64 data URLs for multi-image edit mode
 	transparent?: boolean; // Generate with transparent background (GPT model only)
 	guidanceScale?: number; // Flux 2 guidance scale (0-20, default 2.5)
 	enablePromptExpansion?: boolean; // Flux 2 prompt expansion
@@ -92,13 +93,14 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 		prompt,
 		model,
 		aspect = "9:16",
-		resolution = "2K",
-		numImages = 1,
-		editImage,
-		transparent,
-		guidanceScale,
-		enablePromptExpansion,
-		numInferenceSteps,
+			resolution = "2K",
+			numImages = 1,
+			editImage,
+			editImages,
+			transparent,
+			guidanceScale,
+			enablePromptExpansion,
+			numInferenceSteps,
 		acceleration,
 		outputFormat,
 		seed,
@@ -182,14 +184,34 @@ export async function generate(options: GenerateOptions): Promise<FalResponse> {
 		body.output_format = outputFormat;
 	}
 
-	// Handle edit mode
-	if (editImage) {
-		if (!config.supportsEdit) {
-			throw new Error(`Model ${model} does not support image editing`);
+		// Handle edit mode
+		const normalizedEditImages =
+			editImages ?? (editImage !== undefined ? [editImage] : undefined);
+		if (normalizedEditImages) {
+			if (!config.supportsEdit) {
+				throw new Error(`Model ${model} does not support image editing`);
+			}
+			if (normalizedEditImages.length < 1) {
+				throw new Error("Image editing requires at least one input image.");
+			}
+			if (
+				config.maxEditInputImages !== undefined &&
+				normalizedEditImages.length > config.maxEditInputImages
+			) {
+				throw new Error(
+					`Model ${model} supports at most ${config.maxEditInputImages} edit input image${config.maxEditInputImages === 1 ? "" : "s"}.`
+				);
+			}
+			endpoint = `${endpoint}/edit`;
+			if (config.editInputField === "image_url") {
+				if (normalizedEditImages.length !== 1) {
+					throw new Error(`Model ${model} requires exactly one edit input image.`);
+				}
+				body.image_url = normalizedEditImages[0];
+			} else {
+				body.image_urls = normalizedEditImages;
+			}
 		}
-		endpoint = `${endpoint}/edit`;
-		body.image_urls = [editImage];
-	}
 
 	logger.debug("Sending API request", { endpoint, model, aspect });
 

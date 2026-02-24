@@ -140,6 +140,16 @@ function validateEditPath(editPath: string): string {
 	return validateImagePath(editPath);
 }
 
+function parseEditPaths(rawEditValue: string): string[] {
+	const editPaths = rawEditValue.split(",").map((part) => part.trim());
+	if (editPaths.length === 0 || editPaths.some((path) => path.length === 0)) {
+		throw new Error(
+			"Invalid edit image list. Use --edit with comma-separated image paths (for example: --edit a.png,b.png)."
+		);
+	}
+	return editPaths;
+}
+
 interface CliOptions {
 	refresh?: boolean;
 	model?: string;
@@ -198,7 +208,10 @@ export async function runCli(args: string[]): Promise<void> {
 			"-m, --model <model>",
 			`Model to use (${GENERATION_MODELS.join(", ")})`
 		)
-		.option("-e, --edit <file>", "Edit an existing image")
+		.option(
+			"-e, --edit <files>",
+			"Edit existing image(s), comma-separated for multiple"
+		)
 		.option(
 			"-a, --aspect <ratio>",
 			`Aspect ratio (${ASPECT_RATIOS.join(", ")})`
@@ -434,6 +447,18 @@ async function generateImage(
 	}));
 
 	const model = options.model || config.defaultModel;
+	let parsedEditPaths: string[] | undefined;
+	if (options.edit !== undefined) {
+		try {
+			parsedEditPaths = parseEditPaths(options.edit);
+		} catch (err) {
+			cliDebugLog("generate:error:edit-parse", {
+				error: getErrorMessage(err),
+			});
+			console.error(chalk.red(getErrorMessage(err)));
+			process.exit(1);
+		}
+	}
 
 	// Validate numImages first - exit immediately on error
 	let numImages: number;
@@ -512,9 +537,26 @@ async function generateImage(
 		process.exit(1);
 	}
 
-	if (options.edit && !modelConfig.supportsEdit) {
+	if (parsedEditPaths && !modelConfig.supportsEdit) {
 		cliDebugLog("generate:error:edit-unsupported", { model });
 		console.error(chalk.red(`Model ${model} does not support image editing.`));
+		process.exit(1);
+	}
+	if (
+		parsedEditPaths &&
+		modelConfig.maxEditInputImages !== undefined &&
+		parsedEditPaths.length > modelConfig.maxEditInputImages
+	) {
+		cliDebugLog("generate:error:edit-input-count", {
+			model,
+			count: parsedEditPaths.length,
+			max: modelConfig.maxEditInputImages,
+		});
+		console.error(
+			chalk.red(
+				`Model ${model} supports at most ${modelConfig.maxEditInputImages} edit input image${modelConfig.maxEditInputImages === 1 ? "" : "s"}.`
+			)
+		);
 		process.exit(1);
 	}
 
@@ -601,11 +643,11 @@ async function generateImage(
 	}
 
 	// Handle edit mode
-	let editImageData: string | undefined;
-	let editPath: string | undefined;
-	if (options.edit) {
+	let editImageData: string[] | undefined;
+	let editPaths: string[] | undefined;
+	if (parsedEditPaths) {
 		try {
-			editPath = validateEditPath(options.edit);
+			editPaths = parsedEditPaths.map((path) => validateEditPath(path));
 		} catch (err) {
 			cliDebugLog("generate:error:edit-path", {
 				error: getErrorMessage(err),
@@ -613,14 +655,19 @@ async function generateImage(
 			console.error(chalk.red(getErrorMessage(err)));
 			process.exit(1);
 		}
-		console.log(`Editing: ${chalk.dim(editPath)} `);
+		console.log(
+			`Editing ${editPaths.length} image${editPaths.length === 1 ? "" : "s"}: ${chalk.dim(editPaths.join(", "))}`
+		);
 
-		const resized = await resizeImage(editPath, 1024);
-		editImageData = await imageToDataUrl(resized);
+		editImageData = [];
+		for (const editPath of editPaths) {
+			const resized = await resizeImage(editPath, 1024);
+			editImageData.push(await imageToDataUrl(resized));
 
-		// Clean up temp file using safe utility
-		if (resized !== editPath) {
-			deleteTempFile(resized);
+			// Clean up temp file using safe utility
+			if (resized !== editPath) {
+				deleteTempFile(resized);
+			}
 		}
 	}
 
@@ -643,13 +690,13 @@ async function generateImage(
 		const result = await generate({
 			prompt,
 			model,
-			aspect,
-			resolution,
-			numImages,
-			editImage: editImageData,
-			transparent: options.transparent,
-			guidanceScale,
-			enablePromptExpansion: options.promptExpansion,
+				aspect,
+				resolution,
+				numImages,
+				editImages: editImageData,
+				transparent: options.transparent,
+				guidanceScale,
+				enablePromptExpansion: options.promptExpansion,
 			numInferenceSteps,
 			acceleration,
 			outputFormat: outputFormat as "jpeg" | "png" | "webp" | undefined,
@@ -717,11 +764,12 @@ async function generateImage(
 						estimate.costDetails.unitQuantity !== undefined
 							? estimate.costDetails.unitQuantity / numImages
 							: undefined,
-				},
-				timestamp: new Date().toISOString(),
-				seed: result.seed || seed,
-				editedFrom: options.edit ? resolve(options.edit) : undefined,
-			};
+					},
+					timestamp: new Date().toISOString(),
+					seed: result.seed || seed,
+					editedFrom: editPaths?.[0],
+					editedFromInputs: editPaths,
+				};
 			try {
 				cliDebugLog("generate:history:add:start", { id: generation.id });
 				await addGeneration(generation);
@@ -1092,7 +1140,7 @@ falcon--rmbg                    Remove background from last image
 
 ${chalk.bold("Options:")}
 -m, --model < model > Model: gpt, banana, gemini, gemini3, flux2, flux2Flash, flux2Turbo, imagine
-	- e, --edit < file > Edit an existing image with prompt
+	- e, --edit < files > Edit existing image(s) with prompt (comma-separated)
 	- a, --aspect < ratio > Aspect ratio(see below)
 		- r, --resolution < res > Resolution: 1K, 2K, 4K, 512x512 (Flux 2 only)
 			- o, --output < file > Output filename
