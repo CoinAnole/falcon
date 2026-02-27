@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import chalk from "chalk";
 import { Command } from "commander";
@@ -150,6 +151,42 @@ function parseEditPaths(rawEditValue: string): string[] {
 	return editPaths;
 }
 
+async function resolvePromptFromInput(rawPrompt: string): Promise<string> {
+	if (!rawPrompt.toLowerCase().endsWith(".json")) {
+		return rawPrompt;
+	}
+
+	const promptPath = resolve(rawPrompt);
+	cliDebugLog("prompt-file:detected", { rawPrompt, promptPath });
+
+	if (!existsSync(promptPath)) {
+		throw new Error(`Prompt file not found: ${rawPrompt}`);
+	}
+
+	let fileContents: string;
+	try {
+		fileContents = await Bun.file(promptPath).text();
+	} catch (err) {
+		throw new Error(
+			`Failed to read prompt file ${rawPrompt}: ${getErrorMessage(err)}`
+		);
+	}
+
+	const prompt = fileContents.trim();
+	if (prompt.length === 0) {
+		throw new Error(
+			`Prompt file is empty after trimming whitespace: ${rawPrompt}`
+		);
+	}
+
+	cliDebugLog("prompt-file:resolved", {
+		promptPath,
+		length: prompt.length,
+	});
+
+	return prompt;
+}
+
 interface CliOptions {
 	refresh?: boolean;
 	model?: string;
@@ -202,7 +239,7 @@ export async function runCli(args: string[]): Promise<void> {
 		.name("falcon")
 		.description("fal.ai image generation CLI")
 		.version("1.0.0")
-		.argument("[prompt]", "Image generation prompt")
+		.argument("[prompt]", "Image generation prompt (or .json text file path)")
 		.option("--refresh", "Refresh cached pricing data")
 		.option(
 			"-m, --model <model>",
@@ -271,9 +308,9 @@ export async function runCli(args: string[]): Promise<void> {
 	program.parse(args);
 
 	const options = program.opts<CliOptions>();
-	const prompt = program.args[0];
+	const promptInput = program.args[0];
 
-	if (prompt === "pricing") {
+	if (promptInput === "pricing") {
 		cliDebugLog("pricing:command", { refresh: options.refresh });
 		if (!options.refresh) {
 			console.log("Use --refresh to update cached pricing data.");
@@ -322,7 +359,7 @@ export async function runCli(args: string[]): Promise<void> {
 
 	// Validate API key for operations that need it
 	const requiresApiKey =
-		prompt || options.vary || options.up || options.rmbg || options.edit;
+		promptInput || options.vary || options.up || options.rmbg || options.edit;
 	if (requiresApiKey) {
 		try {
 			getApiKey(config);
@@ -334,16 +371,16 @@ export async function runCli(args: string[]): Promise<void> {
 
 	// Handle --vary (variations of last image)
 	if (options.vary) {
-		cliDebugLog("vary:start", { prompt });
-		await generateVariations(prompt, options, config);
+		cliDebugLog("vary:start", { prompt: promptInput });
+		await generateVariations(promptInput, options, config);
 		cliDebugLog("vary:complete");
 		return;
 	}
 
 	// Handle --up (upscale image - provided path or last)
 	if (options.up) {
-		cliDebugLog("upscale:start", { prompt });
-		await upscaleLast(prompt, options, config);
+		cliDebugLog("upscale:start", { prompt: promptInput });
+		await upscaleLast(promptInput, options, config);
 		cliDebugLog("upscale:complete");
 		return;
 	}
@@ -357,12 +394,24 @@ export async function runCli(args: string[]): Promise<void> {
 	}
 
 	// Regular generation requires a prompt
-	if (!prompt) {
+	if (!promptInput) {
 		cliDebugLog("help:prompt-missing");
 		// No prompt and no special flags = show help or launch studio
 		// The entry point handles launching studio, so just show help here
 		program.help();
 		return;
+	}
+
+	let prompt = promptInput;
+	try {
+		prompt = await resolvePromptFromInput(promptInput);
+	} catch (err) {
+		cliDebugLog("generate:error:prompt-file", {
+			promptInput,
+			error: getErrorMessage(err),
+		});
+		console.error(chalk.red(getErrorMessage(err)));
+		process.exit(1);
 	}
 
 	cliDebugLog("generate:start", { prompt });
@@ -1132,6 +1181,7 @@ ${chalk.bold("falcon")} - fal.ai image generation CLI
 ${chalk.bold("Usage:")}
   falcon                           Launch interactive studio
   falcon "prompt"[options]        Generate image from prompt
+  falcon prompt.json[options]     Generate image from .json text file contents
   falcon pricing--refresh          Refresh cached pricing data
 falcon--last                    Show last generation info
 falcon--vary                    Generate variations of last image
@@ -1184,6 +1234,7 @@ ${chalk.bold("Aspect Ratios:")}
 
 ${chalk.bold("Examples:")}
   falcon "a cat on a windowsill" - m gpt
+  falcon prompts/hero.json --model banana
   falcon "urban landscape" --landscape - r 4K
   falcon "add rain" - e photo.png
 falcon--vary - n 4

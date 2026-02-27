@@ -67,7 +67,7 @@ Prices can vary by account and are subject to change. Use `falcon pricing --refr
 ## Options
 
 ```
-falcon [prompt] [options]
+falcon [prompt|prompt.json] [options]
 
 -m, --model <model>      Model: gpt, banana, gemini, gemini3, flux2, flux2Flash, flux2Turbo, imagine
 -e, --edit <files>       Edit existing image(s) with prompt (comma-separated)
@@ -92,9 +92,12 @@ Flux 2 options:
 --acceleration <level>   Base Flux 2 only: none, regular, high (default: regular)
 ```
 
+Positional `[prompt]` can also be a path ending in `.json`; Falcon reads the file as plain text prompt content (no JSON parsing).
+
 Example multi-image edit:
 ```bash
 falcon "blend these references into one scene" --model banana --edit ref-a.png,ref-b.png
+falcon prompts/launch.json --model gemini3
 ```
 
 Note: `imagine` edit supports exactly one source image.

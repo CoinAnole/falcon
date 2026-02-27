@@ -5,9 +5,12 @@ import {
 	copyFileSync,
 	existsSync,
 	mkdirSync,
+	mkdtempSync,
+	rmSync,
 	unlinkSync,
 	writeFileSync,
 } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Generation } from "../../src/utils/config";
 import { cleanupTestFiles, getTestOutputDir, runCli } from "../helpers/cli";
@@ -333,6 +336,149 @@ describe("cli", () => {
 				}
 			);
 			expect(result.exitCode).toBe(0);
+		});
+	});
+
+	describe("prompt .json input", () => {
+		const fullFlowEnv = {
+			FAL_KEY: "test-key",
+			FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
+			FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
+			FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
+		};
+
+		it("uses trimmed text from .json file as prompt", async () => {
+			const promptPath = join(getTestOutputDir(), "prompt-from-file.json");
+			writeFileSync(promptPath, "   prompt loaded from file   \n");
+
+			const result = await runCli(
+				[
+					promptPath,
+					"--no-open",
+					"--output",
+					join(getTestOutputDir(), "prompt-file-test.png"),
+				],
+				fullFlowEnv
+			);
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout).toContain("prompt loaded from file");
+		});
+
+		it("uses .json prompt file in --edit flow", async () => {
+			const promptPath = join(getTestOutputDir(), "prompt-edit-file.json");
+			writeFileSync(promptPath, "edit prompt loaded from file");
+
+			const result = await runCli(
+				[
+					promptPath,
+					"--edit",
+					"tests/fixtures/tiny.png",
+					"--model",
+					"banana",
+					"--no-open",
+					"--output",
+					join(getTestOutputDir(), "prompt-file-edit-test.png"),
+				],
+				fullFlowEnv
+			);
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout).toContain("Editing");
+			expect(result.stdout).toContain("edit prompt loaded from file");
+		});
+
+		it("fails for missing .json prompt file", async () => {
+			const missingPromptPath = join(
+				getTestOutputDir(),
+				"missing-prompt-file.json"
+			);
+			if (existsSync(missingPromptPath)) {
+				unlinkSync(missingPromptPath);
+			}
+
+			const result = await runCli([missingPromptPath], { FAL_KEY: "test-key" });
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr).toContain("Prompt file not found");
+		});
+
+		it("accepts non-JSON text in .json prompt file", async () => {
+			const promptPath = join(getTestOutputDir(), "non-json-content.json");
+			writeFileSync(promptPath, "this is not valid json {{{{");
+
+			const result = await runCli(
+				[
+					promptPath,
+					"--no-open",
+					"--output",
+					join(getTestOutputDir(), "non-json-content-test.png"),
+				],
+				fullFlowEnv
+			);
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout).toContain("this is not valid json");
+		});
+
+		it("fails for empty .json prompt file after trimming", async () => {
+			const promptPath = join(getTestOutputDir(), "empty-prompt-file.json");
+			writeFileSync(promptPath, "\n \t  \n");
+
+			const result = await runCli([promptPath], { FAL_KEY: "test-key" });
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr).toContain(
+				"Prompt file is empty after trimming whitespace"
+			);
+		});
+
+		it("accepts absolute .json prompt files outside cwd", async () => {
+			const outsideDir = mkdtempSync(join(tmpdir(), "falcon-prompt-"));
+			const outsidePromptPath = join(outsideDir, "outside-cwd-prompt.json");
+			writeFileSync(outsidePromptPath, "outside cwd prompt");
+
+			try {
+				const result = await runCli(
+					[
+						outsidePromptPath,
+						"--no-open",
+						"--output",
+						join(getTestOutputDir(), "outside-cwd-prompt-test.png"),
+					],
+					fullFlowEnv
+				);
+				expect(result.exitCode).toBe(0);
+				expect(result.stdout).toContain("outside cwd prompt");
+			} finally {
+				rmSync(outsideDir, { recursive: true, force: true });
+			}
+		});
+
+		it("does not parse .json input in --up mode", async () => {
+			const promptPath = join(getTestOutputDir(), "up-mode-prompt.json");
+			writeFileSync(promptPath, "should not be parsed in --up");
+
+			const result = await runCli([promptPath, "--up"], {
+				FAL_KEY: "test-key",
+			});
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr).toContain("Edit image must be PNG, JPG, or WebP");
+		});
+
+		it("does not parse .json input in --vary mode", async () => {
+			const promptPath = join(getTestOutputDir(), "vary-mode-prompt.json");
+			writeFileSync(promptPath, "\n  \n");
+			cleanupHistory();
+			setupHistory();
+
+			try {
+				const result = await runCli([promptPath, "--vary", "--no-open"], {
+					FAL_KEY: "test-key",
+					FALCON_PRICING_FIXTURE: "tests/fixtures/pricing.json",
+					FALCON_API_FIXTURE: "tests/fixtures/api-response.json",
+					FALCON_DOWNLOAD_FIXTURE: "tests/fixtures/tiny.png",
+				});
+				expect(result.exitCode).toBe(0);
+				expect(result.stdout).toContain(".json");
+			} finally {
+				cleanupHistory();
+			}
 		});
 	});
 
